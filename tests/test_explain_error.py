@@ -69,7 +69,6 @@ class MaddRule(TajweedRule):
         else:
             return False
 
-    # TODO:
     def get_relvant_rule(self, ph_str: str) -> "TajweedRule" | None:
         """Returs a Tajweed rule that is assocaited with the input ph_str"""
         if not ph_str:
@@ -348,8 +347,15 @@ def explain_error(
 
                 # Tashkeel (Harakat)
                 # TODO:
+            elif ref_ph_groups[align.ref_idx][-1] in alph.phonetic_groups.harakat:
+                ...
+
+            # TODO: imala, sakt, dammao momala
             elif ref_ph_groups[align.ref_idx][-1] in alph.phonetic_groups.residuals:
                 ...
+
+            else:
+                raise ValueError("Uncaptured Error Explanation")
 
         pred_ph_start = pred_ph_end
         ref_ph_start = ref_ph_end
