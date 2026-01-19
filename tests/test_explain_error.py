@@ -1,6 +1,6 @@
-from abc import abstractmethod
+from abc import abstractmethod, ABC
 from typing import Literal, Optional
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 
 
 from quran_transcript import chunck_phonemes
@@ -9,25 +9,51 @@ import Levenshtein as lv
 
 
 @dataclass
-class TajweedRule:
+class TajweedRule(ABC):
     name: str
     golden_len: int
     correctness_type: Literal["match", "count"]
+    tag: Optional[str] | None = None
+    available_tags: Optional[set] | None = None
 
-    @abstractmethod
+    def __post_init__(self):
+        if self.tag is not None and self.available_tags is not None:
+            if self.tag not in self.available_tags:
+                raise ValueError(
+                    f"Invalid tag value: `{self.tag}`. Available ones are: `{self.available_tags}`"
+                )
+
     def count(self, ref_text, pred_text) -> int:
         return 0
 
-    @abstractmethod
     def match(self, ref_text, pred_text) -> bool:
         return True
 
+    @abstractmethod
+    def is_ph_str_in(self, ph_str: str) -> bool:
+        """Whether the phonetic script is assoicated with this Tajweed rule or not"""
+        return True
+
+    @abstractmethod
+    def get_relvant_rule(self, ph_str: str) -> "TajweedRule" | None:
+        """Returs a Tajweed rule that is assocaited with the input ph_str"""
+        return self
+
 
 @dataclass
-class NormalMaddRule(TajweedRule):
-    name: str = "مد طبيعي"
-    golden_len: int = 2
+class MaddRule(TajweedRule):
+    name: str
+    golden_len: int
     correctness_type: Literal["match", "count"] = "count"
+
+    def __post_init__(self):
+        self.available_tags = {"alif", "waw", "yaa"}
+        super().__post_init__()
+        self._madd_to_tag = {
+            alph.phonetics.alif: "alif",
+            alph.phonetics.waw_madd: "waw",
+            alph.phonetics.yaa_madd: "yaa",
+        }
 
     def count(self, ref_text, pred_text) -> int:
         # The case where we have Tashkeel after madd (Error from the model)
@@ -35,6 +61,28 @@ class NormalMaddRule(TajweedRule):
             return pred_text[:-1].count(ref_text[0])
         else:
             return pred_text.count(ref_text[0])
+
+    def is_ph_str_in(self, ph_str: str) -> bool:
+        """Whether the phonetic script is assoicated with this Tajweed rule or not"""
+        if ph_str:
+            return ph_str[0] in self._madd_to_tags
+        else:
+            return False
+
+    # TODO:
+    def get_relvant_rule(self, ph_str: str) -> "TajweedRule" | None:
+        """Returs a Tajweed rule that is assocaited with the input ph_str"""
+        if not ph_str:
+            raise ValueError("Empty String")
+        elif ph_str[0] not in self._madd_to_tag:
+            return None
+        return replace(self, tag=self._madd_to_tag[ph_str[0]])
+
+
+@dataclass
+class NormalMaddRule(MaddRule):
+    name: str = "مد طبيعي"
+    golden_len: int = 2
 
 
 @dataclass
@@ -54,6 +102,7 @@ class ReciterError:
     expected_len: Optional[int] | None = None
     predicted_len: Optional[int] | None = None
     tajweed_rules: Optional[list[TajweedRule]] | None = None
+    predicted_tajweed_rules: Optional[list[TajweedRule]] | None = None
 
 
 @dataclass
@@ -200,17 +249,57 @@ def explain_error(
             )
 
         elif align.op_type == "replace":
-            # TODO: try to estimate the Tajweed rule
-            errors.append(
-                ReciterError(
-                    uthmani_pos=uthmani_pos,
-                    ph_pos=ph_pos,
-                    error_type="normal",  # TODO: try to estimate what is the Tajweed rule associated with this error type
-                    speech_error_type="replace",
-                    expected_ph=ref_ph,
-                    preditected_ph=pred_ph,
+            pred_rules = []
+            if ref_ph_groups_tajweed_rules[align.ref_idx] is not None:
+                for taj_rule in ref_ph_groups_tajweed_rules[align.ref_idx]:
+                    pred_taj_rule = taj_rule.get_relvant_rule(pred_ph)
+                    if pred_taj_rule is not None:
+                        # TODO: What to do with `match`
+                        if pred_taj_rule.correctness_type == "count":
+                            ref_len = taj_rule.golden_len
+                            pred_len = pred_taj_rule.count(pred_ph, pred_ph)
+                        else:
+                            ref_len = None
+                            pred_len = None
+                        errors.append(
+                            ReciterError(
+                                uthmani_pos=uthmani_pos,
+                                ph_pos=ph_pos,
+                                error_type="tajweed",
+                                speech_error_type="replace",
+                                expected_ph=ref_ph,
+                                preditected_ph=pred_ph,
+                                expected_len=ref_len,
+                                predicted_len=pred_len,
+                                tajweed_rules=[taj_rule],
+                                predicted_tajweed_rules=[pred_taj_rule],
+                            )
+                        )
+                    else:
+                        errors.append(
+                            ReciterError(
+                                uthmani_pos=uthmani_pos,
+                                ph_pos=ph_pos,
+                                error_type="tajweed",
+                                speech_error_type="replace",
+                                expected_ph=ref_ph,
+                                preditected_ph=pred_ph,
+                                tajweed_rules=[taj_rule],
+                            )
+                        )
+
+            # No Tajweed Rule associated
+            if not ref_ph_groups_tajweed_rules[align.ref_idx]:
+                errors.append(
+                    ReciterError(
+                        uthmani_pos=uthmani_pos,
+                        ph_pos=ph_pos,
+                        error_type="normal",
+                        speech_error_type="replace",
+                        expected_ph=ref_ph,
+                        preditected_ph=pred_ph,
+                    )
                 )
-            )
 
         elif align.op_type == "delete":
             errors.append(
@@ -236,6 +325,7 @@ def explain_error(
                     if taj_rule.correctness_type == "count":
                         pred_len = taj_rule.count(ref_ph, pred_ph)
                         exp_len = taj_rule.golden_len
+                    # TODO: What to do with `match`
                     elif taj_rule.correctness_type == "match":
                         ...
                     else:
@@ -269,18 +359,19 @@ def explain_error(
 
 if __name__ == "__main__":
     uthmani_text = "قالوا"
-    ph_text = "قاالوو"
-    # predicted_text = "كالوو"
-    predicted_text = "كوولوو"
-    # predicted_text = "فكالوو"
+    ph_text = "قاالۥۥ"
+    predicted_text = "كالۥۥ"
+    predicted_text = "فكالۥۥ"
+    predicted_text = "فكۥۥلۥۥ"
 
-    normal_madd_rule = NormalMaddRule()
+    normal_madd_alif = NormalMaddRule(tag="alif")
+    normal_madd_waw = NormalMaddRule(tag="waw")
 
     mapping = [
         MappingPos(pos=(0, 1)),
-        MappingPos(pos=(1, 3), tajweed_rules=[normal_madd_rule]),
+        MappingPos(pos=(1, 3), tajweed_rules=[normal_madd_alif]),
         MappingPos(pos=(3, 4)),
-        MappingPos(pos=(4, 6), tajweed_rules=[normal_madd_rule]),
+        MappingPos(pos=(4, 6), tajweed_rules=[normal_madd_waw]),
         None,
     ]
     errors = explain_error(
