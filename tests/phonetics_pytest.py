@@ -203,7 +203,7 @@ from quran_transcript import alphabet as alph
 )
 def test_convert_alif_maksora(in_text: str, target_text: str, moshaf: MoshafAttributes):
     op = ConvertAlifMaksora()
-    out_text = op.apply(in_text, moshaf, mode="test")
+    out_text, _ = op.apply(in_text, moshaf, None, mode="test")
     print(out_text)
     assert out_text == target_text
 
@@ -221,7 +221,7 @@ def test_convert_alif_maksora_stress_test():
 
     for aya in start_aya.get_ayat_after(114):
         txt = aya.get().uthmani
-        out_text = op.apply(txt, moshaf, mode="test")
+        out_text, _ = op.apply(txt, moshaf, None, mode="test")
         if alph.uthmani.alif_maksora in out_text:
             print(aya)
             print(out_text)
@@ -246,7 +246,7 @@ def test_convert_alif_maksora_stress_test():
 )
 def test_normalize_hamazat(in_text: str, target_text: str, moshaf: MoshafAttributes):
     op = NormalizeHmazat()
-    out_text = op.apply(in_text, moshaf, mode="test")
+    out_text, _ = op.apply(in_text, moshaf, None, mode="test")
     print(out_text)
     assert out_text == target_text
 
@@ -265,7 +265,7 @@ def test_normalize_hamazat_stress_test():
     hamazat = re.sub(alph.uthmani.hamza, "", alph.uthmani.hamazat_group)
     for aya in start_aya.get_ayat_after(114):
         txt = aya.get().uthmani
-        out_text = op.apply(txt, moshaf, mode="test")
+        out_text, _ = op.apply(txt, moshaf, None, mode="test")
         if re.search(f"[{hamazat}]", out_text):
             print(aya)
             print(out_text)
@@ -302,8 +302,8 @@ def test_normalize_hamazat_stress_test():
 def test_ithbat_yaa_yohie(in_text: str, target_text: str, moshaf: MoshafAttributes):
     op = IthbatYaaYohie()
     for b_op in op.ops_before:
-        target_text = b_op.apply(target_text, moshaf)
-    out_text = op.apply(in_text, moshaf, mode="test")
+        target_text, _ = b_op.apply(target_text, moshaf, None)
+    out_text, _ = op.apply(in_text, moshaf, None, mode="test")
     print(out_text)
     assert out_text == target_text
 
@@ -327,8 +327,8 @@ def test_ithbat_yaa_yohie(in_text: str, target_text: str, moshaf: MoshafAttribut
 def test_remove_kasheeda(in_text: str, target_text: str, moshaf: MoshafAttributes):
     op = RemoveKasheeda()
     for b_op in op.ops_before:
-        target_text = b_op.apply(target_text, moshaf)
-    out_text = op.apply(in_text, moshaf, mode="test")
+        target_text, _ = b_op.apply(target_text, moshaf, None)
+    out_text, _ = op.apply(in_text, moshaf, None, mode="test")
     print(out_text)
     assert out_text == target_text
 
@@ -363,8 +363,8 @@ def test_remove_kasheeda(in_text: str, target_text: str, moshaf: MoshafAttribute
 def test_remove_kasheeda(in_text: str, target_text: str, moshaf: MoshafAttributes):
     op = RemoveHmzatWaslMiddle()
     for b_op in op.ops_before:
-        target_text = b_op.apply(target_text, moshaf)
-    out_text = op.apply(in_text, moshaf, mode="test")
+        target_text, _ = b_op.apply(target_text, moshaf, None)
+    out_text, _ = op.apply(in_text, moshaf, None, mode="test")
     print(out_text)
     assert out_text == target_text
 
@@ -401,8 +401,8 @@ def test_remove_skoon_mostadeer(
 ):
     op = RemoveSkoonMostadeer()
     for b_op in op.ops_before:
-        target_text = b_op.apply(target_text, moshaf)
-    out_text = op.apply(in_text, moshaf, mode="test")
+        target_text, _ = b_op.apply(target_text, moshaf, None)
+    out_text, _ = op.apply(in_text, moshaf, None, mode="test")
     print(out_text)
     assert out_text == target_text
 
@@ -437,8 +437,8 @@ def test_remove_skoon_mostadeer(
 def test_skoon_mostateel(in_text: str, target_text: str, moshaf: MoshafAttributes):
     op = SkoonMostateel()
     for b_op in op.ops_before:
-        target_text = b_op.apply(target_text, moshaf)
-    out_text = op.apply(in_text, moshaf, mode="test")
+        target_text, _ = b_op.apply(target_text, moshaf, None)
+    out_text, _ = op.apply(in_text, moshaf, None, mode="test")
     print(out_text)
     assert out_text == target_text
 
@@ -456,7 +456,7 @@ def test_skoon_mostateel_stree_test():
 
     for aya in start_aya.get_ayat_after(114):
         txt = aya.get().uthmani
-        out_text = op.apply(txt, moshaf, mode="test")
+        out_text, _ = op.apply(txt, moshaf, None, mode="test")
         if alph.uthmani.skoon_mostateel in out_text:
             print(aya)
             print(out_text)
@@ -526,8 +526,8 @@ def test_skoon_mostateel_stree_test():
 def test_madd_alewad(in_text: str, target_text: str, moshaf: MoshafAttributes):
     op = MaddAlewad()
     for b_op in op.ops_before:
-        target_text = b_op.apply(target_text, moshaf)
-    out_text = op.apply(in_text, moshaf, mode="test")
+        target_text, _ = b_op.apply(target_text, moshaf, None)
+    out_text, _ = op.apply(in_text, moshaf, None, mode="test")
     print(out_text)
     assert out_text == target_text
 
@@ -573,8 +573,8 @@ def test_madd_alewad(in_text: str, target_text: str, moshaf: MoshafAttributes):
 def test_waw_alslah(in_text: str, target_text: str, moshaf: MoshafAttributes):
     op = WawAlsalah()
     for b_op in op.ops_before:
-        target_text = b_op.apply(target_text, moshaf)
-    out_text = op.apply(in_text, moshaf, mode="test")
+        target_text, _ = b_op.apply(target_text, moshaf, None)
+    out_text, _ = op.apply(in_text, moshaf, None, mode="test")
     print(out_text)
     assert out_text == target_text
 
@@ -644,8 +644,8 @@ def test_enlarge_small_letters(
 ):
     op = EnlargeSmallLetters()
     for b_op in op.ops_before:
-        target_text = b_op.apply(target_text, moshaf)
-    out_text = op.apply(in_text, moshaf, mode="test")
+        target_text, _ = b_op.apply(target_text, moshaf, None)
+    out_text, _ = op.apply(in_text, moshaf, None, mode="test")
     print(out_text)
     assert out_text == target_text
 
@@ -757,8 +757,8 @@ def test_enlarge_small_letters(
 def test_clean_end(in_text: str, target_text: str, moshaf: MoshafAttributes):
     op = CleanEnd()
     for b_op in op.ops_before:
-        target_text = b_op.apply(target_text, moshaf)
-    out_text = op.apply(in_text, moshaf, mode="test")
+        target_text, _ = b_op.apply(target_text, moshaf, None)
+    out_text, _ = op.apply(in_text, moshaf, None, mode="test")
     print(out_text)
     assert out_text == target_text
 
@@ -777,7 +777,7 @@ def test_clean_end_stree_test():
     is_error = False
     for aya in start_aya.get_ayat_after(114):
         txt = aya.get().uthmani
-        out_text = op.apply(txt, moshaf, mode="test")
+        out_text, _ = op.apply(txt, moshaf, None, mode="test")
         if out_text[-1] not in (
             alph.uthmani.letters_group + alph.uthmani.ras_haaa + alph.uthmani.shadda
         ):
@@ -808,8 +808,8 @@ def test_clean_end_stree_test():
 def test_normalize_taa(in_text: str, target_text: str, moshaf: MoshafAttributes):
     op = NormalizeTaa()
     for b_op in op.ops_before:
-        target_text = b_op.apply(target_text, moshaf)
-    out_text = op.apply(in_text, moshaf, mode="test")
+        target_text, _ = b_op.apply(target_text, moshaf, None)
+    out_text, _ = op.apply(in_text, moshaf, None, mode="test")
     print(out_text)
     assert out_text == target_text
 
@@ -890,8 +890,8 @@ def test_disassemble_hrof_moqatta(
 ):
     op = DisassembleHrofMoqatta()
     for b_op in op.ops_before:
-        target_text = b_op.apply(target_text, moshaf)
-    out_text = op.apply(in_text, moshaf, mode="test")
+        target_text, _ = b_op.apply(target_text, moshaf, None)
+    out_text, _ = op.apply(in_text, moshaf, None, mode="test")
     print(out_text)
     assert out_text == target_text
 
@@ -1573,8 +1573,8 @@ def test_disassemble_hrof_moqatta(
 def test_special_cases(in_text: str, target_text: str, moshaf: MoshafAttributes):
     op = SpecialCases()
     for b_op in op.ops_before:
-        target_text = b_op.apply(target_text, moshaf)
-    out_text = op.apply(in_text, moshaf, mode="test")
+        target_text, _ = b_op.apply(target_text, moshaf, None)
+    out_text, _ = op.apply(in_text, moshaf, None, mode="test")
     print(out_text)
     assert out_text == target_text
 
@@ -1653,12 +1653,13 @@ def test_special_cases(in_text: str, target_text: str, moshaf: MoshafAttributes)
 def test_alif_ism_Allah(in_text: str, target_text: str, moshaf: MoshafAttributes):
     op = AddAlifIsmAllah()
     for b_op in op.ops_before:
-        target_text = b_op.apply(
+        target_text, _ = b_op.apply(
             target_text,
             moshaf,
+            None,
             mode="test",
         )
-    out_text = op.apply(in_text, moshaf, mode="test")
+    out_text, _ = op.apply(in_text, moshaf, None, mode="test")
     print(f"Target Text:\n'{target_text}'")
     print(f"Out Text:\n'{out_text}'")
     assert out_text == target_text
@@ -1993,8 +1994,8 @@ def test_Prepare_ghonna_tanween_idgham(
 ):
     op = PrepareGhonnaIdghamIqlab()
     for b_op in op.ops_before:
-        target_text = b_op.apply(target_text, moshaf, mode="test")
-    out_text = op.apply(in_text, moshaf, mode="test")
+        target_text, _ = b_op.apply(target_text, moshaf, None, mode="test")
+    out_text, _ = op.apply(in_text, moshaf, None, mode="test")
     print(f"Target Text:\n'{target_text}'")
     print(f"Out Text:\n'{out_text}'")
     assert out_text == target_text
@@ -2068,8 +2069,8 @@ def test_Prepare_ghonna_tanween_idgham(
 def test_iltiqaa_alsaknana(in_text: str, target_text: str, moshaf: MoshafAttributes):
     op = IltiqaaAlsaknan()
     for b_op in op.ops_before:
-        target_text = b_op.apply(target_text, moshaf, mode="test")
-    out_text = op.apply(in_text, moshaf, mode="test")
+        target_text, _ = b_op.apply(target_text, moshaf, None, mode="test")
+    out_text, _ = op.apply(in_text, moshaf, None, mode="test")
     print(f"Target Text:\n'{target_text}'")
     print(f"Out Text:\n'{out_text}'")
     assert out_text == target_text
@@ -2342,8 +2343,8 @@ def test_iltiqaa_alsaknana(in_text: str, target_text: str, moshaf: MoshafAttribu
 def test_ghonna(in_text: str, target_text: str, moshaf: MoshafAttributes):
     op = Ghonna()
     for b_op in op.ops_before:
-        target_text = b_op.apply(target_text, moshaf, mode="test")
-    out_text = op.apply(in_text, moshaf, mode="test")
+        target_text, _ = b_op.apply(target_text, moshaf, None, mode="test")
+    out_text, _ = op.apply(in_text, moshaf, None, mode="test")
     print(f"Target Text:\n'{target_text}'")
     print(f"Out Text:\n'{out_text}'")
     assert out_text == target_text
@@ -2381,8 +2382,8 @@ def test_ghonna(in_text: str, target_text: str, moshaf: MoshafAttributes):
 def test_tasheel(in_text: str, target_text: str, moshaf: MoshafAttributes):
     op = Tasheel()
     for b_op in op.ops_before:
-        target_text = b_op.apply(target_text, moshaf, mode="test")
-    out_text = op.apply(in_text, moshaf, mode="test")
+        target_text, _ = b_op.apply(target_text, moshaf, None, mode="test")
+    out_text, _ = op.apply(in_text, moshaf, None, mode="test")
     print(f"Target Text:\n'{target_text}'")
     print(f"Out Text:\n'{out_text}'")
     assert out_text == target_text
@@ -2408,8 +2409,8 @@ def test_tasheel(in_text: str, target_text: str, moshaf: MoshafAttributes):
 def test_imala(in_text: str, target_text: str, moshaf: MoshafAttributes):
     op = Imala()
     for b_op in op.ops_before:
-        target_text = b_op.apply(target_text, moshaf, mode="test")
-    out_text = op.apply(in_text, moshaf, mode="test")
+        target_text, _ = b_op.apply(target_text, moshaf, None, mode="test")
+    out_text, _ = op.apply(in_text, moshaf, None, mode="test")
     print(f"Target Text:\n'{target_text}'")
     print(f"Out Text:\n'{out_text}'")
     assert out_text == target_text
@@ -2744,13 +2745,14 @@ def test_imala(in_text: str, target_text: str, moshaf: MoshafAttributes):
 def test_madd(in_text: str, target_text: str, moshaf: MoshafAttributes):
     op = Madd()
     for b_op in op.ops_before:
-        target_text = b_op.apply(
+        target_text, _ = b_op.apply(
             target_text,
             moshaf,
+            None,
             mode="test",
             discard_ops=[EnlargeSmallLetters()],
         )
-    out_text = op.apply(in_text, moshaf, mode="test")
+    out_text, _ = op.apply(in_text, moshaf, None, mode="test")
     print(f"Target Text:\n'{target_text}'")
     print(f"Out Text:\n'{out_text}'")
     assert out_text == target_text
@@ -2841,7 +2843,7 @@ def test_qlqla(in_text: str, target_text: str, moshaf: MoshafAttributes):
             moshaf,
             mode="test",
         )
-    out_text = op.apply(in_text, moshaf, mode="test")
+    out_text, _ = op.apply(in_text, moshaf, None, mode="test")
     print(f"Target Text:\n'{target_text}'")
     print(f"Out Text:\n'{out_text}'")
     assert out_text == target_text
@@ -3023,12 +3025,13 @@ def test_qlqla(in_text: str, target_text: str, moshaf: MoshafAttributes):
 def test_qlqla(in_text: str, target_text: str, moshaf: MoshafAttributes):
     op = BeginWithHamzatWasl()
     for b_op in op.ops_before:
-        target_text = b_op.apply(
+        target_text, _ = b_op.apply(
             target_text,
             moshaf,
+            None,
             mode="test",
         )
-    out_text = op.apply(in_text, moshaf, mode="test")
+    out_text, _ = op.apply(in_text, moshaf, None, mode="test")
     print(f"Target Text:\n'{target_text}'")
     print(f"Out Text:\n'{out_text}'")
     assert out_text == target_text

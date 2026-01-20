@@ -1,6 +1,6 @@
 from abc import abstractmethod, ABC
 from typing import Literal, Optional
-from dataclasses import dataclass, replace
+from dataclasses import dataclass, replace, field
 
 
 from .. import alphabet as alph
@@ -84,7 +84,9 @@ class MaddRule(TajweedRule):
 
 @dataclass
 class NormalMaddRule(MaddRule):
-    name: LangName = LangName(ar="المد الطبيعي", en="Normal Madd")
+    name: LangName = field(
+        default_factory=LangName(ar="المد الطبيعي", en="Normal Madd")
+    )
     golden_len: int = 2
 
 

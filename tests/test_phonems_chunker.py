@@ -38,7 +38,7 @@ def format_pydantic(instance: BaseModel) -> str:
 
 
 if __name__ == "__main__":
-    aya = Aya(6, 143)
+    aya = Aya(75, 27)
     moshaf = MoshafAttributes(
         rewaya="hafs",
         madd_monfasel_len=4,
@@ -48,7 +48,7 @@ if __name__ == "__main__":
         tasheel_or_madd="madd",
     )
 
-    uthmani_script = "بِسْمِ ٱللَّهِ ٱلرَّحْمَـٰنِ ٱلرَّحِيمِ"
+    uthmani_script = aya.get().uthmani
     phonetic_script = quran_phonetizer(uthmani_script, moshaf).phonemes
     chunks = chunck_phonemes(phonetic_script)
     sifa_outs = process_sifat(uthmani_script, phonetic_script, moshaf)

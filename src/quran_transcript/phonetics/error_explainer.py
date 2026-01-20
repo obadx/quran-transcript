@@ -9,12 +9,7 @@ import Levenshtein as lv
 
 
 from .tajweed_rulses import TajweedRule, NormalMaddRule
-
-
-@dataclass
-class MappingPos:
-    pos: tuple[int, int]
-    tajweed_rules: list[TajweedRule] | None = None
+from .conv_base_operation import MappingPos
 
 
 @dataclass

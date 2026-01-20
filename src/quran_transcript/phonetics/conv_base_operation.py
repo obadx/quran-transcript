@@ -1,8 +1,33 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 import re
 from typing import Literal
+from enum import StrEnum
 
 from .moshaf_attributes import MoshafAttributes
+from .tajweed_rulses import TajweedRule
+
+
+@dataclass
+class MappingPos:
+    pos: tuple[int, int]
+    tajweed_rules: list[TajweedRule] | None = None
+
+
+class FilterTages(StrEnum):
+    # المدود
+    MADD = "مد"
+    MADD_NORMAL = "مد طبيعي"
+    MADD_EWAD = ""
+    MADD_MONFASel = ""
+    MADD_MOTTASel = ""
+    MADD_LAZEM = ""
+    MADD_MOTTASEL_PUASE = ""
+    MADD_ARRED = ""
+
+
+@dataclass
+class SubOperation:
+    tags: list[FilterTages] = field(default_factory=lambda: [])
 
 
 @dataclass
@@ -27,17 +52,21 @@ class ConversionOperation:
         self,
         text: str,
         moshaf: MoshafAttributes,
+        mappings: list[MappingPos | None] | None,
         discard_ops: list["ConversionOperation"] = [],
         mode: Literal["inference", "test"] = "inference",
-    ) -> str:
+    ) -> tuple[str, list[MappingPos | None]]:
         if mode == "test":
             discard_ops_names = {o.arabic_name for o in discard_ops}
             for op in self.ops_before:
                 if op.arabic_name not in discard_ops_names:
                     print(f"Applying: {type(op)}")
-                    text = op.apply(text, moshaf, mode="test", discard_ops=discard_ops)
+                    text, mappings = op.apply(
+                        text, moshaf, mappings, mode="test", discard_ops=discard_ops
+                    )
 
         if mode in {"inference", "test"}:
-            return self.forward(text, moshaf)
+            # TODO: Add real mapping
+            return self.forward(text, moshaf), mappings
         else:
             raise ValueError(f"Invalid Model got: `{mode}`")

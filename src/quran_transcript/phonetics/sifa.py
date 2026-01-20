@@ -235,7 +235,7 @@ def raa_tafkheem_tarqeeq_finder(
     """
     clean_text = uthmani_script
     for op in RAA_OPERATIONS:
-        clean_text = op.apply(clean_text, moshaf)
+        clean_text, _ = op.apply(clean_text, moshaf, None)
 
     raa_reg = (
         f"({uth.raa})[{uth.harakat_group}{uth.shadda}{uth.ras_haaa}{uth.imala_sign}]?"
