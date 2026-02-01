@@ -78,7 +78,7 @@ class MaddRule(TajweedRule):
         else:
             return False
 
-    def get_relvant_rule(self, ph_str: str) -> "TajweedRule" | None:
+    def get_relvant_rule(self, ph_str: str) -> Optional["TajweedRule"]:
         """Returs a Tajweed rule that is assocaited with the input ph_str"""
         if not ph_str:
             raise ValueError("Empty String")
