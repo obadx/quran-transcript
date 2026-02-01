@@ -1,7 +1,6 @@
 from dataclasses import dataclass, field
 import re
 from typing import Literal, TypeAlias
-from enum import StrEnum
 from Levenshtein import opcodes
 
 from .moshaf_attributes import MoshafAttributes
