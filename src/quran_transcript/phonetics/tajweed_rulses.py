@@ -14,11 +14,16 @@ class LangName:
 
 @dataclass
 class TajweedRule(ABC):
+    """
+    to_overwrite_tajweed_rules: if a rule in the future occpy in the same span ignore the new rule in the `to_overwrite_tajweed_rules` and keep the old rule
+    """
+
     name: LangName
     golden_len: int
     correctness_type: Literal["match", "count"]
     tag: Optional[str] | None = None
     available_tags: Optional[set] | None = None
+    to_overwrite_rule: Optional[list["TajweedRule"]] | None = None
 
     def __post_init__(self):
         if self.tag is not None and self.available_tags is not None:
@@ -39,7 +44,7 @@ class TajweedRule(ABC):
         return True
 
     @abstractmethod
-    def get_relvant_rule(self, ph_str: str) -> "TajweedRule" | None:
+    def get_relvant_rule(self, ph_str: str) -> Optional["TajweedRule"]:
         """Returs a Tajweed rule that is assocaited with the input ph_str"""
         return self
 

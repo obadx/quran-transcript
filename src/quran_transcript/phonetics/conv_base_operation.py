@@ -1,6 +1,6 @@
 from dataclasses import dataclass, field
 import re
-from typing import Literal
+from typing import Literal, TypeAlias
 from enum import StrEnum
 from Levenshtein import opcodes
 
@@ -18,9 +18,12 @@ class MappingPos:
             self.tajweed_rules.append(new_tajweed_rule)
 
 
+MappingListType: TypeAlias = list[MappingPos | None]
+
+
 def merge_mappings(
-    mappings: list[MappingPos | None] | None, new_mappings: list[MappingPos | None]
-):
+    mappings: MappingListType | None, new_mappings: MappingListType
+) -> MappingListType:
     """
     Merge character position mappings from original text with mappings after regex substitution.
 
@@ -92,13 +95,13 @@ def merge_mappings(
     return merged_mappings
 
 
-def sub_with_mapping(
-    pattern: str,
-    repl,
+def get_mappings(
     text: str,
-    mappings: list[MappingPos | None] | None = None,
+    new_text: str,
+    mappings: MappingListType | None = None,
     tajweed_rule: TajweedRule | None = None,
-) -> tuple[str, list[MappingPos | None]]:
+) -> MappingListType:
+    # TODO: need to write docstring
     """
     Examples:
 
@@ -145,10 +148,7 @@ def sub_with_mapping(
 
     """
     if text == "":
-        return "", []
-
-    # Apply the regex substitution
-    new_text = re.sub(pattern, repl, text)
+        return []
 
     # rev_mapings = {}
     # if mappings:
@@ -159,7 +159,6 @@ def sub_with_mapping(
 
     # NOTE: Opcoes operation order is: equal, insert, replace
     ops = opcodes(text, new_text)
-    print(ops)
     """
     to_overwrite_tajweed_rules: if a rule in the future occupy in the same span ignore the new rule in the `to_overwrite_tajweed_rules` and keep the old rule
     Cases:
@@ -254,6 +253,67 @@ def sub_with_mapping(
 
     new_mappings = merge_mappings(mappings, new_mappings)
 
+    return new_mappings
+
+
+def sub_with_mapping(
+    pattern: str,
+    repl,
+    text: str,
+    mappings: MappingListType | None = None,
+    tajweed_rule: TajweedRule | None = None,
+) -> tuple[str, MappingListType]:
+    """
+    Examples:
+
+        pattern: r"(a)"
+        repl: r"\1\1\1"
+        text: "abcd"
+        tajweed_rule = NormalMadd()
+
+        Output:
+    (
+        "aaabcd",
+        [
+            MappingPos(pos=(0, 3), tajweed_rules=[NormalMadd()]),
+            MappingPos(pos=(3, 4)),
+            MappingPos(pos=(4, 5)),
+            MappingPos(pos=(5, 6)),
+        ],
+    )
+
+
+    ----------------
+        pattern: r"d$"
+        repl: r""
+        text: "aaabcd"
+        mappings:
+            [
+                MappingPos(pos=(0, 3), tajweed_rules=[NormalMadd()]),
+                MappingPos(pos=(3, 4)),
+                MappingPos(pos=(4, 5)),
+                MappingPos(pos=(5, 6)),
+            ]
+
+        Output:
+    (
+        "aaabc",
+        [
+            MappingPos(pos=(0, 3), tajweed_rules=[NormalMadd()]),
+            MappingPos(pos=(3, 4)),
+            MappingPos(pos=(4, 5)),
+            None,
+        ],
+    )
+    ----------------
+
+    """
+    if text == "":
+        return "", []
+
+    # Apply the regex substitution
+    new_text = re.sub(pattern, repl, text)
+    new_mappings = get_mappings(text, new_text, mappings)
     return new_text, new_mappings
 
 
@@ -287,19 +347,24 @@ class ConversionOperation:
         if self.ops_before is None:
             self.ops_before = []
 
-    def forward(self, text, moshaf: MoshafAttributes) -> str:
+    def forward(
+        self,
+        text,
+        moshaf: MoshafAttributes,
+        mappings: MappingListType | None = None,
+    ) -> tuple[str, MappingListType]:
         for input_reg, out_reg in self.regs:
-            text = re.sub(input_reg, out_reg, text)
-        return text
+            text, new_mappings = sub_with_mapping(input_reg, out_reg, text, mappings)
+        return text, new_mappings
 
     def apply(
         self,
         text: str,
         moshaf: MoshafAttributes,
-        mappings: list[MappingPos | None] | None,
+        mappings: MappingListType | None,
         discard_ops: list["ConversionOperation"] = [],
         mode: Literal["inference", "test"] = "inference",
-    ) -> tuple[str, list[MappingPos | None]]:
+    ) -> tuple[str, MappingListType]:
         if mode == "test":
             discard_ops_names = {o.arabic_name for o in discard_ops}
             for op in self.ops_before:
@@ -311,6 +376,6 @@ class ConversionOperation:
 
         if mode in {"inference", "test"}:
             # TODO: Add real mapping
-            return self.forward(text, moshaf), mappings
+            return self.forward(text, moshaf, mappings)
         else:
             raise ValueError(f"Invalid Model got: `{mode}`")
