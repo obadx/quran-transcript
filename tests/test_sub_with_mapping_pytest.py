@@ -3,10 +3,13 @@ import sys
 import os
 
 
-from quran_transcript.phonetics.conv_base_operation import MappingPos
+from quran_transcript.phonetics.conv_base_operation import (
+    MappingPos,
+    sub_with_mapping,
+    merge_mappings,
+)
 
 # Import the sub_with_mapping function from the existing test file
-from .test_sub_with_mapping_lv import sub_with_mapping, merge_mappings
 
 
 @pytest.mark.parametrize(
