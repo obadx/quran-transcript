@@ -7,6 +7,8 @@ from quran_transcript.phonetics.conv_base_operation import (
     MappingPos,
     sub_with_mapping,
     merge_mappings,
+    get_mappings,
+    MappingListType,
 )
 
 # Import the sub_with_mapping function from the existing test file
@@ -119,6 +121,45 @@ from quran_transcript.phonetics.conv_base_operation import (
                 None,
             ],
         ),
+        # Test case 9: equal + insert + equal
+        (
+            "abcd",
+            r"abmcd",
+            "abcd",
+            "abmcd",
+            [
+                MappingPos(pos=(0, 1), tajweed_rules=None),
+                MappingPos(pos=(1, 3), tajweed_rules=None),
+                MappingPos(pos=(3, 4), tajweed_rules=None),
+                MappingPos(pos=(4, 5), tajweed_rules=None),
+            ],
+        ),
+        # Test case 10: insert + equal
+        (
+            "abcd",
+            "mmmabcd",
+            "abcd",
+            "mmmabcd",
+            [
+                MappingPos(pos=(0, 4), tajweed_rules=None),
+                MappingPos(pos=(4, 5), tajweed_rules=None),
+                MappingPos(pos=(5, 6), tajweed_rules=None),
+                MappingPos(pos=(6, 7), tajweed_rules=None),
+            ],
+        ),
+        # Test case 9: equal + insert + equal
+        (
+            "abcd",
+            "abccd",
+            "abcd",
+            "abccd",
+            [
+                MappingPos(pos=(0, 1), tajweed_rules=None),
+                MappingPos(pos=(1, 2), tajweed_rules=None),
+                MappingPos(pos=(2, 4), tajweed_rules=None),
+                MappingPos(pos=(4, 5), tajweed_rules=None),
+            ],
+        ),
     ],
 )
 def test_sub_with_mapping_operations(
@@ -142,6 +183,113 @@ def test_sub_with_mapping_operations(
     print(f"OUT: {result_mappings}")
     print(f"EXP: {expected_mappings}")
     assert result_mappings == expected_mappings
+
+
+@pytest.mark.parametrize(
+    "input_text,out_text,in_mappings, exp_mappings",
+    [
+        (
+            "بِسْمِ لَّاهِ رَّحْمَانِ رَّحِۦۦۦۦم",
+            "بِسْمِ لَّااهِ رَّحْمَاانِ رَّحِۦۦۦۦم",
+            [
+                MappingPos(pos=(0, 1), tajweed_rules=None),
+                MappingPos(pos=(1, 2), tajweed_rules=None),
+                MappingPos(pos=(2, 3), tajweed_rules=None),
+                MappingPos(pos=(3, 4), tajweed_rules=None),
+                MappingPos(pos=(4, 5), tajweed_rules=None),
+                MappingPos(pos=(5, 6), tajweed_rules=None),
+                MappingPos(pos=(6, 7), tajweed_rules=None),
+                None,
+                MappingPos(pos=(7, 8), tajweed_rules=None),
+                None,
+                MappingPos(pos=(8, 9), tajweed_rules=None),
+                MappingPos(pos=(9, 11), tajweed_rules=None),
+                MappingPos(pos=(11, 12), tajweed_rules=None),
+                MappingPos(pos=(12, 13), tajweed_rules=None),
+                MappingPos(pos=(13, 14), tajweed_rules=None),
+                None,
+                None,
+                MappingPos(pos=(14, 15), tajweed_rules=None),
+                MappingPos(pos=(15, 16), tajweed_rules=None),
+                MappingPos(pos=(16, 17), tajweed_rules=None),
+                MappingPos(pos=(17, 18), tajweed_rules=None),
+                MappingPos(pos=(18, 19), tajweed_rules=None),
+                MappingPos(pos=(19, 20), tajweed_rules=None),
+                MappingPos(pos=(20, 21), tajweed_rules=None),
+                None,
+                MappingPos(pos=(21, 22), tajweed_rules=None),
+                MappingPos(pos=(22, 23), tajweed_rules=None),
+                MappingPos(pos=(23, 24), tajweed_rules=None),
+                MappingPos(pos=(24, 25), tajweed_rules=None),
+                None,
+                None,
+                MappingPos(pos=(25, 26), tajweed_rules=None),
+                MappingPos(pos=(26, 27), tajweed_rules=None),
+                MappingPos(pos=(27, 28), tajweed_rules=None),
+                MappingPos(pos=(28, 29), tajweed_rules=None),
+                MappingPos(pos=(29, 30), tajweed_rules=None),
+                MappingPos(pos=(30, 34), tajweed_rules=None),
+                MappingPos(pos=(34, 35), tajweed_rules=None),
+                None,
+            ],
+            [
+                MappingPos(pos=(0, 1), tajweed_rules=None),
+                MappingPos(pos=(1, 2), tajweed_rules=None),
+                MappingPos(pos=(2, 3), tajweed_rules=None),
+                MappingPos(pos=(3, 4), tajweed_rules=None),
+                MappingPos(pos=(4, 5), tajweed_rules=None),
+                MappingPos(pos=(5, 6), tajweed_rules=None),
+                MappingPos(pos=(6, 7), tajweed_rules=None),
+                None,
+                MappingPos(pos=(7, 8), tajweed_rules=None),
+                None,
+                MappingPos(pos=(8, 9), tajweed_rules=None),
+                MappingPos(pos=(9, 12), tajweed_rules=None),
+                MappingPos(pos=(12, 13), tajweed_rules=None),
+                MappingPos(pos=(13, 14), tajweed_rules=None),
+                MappingPos(pos=(14, 15), tajweed_rules=None),
+                None,
+                None,
+                MappingPos(pos=(15, 16), tajweed_rules=None),
+                MappingPos(pos=(16, 17), tajweed_rules=None),
+                MappingPos(pos=(17, 18), tajweed_rules=None),
+                MappingPos(pos=(18, 19), tajweed_rules=None),
+                MappingPos(pos=(19, 20), tajweed_rules=None),
+                MappingPos(pos=(20, 21), tajweed_rules=None),
+                MappingPos(pos=(21, 22), tajweed_rules=None),  # here the cavet
+                None,
+                MappingPos(pos=(22, 24), tajweed_rules=None),  # here the cavet
+                MappingPos(pos=(24, 25), tajweed_rules=None),
+                MappingPos(pos=(25, 26), tajweed_rules=None),
+                MappingPos(pos=(26, 27), tajweed_rules=None),
+                None,
+                None,
+                MappingPos(pos=(27, 28), tajweed_rules=None),
+                MappingPos(pos=(28, 29), tajweed_rules=None),
+                MappingPos(pos=(29, 30), tajweed_rules=None),
+                MappingPos(pos=(30, 31), tajweed_rules=None),
+                MappingPos(pos=(31, 32), tajweed_rules=None),
+                MappingPos(pos=(32, 36), tajweed_rules=None),
+                MappingPos(pos=(36, 37), tajweed_rules=None),
+                None,
+            ],
+        ),
+    ],
+)
+def test_get_mappings(
+    input_text: str,
+    out_text: str,
+    in_mappings: MappingListType | None,
+    exp_mappings: MappingListType,
+):
+    """Test Get Mappings"""
+
+    out_mappings = get_mappings(input_text, out_text, in_mappings)
+
+    # Assert each mapping matches expected
+    print(f"OUT: {out_mappings}")
+    print(f"EXP: {exp_mappings}")
+    assert out_mappings == exp_mappings
 
 
 def test_sub_with_mapping_edge_cases():

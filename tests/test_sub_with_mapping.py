@@ -14,6 +14,7 @@ if __name__ == "__main__":
     uth_text = aya.get().uthmani
     ph_out = quran_phonetizer(uth_text, moshaf)
     ph_text = ph_out.phonemes
+    print(uth_text[24:27])
     for idx, uth_c in enumerate(uth_text):
         print(f"UTH_IDX: `{idx}`, SPAN: `{ph_out.mappings[idx]}`")
         ph_c = ""
@@ -25,8 +26,7 @@ if __name__ == "__main__":
         print("-" * 40)
 
     """
-    * Lam Ism Allah should be deleted at [8]
-    * No addision for Alif of Ism Allah pos(9, 11)
-    * Normal Madd [25] pos(20, 21)
+    * Lam Ism Allah should be deleted at [8] [Not the best thing but works]
+    * No addision for Alif of Ism Allah pos(9, 11) [DONE]
+    * Normal Madd [25] pos(20, 21) [DONE]
     """
-

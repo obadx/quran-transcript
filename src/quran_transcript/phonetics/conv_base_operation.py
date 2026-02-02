@@ -183,7 +183,8 @@ def get_mappings(
     for op_idx in range(len(ops)):
         next_op = ops[op_idx + 1] if len(ops) > (op_idx + 1) else None
         if curr_op[0] == "insert":
-            eq_ins = False
+            eq_ins_same = False
+            eq_ins_not_same = False
             if last_op is not None:
                 # equal before
                 if (
@@ -196,11 +197,13 @@ def get_mappings(
                         curr_op[4],
                     )
                     new_mappings[last_op[2] - 1].add_tajweed_rule(tajweed_rule)
-                    eq_ins = True
+                    eq_ins_same = True
+                elif last_op[0] == "equal":
+                    eq_ins_not_same = True
 
             if next_op is not None:
                 # equal + insert + replace
-                if eq_ins:
+                if eq_ins_same:
                     # equal before
                     if (
                         next_op[0] == "replace"
@@ -230,6 +233,32 @@ def get_mappings(
                             new_mappings[old_idx] = None
                             to_del_poses.add(old_idx)
 
+                    # equal only
+                    else:
+                        # insert + equal (same)
+                        assert next_op[0] == "equal"
+                        if new_text[curr_op[4] - 1] == new_text[next_op[3]]:
+                            # add this operation to the next equal
+                            new_mappings[next_op[1]] = MappingPos(
+                                pos=(curr_op[3], next_op[3] + 1)
+                            )
+                            new_mappings[next_op[1]].add_tajweed_rule(tajweed_rule)
+
+                        elif eq_ins_not_same:
+                            # add this insert to the last equal
+                            new_mappings[last_op[2] - 1].pos = (
+                                new_mappings[last_op[2] - 1].pos[0],
+                                curr_op[4],
+                            )
+                            new_mappings[last_op[2] - 1].add_tajweed_rule(tajweed_rule)
+
+                        else:
+                            # add this operation to the next equal
+                            new_mappings[next_op[1]] = MappingPos(
+                                pos=(curr_op[3], next_op[3] + 1)
+                            )
+                            new_mappings[next_op[1]].add_tajweed_rule(tajweed_rule)
+
         elif curr_op[0] == "replace":
             for old_idx, new_idx in zip(
                 range(curr_op[1], curr_op[2]), range(curr_op[3], curr_op[4])
@@ -243,7 +272,8 @@ def get_mappings(
             for old_idx, new_idx in zip(
                 range(curr_op[1], curr_op[2]), range(curr_op[3], curr_op[4])
             ):
-                new_mappings[old_idx] = MappingPos(pos=(new_idx, new_idx + 1))
+                if new_mappings[old_idx] is None:
+                    new_mappings[old_idx] = MappingPos(pos=(new_idx, new_idx + 1))
         elif curr_op[0] == "delete":
             ...
 
@@ -251,6 +281,38 @@ def get_mappings(
         curr_op = next_op
 
     new_mappings = merge_mappings(mappings, new_mappings)
+
+    # TODO: remove this
+    curr_m = None
+    next_m = None
+    for idx in range(len(new_mappings)):
+        curr_m = new_mappings[idx]
+        if curr_m is None:
+            continue
+        n_idx = idx
+        if (idx + 1) == len(new_mappings):
+            next_m = MappingPos(pos=(len(new_text), -1))
+            n_idx = None
+        else:
+            n_idx = idx
+            for next_m in new_mappings[idx + 1 :]:
+                if next_m is not None:
+                    break
+                n_idx += 1
+            if next_m is None:
+                next_m = MappingPos(pos=(len(new_text), -1))
+                n_idx = None
+
+        if curr_m.pos[1] != next_m.pos[0]:
+            start = curr_m.pos[1]
+            end = next_m.pos[0]
+            print("ERROR HERE")
+            print(curr_m, next_m, n_idx)
+            print(f"LEN_NEW_TEXT: {len(new_text)}")
+            print(new_text[max(start - 1, 0) : end + 1])
+            print(text)
+            print(new_text)
+            raise ValueError()
 
     return new_mappings
 
