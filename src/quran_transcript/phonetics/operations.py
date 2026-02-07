@@ -5,6 +5,7 @@ from .conv_base_operation import (
     ConversionOperation,
     sub_with_mapping,
     MappingListType,
+    MappingPos,
     get_mappings,
 )
 from .moshaf_attributes import MoshafAttributes
@@ -23,12 +24,106 @@ class DisassembleHrofMoqatta(ConversionOperation):
         moshaf: MoshafAttributes,
         mappings: MappingListType | None = None,
     ) -> tuple[str, MappingListType]:
-        # TODO: Add proper handling for Discritezed letters
         for word, rep in uth.hrof_moqtaa_disassemble.items():
-            text, mappings = sub_with_mapping(
-                f"(^|{uth.space}){word}({uth.space}|$)", f"\\1{rep}\\2", text, mappings
+            new_text = re.sub(
+                f"(^|{uth.space}){word}({uth.space}|$)", f"\\1{rep}\\2", text
             )
-        return text, mappings
+            # we have inserted discounted letter
+            if len(text) != len(new_text):
+                # process mapings
+                mappings = self._process_mappings(
+                    old_text=text,
+                    uth_word=word,
+                    rep=rep,
+                    mappings=mappings,
+                )
+            text = new_text
+
+        # Initialize mappings
+        if mappings is None:
+            return text, get_mappings(text, text)
+        else:
+            return text, mappings
+
+    def _process_mappings(
+        self,
+        old_text: str,
+        uth_word: str,
+        rep: str,
+        mappings: MappingListType | None,
+    ) -> MappingListType:
+        #
+        if mappings is None:
+            mappings = get_mappings(old_text, old_text)
+
+        re_outs = [re_o for re_o in re.finditer(uth_word, old_text)]
+        for re_idx, re_out in enumerate(re_outs):
+            disc_map = self._get_single_word_mapping(uth_word=uth_word, rep=rep)
+            ptr = 0
+            # adding offset in case of multiple disconted letter (rare case but for genrality)
+            start_offset = re_out.span()[0] + re_idx * (len(rep) - len(uth_word))
+            start_idx = re_out.span()[0]
+            end_idx = re_out.span()[1]
+            last_pos = 0
+            # Adding mapping offsets
+            for idx in range(start_idx, end_idx):
+                if disc_map[ptr] is None:
+                    mappings[idx] = None
+                else:
+                    # Avoiding copyiing object by refrence
+                    mappings[idx] = MappingPos(
+                        pos=(
+                            disc_map[ptr].pos[0] + start_offset,
+                            disc_map[ptr].pos[1] + start_offset,
+                        )
+                    )
+                    last_pos = mappings[idx].pos[1]
+                ptr += 1
+
+            end = (
+                len(mappings)
+                if (re_idx + 1) == len(re_outs)
+                else re_outs[idx + 1].span()[0]
+            )
+            # Shifting the rest of position to the rigth
+            offset = None
+            for idx in range(end_idx, end):
+                if (offset is not None) and (mappings[idx] is not None):
+                    mappings[idx].pos = (
+                        mappings[idx].pos[0] + offset,
+                        mappings[idx].pos[1] + offset,
+                    )
+                elif mappings[idx] is not None:
+                    offset = last_pos - mappings[idx].pos[0]
+                    mappings[idx].pos = (
+                        mappings[idx].pos[0] + offset,
+                        mappings[idx].pos[1] + offset,
+                    )
+
+        return mappings
+
+    def _get_single_word_mapping(self, uth_word: str, rep: str) -> MappingListType:
+        chars_with_madd = re.findall(f"[^{uth.madd}]{uth.madd}?", uth_word)
+        word_parts = rep.split(" ")
+        assert len(word_parts) == len(chars_with_madd)
+
+        mappings = []
+        uth_start = 0
+
+        ph_start = 0
+        ph_end = 0
+        for idx, (chars, word_part) in enumerate(zip(chars_with_madd, word_parts)):
+            ph_end = ph_start + len(word_part)
+            ph_end += 1 if (idx + 1) < len(word_parts) else 0  # accounting for space
+            mappings.append(MappingPos(pos=(ph_start, ph_end)))
+            # Deleting madd sign
+            for c in chars[1:]:
+                mappings.append(None)
+
+            uth_start += len(chars)
+
+            ph_start = ph_end
+        return mappings
 
 
 @dataclass
