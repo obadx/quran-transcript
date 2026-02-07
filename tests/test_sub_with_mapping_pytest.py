@@ -1,8 +1,10 @@
+import py
 import pytest
 import sys
 import os
 
 
+from quran_transcript import MoshafAttributes, quran_phonetizer
 from quran_transcript.phonetics.conv_base_operation import (
     MappingPos,
     sub_with_mapping,
@@ -507,6 +509,133 @@ class TestMergeMappings:
 
         result = merge_mappings(mappings, new_mappings)
         assert result == expected
+
+
+@pytest.mark.parametrize(
+    "uth_text, ph_text, exp_mappings",
+    [
+        (
+            "الٓر تِلْكَ ءَايَـٰتُ ٱلْكِتَـٰبِ ٱلْمُبِينِ",
+            "ءَلِف لَاااااام رَاا تِلكَ ءَاايَااتُ لكِتَاابِ لمُبِۦۦۦۦن",
+            [
+                MappingPos(pos=(0, 6), tajweed_rules=None),
+                MappingPos(pos=(6, 16), tajweed_rules=None),
+                None,
+                MappingPos(pos=(16, 20), tajweed_rules=None),
+                MappingPos(pos=(20, 21), tajweed_rules=None),
+                MappingPos(pos=(21, 22), tajweed_rules=None),
+                MappingPos(pos=(22, 23), tajweed_rules=None),
+                MappingPos(pos=(23, 24), tajweed_rules=None),
+                None,
+                MappingPos(pos=(24, 25), tajweed_rules=None),
+                MappingPos(pos=(25, 26), tajweed_rules=None),
+                MappingPos(pos=(26, 27), tajweed_rules=None),
+                MappingPos(pos=(27, 28), tajweed_rules=None),
+                MappingPos(pos=(28, 29), tajweed_rules=None),
+                MappingPos(pos=(29, 31), tajweed_rules=None),
+                MappingPos(pos=(31, 32), tajweed_rules=None),
+                MappingPos(pos=(32, 33), tajweed_rules=None),
+                None,
+                MappingPos(pos=(33, 35), tajweed_rules=None),
+                MappingPos(pos=(35, 36), tajweed_rules=None),
+                MappingPos(pos=(36, 37), tajweed_rules=None),
+                MappingPos(pos=(37, 38), tajweed_rules=None),
+                None,
+                MappingPos(pos=(38, 39), tajweed_rules=None),
+                None,
+                MappingPos(pos=(39, 40), tajweed_rules=None),
+                MappingPos(pos=(40, 41), tajweed_rules=None),
+                MappingPos(pos=(41, 42), tajweed_rules=None),
+                MappingPos(pos=(42, 43), tajweed_rules=None),
+                None,
+                MappingPos(pos=(43, 45), tajweed_rules=None),
+                MappingPos(pos=(45, 46), tajweed_rules=None),
+                MappingPos(pos=(46, 47), tajweed_rules=None),
+                MappingPos(pos=(47, 48), tajweed_rules=None),
+                None,
+                MappingPos(pos=(48, 49), tajweed_rules=None),
+                None,
+                MappingPos(pos=(49, 50), tajweed_rules=None),
+                MappingPos(pos=(50, 51), tajweed_rules=None),
+                MappingPos(pos=(51, 52), tajweed_rules=None),
+                MappingPos(pos=(52, 53), tajweed_rules=None),
+                MappingPos(pos=(53, 57), tajweed_rules=None),
+                MappingPos(pos=(57, 58), tajweed_rules=None),
+                None,
+            ],
+        ),
+        (
+            "بِسْمِ ٱللَّهِ ٱلرَّحْمَـٰنِ ٱلرَّحِيمِ",
+            "بِسمِ للَااهِ ررَحمَاانِ ررَحِۦۦۦۦم",
+            [
+                MappingPos(pos=(0, 1), tajweed_rules=None),
+                MappingPos(pos=(1, 2), tajweed_rules=None),
+                MappingPos(pos=(2, 3), tajweed_rules=None),
+                None,
+                MappingPos(pos=(3, 4), tajweed_rules=None),
+                MappingPos(pos=(4, 5), tajweed_rules=None),
+                MappingPos(pos=(5, 6), tajweed_rules=None),
+                None,
+                MappingPos(pos=(6, 7), tajweed_rules=None),
+                None,
+                MappingPos(pos=(7, 8), tajweed_rules=None),
+                MappingPos(pos=(8, 11), tajweed_rules=None),
+                MappingPos(pos=(11, 12), tajweed_rules=None),
+                MappingPos(pos=(12, 13), tajweed_rules=None),
+                MappingPos(pos=(13, 14), tajweed_rules=None),
+                None,
+                None,
+                MappingPos(pos=(14, 15), tajweed_rules=None),
+                MappingPos(pos=(15, 16), tajweed_rules=None),
+                MappingPos(pos=(16, 17), tajweed_rules=None),
+                MappingPos(pos=(17, 18), tajweed_rules=None),
+                None,
+                MappingPos(pos=(18, 19), tajweed_rules=None),
+                MappingPos(pos=(19, 20), tajweed_rules=None),
+                None,
+                MappingPos(pos=(20, 22), tajweed_rules=None),
+                MappingPos(pos=(22, 23), tajweed_rules=None),
+                MappingPos(pos=(23, 24), tajweed_rules=None),
+                MappingPos(pos=(24, 25), tajweed_rules=None),
+                None,
+                None,
+                MappingPos(pos=(25, 26), tajweed_rules=None),
+                MappingPos(pos=(26, 27), tajweed_rules=None),
+                MappingPos(pos=(27, 28), tajweed_rules=None),
+                MappingPos(pos=(28, 29), tajweed_rules=None),
+                MappingPos(pos=(29, 30), tajweed_rules=None),
+                MappingPos(pos=(30, 34), tajweed_rules=None),
+                MappingPos(pos=(34, 35), tajweed_rules=None),
+                None,
+            ],
+        ),
+    ],
+)
+def test_phonetizer_with_mappings(
+    uth_text: str, ph_text, exp_mappings: MappingListType
+):
+    moshaf = MoshafAttributes(
+        rewaya="hafs",
+        madd_monfasel_len=4,
+        madd_mottasel_len=4,
+        madd_mottasel_waqf=4,
+        madd_aared_len=4,
+    )
+    ph_out = quran_phonetizer(uth_text, moshaf)
+    assert ph_out.phonemes == ph_text
+    assert exp_mappings == ph_out.mappings
+    print(uth_text)
+    print(ph_out.phonemes)
+    print(ph_out.mappings)
+    for idx, uth_c in enumerate(uth_text):
+        print(f"UTH_IDX: `{idx}`, SPAN: `{ph_out.mappings[idx]}`")
+        ph_c = ""
+        mapping = ph_out.mappings[idx]
+        if mapping is not None:
+            ph_c = ph_text[mapping.pos[0] : mapping.pos[1]]
+        print(f"UTH: `{uth_c}` -> PH: `{ph_c}`")
+
+        print("-" * 40)
 
 
 if __name__ == "__main__":
