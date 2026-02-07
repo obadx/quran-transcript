@@ -158,6 +158,7 @@ def get_mappings(
 
     # NOTE: Opcoes operation order is: equal, insert, replace
     ops = opcodes(text, new_text)
+    print(ops)
     """
     to_overwrite_tajweed_rules: if a rule in the future occupy in the same span ignore the new rule in the `to_overwrite_tajweed_rules` and keep the old rule
     Cases:
@@ -259,6 +260,15 @@ def get_mappings(
                             )
                             new_mappings[next_op[1]].add_tajweed_rule(tajweed_rule)
 
+            # The insert is the last item
+            elif eq_ins_not_same:
+                # increae the end pos to append the insert
+                new_mappings[last_op[2] - 1].pos = (
+                    new_mappings[last_op[2] - 1].pos[0],
+                    curr_op[4],
+                )
+                new_mappings[last_op[2] - 1].add_tajweed_rule(tajweed_rule)
+
         elif curr_op[0] == "replace":
             for old_idx, new_idx in zip(
                 range(curr_op[1], curr_op[2]), range(curr_op[3], curr_op[4])
@@ -306,6 +316,8 @@ def get_mappings(
         if curr_m.pos[1] != next_m.pos[0]:
             start = curr_m.pos[1]
             end = next_m.pos[0]
+            print(f"IN MAPPINGS\n{mappings}")
+            print(f"OUT MAPPINGS\n{new_mappings}")
             print("ERROR HERE")
             print(curr_m, next_m, n_idx)
             print(f"LEN_NEW_TEXT: {len(new_text)}")
