@@ -760,6 +760,37 @@ class TestMergeMappings:
                 None,
             ],
         ),
+        (
+            "مِّن مَّا",
+            "مِممممَاا",
+            [
+                MappingPos(pos=(0, 1), tajweed_rules=None),
+                None,
+                MappingPos(pos=(1, 2), tajweed_rules=None),
+                None,
+                None,
+                MappingPos(pos=(2, 6), tajweed_rules=None),
+                None,
+                MappingPos(pos=(6, 7), tajweed_rules=None),
+                MappingPos(pos=(7, 9), tajweed_rules=None),
+            ],
+        ),
+        (
+            "لَكُم مَّا",
+            "لَكُممممَاا",
+            [
+                MappingPos(pos=(0, 1), tajweed_rules=None),
+                MappingPos(pos=(1, 2), tajweed_rules=None),
+                MappingPos(pos=(2, 3), tajweed_rules=None),
+                MappingPos(pos=(3, 4), tajweed_rules=None),
+                None,
+                None,
+                MappingPos(pos=(4, 8), tajweed_rules=None),
+                None,
+                MappingPos(pos=(8, 9), tajweed_rules=None),
+                MappingPos(pos=(9, 11), tajweed_rules=None),
+            ],
+        ),
     ],
 )
 def test_phonetizer_with_mappings(

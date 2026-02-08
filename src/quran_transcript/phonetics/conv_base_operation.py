@@ -286,6 +286,24 @@ def get_mappings(
         elif curr_op[0] == "delete":
             ...
 
+        # This not optimal but in case of noon or meem we want to delete the first letter and leave the next one
+        # for example:
+        # لكم ما
+        # becomes
+        # لكمَّا
+        # We want to delete the first letter and keep the later
+        for idx in range(1, len(text) - 1):
+            if (
+                (text[idx - 1] == text[idx + 1])
+                and (text[idx] == " ")
+                and (
+                    new_mappings[idx - 1] is not None and new_mappings[idx + 1] is None
+                )
+            ):
+                # swaping
+                new_mappings[idx + 1] = new_mappings[idx - 1]
+                new_mappings[idx - 1] = None
+
         last_op = curr_op
         curr_op = next_op
 
