@@ -158,7 +158,6 @@ def get_mappings(
 
     # NOTE: Opcoes operation order is: equal, insert, replace
     ops = opcodes(text, new_text)
-    print(ops)
     """
     to_overwrite_tajweed_rules: if a rule in the future occupy in the same span ignore the new rule in the `to_overwrite_tajweed_rules` and keep the old rule
     Cases:
@@ -320,7 +319,9 @@ def get_mappings(
             print(f"OUT MAPPINGS\n{new_mappings}")
             print("ERROR HERE")
             print(curr_m, next_m, n_idx)
+            print(f"LEN_OLD_TEXT: {len(text)}")
             print(f"LEN_NEW_TEXT: {len(new_text)}")
+            print(new_text[start:end])
             print(new_text[max(start - 1, 0) : end + 1])
             print(text)
             print(new_text)
@@ -427,8 +428,8 @@ class ConversionOperation:
         mappings: MappingListType | None = None,
     ) -> tuple[str, MappingListType]:
         for input_reg, out_reg in self.regs:
-            text, new_mappings = sub_with_mapping(input_reg, out_reg, text, mappings)
-        return text, new_mappings
+            text, mappings = sub_with_mapping(input_reg, out_reg, text, mappings)
+        return text, mappings
 
     def apply(
         self,
@@ -449,6 +450,7 @@ class ConversionOperation:
 
         if mode in {"inference", "test"}:
             # TODO: Add real mapping
-            return self.forward(text, moshaf, mappings)
+            new_text, new_mappings = self.forward(text, moshaf, mappings)
+            return new_text, new_mappings
         else:
             raise ValueError(f"Invalid Model got: `{mode}`")
