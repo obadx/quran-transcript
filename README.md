@@ -160,11 +160,11 @@ for sifa in phonetic_script.sifat:
 Position mappings provide precise tracking of character positions from original Uthmani text to converted phonetic text.
 
 ```python
-# الوصول إلى بيانات الخرائط
+# i الوصول إلى بيانات الخرائط
 mappings = phonetic_script.mappings  # List[MappingPos | None]
 phonemes = phonetic_script.phonemes  # str
 
-# i المرور على خرائط الأحرف
+# المرور على خرائط الأحرف
 for idx, mapping in enumerate(mappings):
     if mapping is not None:
         # الحصول على امتداد الموقع
