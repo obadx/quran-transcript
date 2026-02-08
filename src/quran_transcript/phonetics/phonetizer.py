@@ -13,6 +13,7 @@ class QuranPhoneticScriptOutput:
     phonemes: str
     sifat: list[SifaOutput]
     mappings: list[MappingPos | None]  # `None` for deletion
+    # TODO: Add mappings with sifat
 
 
 def quran_phonetizer(
