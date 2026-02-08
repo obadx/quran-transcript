@@ -56,6 +56,15 @@ class DisassembleHrofMoqatta(ConversionOperation):
         if mappings is None:
             mappings = get_mappings(old_text, old_text)
 
+        # Countring for the Case of replacing
+        # الم الله
+        # with
+        # ألف لام ميمَ الله
+        uth_words = uth_word.split(" ")
+        if len(uth_words) > 1:
+            uth_word = uth_words[0]
+            rep = " ".join(rep.split(" ")[:-1])
+
         re_outs = [re_o for re_o in re.finditer(uth_word, old_text)]
         for re_idx, re_out in enumerate(re_outs):
             disc_map = self._get_single_word_mapping(uth_word=uth_word, rep=rep)
