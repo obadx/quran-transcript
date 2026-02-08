@@ -164,7 +164,7 @@ Position mappings provide precise tracking of character positions from original 
 mappings = phonetic_script.mappings  # List[MappingPos | None]
 phonemes = phonetic_script.phonemes  # str
 
-# المرور على خرائط الأحرف
+# i المرور على خرائط الأحرف
 for idx, mapping in enumerate(mappings):
     if mapping is not None:
         # الحصول على امتداد الموقع
