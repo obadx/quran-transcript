@@ -16,6 +16,7 @@ from .tasmeea import tasmeea_sura_multi_part, tasmeea_sura, check_sura_missing_p
 from .phonetics.phonetizer import quran_phonetizer, QuranPhoneticScriptOutput
 from .phonetics.sifa import SifaOutput, chunck_phonemes
 from .phonetics.moshaf_attributes import MoshafAttributes
+from .phonetics.conv_base_operation import MappingListType, MappingPos
 
 from . import alphabet as alphabet
 
@@ -41,4 +42,6 @@ __all__ = [
     "QuranPhoneticScriptOutput",
     "SifaOutput",
     "chunck_phonemes",
+    "MappingListType",
+    "MappingPos",
 ]

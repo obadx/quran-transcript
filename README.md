@@ -17,7 +17,13 @@
 [colab-url]: https://colab.research.google.com/drive/1d9-mVu2eiPOPS9z5sS2V4TQ579xIUBi-?usp=sharing
 
 # `quran-transcript` package
-TODO: docs
+
+## 🆕 ما الجديد في الإصدار 0.2.0 (What's New in Version 0.2.0)
+
+### 📍 خرائط المواقع الجديدة (New Position Mappings)
+- إضافة خرائط المواقع من الرسم العثماني إلى الرسم الصوتي (Added position mappings from Uthmani script to phonetic script)
+- تتبع دقيق لتحويل كل حرف إلى موضعه الجديد (Precise tracking of character transformations)
+- دعم تمثيل الأحرف المحذوفة بقيمة `None` (Support for deleted characters representation with `None`)
 
 # 📖 Quran Transcript
 
@@ -107,10 +113,11 @@ results = search(
     remove_tashkeel=True
 )
 
+# الحصول على الرسم العثماني
 uthmani_script = results[0].uthmani_script
 print(f"الرسم العثماني:\n{uthmani_script}")
 
-# تحديد خصائص المصحف للتحويل الصوتي
+# إعداد خصائص المصحف للتحويل الصوتي
 moshaf = MoshafAttributes(
     rewaya="hafs",
     madd_monfasel_len=4,
@@ -119,10 +126,23 @@ moshaf = MoshafAttributes(
     madd_aared_len=4,
 )
 
+# الحصول على الرسم الصوتي مع الخرائط
 phonetic_script = quran_phonetizer(uthmani_script, moshaf)
 
 print('\n' * 2)
 print(f"الرسم الصوتي:\n{phonetic_script.phonemes}")
+
+# جديد: عرض خرائط المواقع
+print('\n' * 2)
+print("خرائط المواقع:")
+for idx, (uth_char, mapping) in enumerate(zip(uthmani_script, phonetic_script.mappings)):
+    if mapping is not None:
+        # استخراج الصوت لهذا الحرف
+        phoneme = phonetic_script.phonemes[mapping.pos[0]:mapping.pos[1]]
+        print(f"حرف: '{uth_char}' -> صوت: '{phoneme}' (موقع: {mapping.pos})")
+    else:
+        print(f"حرف: '{uth_char}' -> محذوف")
+
 print('\n' * 2)
 print("صفات الحروف:")
 for sifa in phonetic_script.sifat:
@@ -133,6 +153,38 @@ for sifa in phonetic_script.sifat:
 
 
 ## الرسم الصوتي للقرآن الكريم
+
+### 📊 خرائط المواقع (Position Mappings)
+
+خرائط المواقع توفر تتبع دقيق لمواقع الأحرف من النص العثماني الأصلي إلى النص الصوتي المحول.
+Position mappings provide precise tracking of character positions from original Uthmani text to converted phonetic text.
+
+```python
+# i الوصول إلى بيانات الخرائط
+mappings = phonetic_script.mappings  # List[MappingPos | None]
+phonemes = phonetic_script.phonemes  # str
+
+# المرور على خرائط الأحرف
+for idx, mapping in enumerate(mappings):
+    if mapping is not None:
+        # الحصول على امتداد الموقع
+        start, end = mapping.pos  # Python-style slice notation
+        # استخراج الصوت المقابل
+        char_phoneme = phonemes[start:end]
+        print(f"الحرف {idx} ينتقل إلى الصوت في الموقع ({start}, {end})")
+    else:
+        print(f"الحرف {idx} تم حذفه أثناء التحويل")
+```
+
+#### **فهم MappingPos (Understanding MappingPos)**
+```python
+@dataclass
+class MappingPos:
+    """خرائط المواقع لتحويلات الأحرف (Position mapping for character transformations)"""
+    pos: tuple[int, int]  # (بداية، نهاية) - بالطريقة البايثونية
+    tajweed_rules: list[TajweedRule] | None = None  # قواعد التجويد المرتبطة
+```
+
 
 ### الحروف: (43)
 
@@ -168,8 +220,8 @@ for sifa in phonetic_script.sifat:
 | waw                   | و      | واو                                  |
 | yaa                   | ي      | ياء                                  |
 | alif                  | ا      | نصف مد ألف                                  |
-| yaa_madd              | ۦ       | نصف مد ياء
-| waw_madd              | ۥ       | نصف مد واوا
+| yaa_madd              | ۦ       | نصف مد ياء |
+| waw_madd              | ۥ       | نصف مد واوا |
 | fatha                 | َ       | فتحة                                 |
 | dama                  | ُ       | ضمة                                 |
 | kasra                 | ِ       | كسرة                                 |

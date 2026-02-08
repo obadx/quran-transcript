@@ -42,3 +42,4 @@ jobs:
       run: |
         pytest -v tests/phonetics_pytest.py
         pytest -v tests/aya_pytest.py
+        pytest -v tests/test_sub_with_mapping_pytest.py

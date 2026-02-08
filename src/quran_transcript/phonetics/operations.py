@@ -1,7 +1,13 @@
 from dataclasses import dataclass, field
 import re
 
-from .conv_base_operation import ConversionOperation
+from .conv_base_operation import (
+    ConversionOperation,
+    sub_with_mapping,
+    MappingListType,
+    MappingPos,
+    get_mappings,
+)
 from .moshaf_attributes import MoshafAttributes
 from ..alphabet import uthmani as uth
 from ..alphabet import phonetics as ph
@@ -12,10 +18,121 @@ class DisassembleHrofMoqatta(ConversionOperation):
     arabic_name: str = "فك الحروف المقطعة"
     regs: tuple[str, str] = ("", "")
 
-    def forward(self, text, moshaf):
+    def forward(
+        self,
+        text: str,
+        moshaf: MoshafAttributes,
+        mappings: MappingListType | None = None,
+    ) -> tuple[str, MappingListType]:
         for word, rep in uth.hrof_moqtaa_disassemble.items():
-            text = re.sub(f"(^|{uth.space}){word}({uth.space}|$)", f"\\1{rep}\\2", text)
-        return text
+            new_text = re.sub(
+                f"(^|{uth.space}){word}({uth.space}|$)", f"\\1{rep}\\2", text
+            )
+            # we have inserted discounted letter
+            if len(text) != len(new_text):
+                # process mapings
+                mappings = self._process_mappings(
+                    old_text=text,
+                    uth_word=word,
+                    rep=rep,
+                    mappings=mappings,
+                )
+            text = new_text
+
+        # Initialize mappings
+        if mappings is None:
+            return text, get_mappings(text, text)
+        else:
+            return text, mappings
+
+    def _process_mappings(
+        self,
+        old_text: str,
+        uth_word: str,
+        rep: str,
+        mappings: MappingListType | None,
+    ) -> MappingListType:
+        #
+        if mappings is None:
+            mappings = get_mappings(old_text, old_text)
+
+        # Countring for the Case of replacing
+        # الم الله
+        # with
+        # ألف لام ميمَ الله
+        uth_words = uth_word.split(" ")
+        if len(uth_words) > 1:
+            uth_word = uth_words[0]
+            rep = " ".join(rep.split(" ")[:-1])
+
+        re_outs = [re_o for re_o in re.finditer(uth_word, old_text)]
+        for re_idx, re_out in enumerate(re_outs):
+            disc_map = self._get_single_word_mapping(uth_word=uth_word, rep=rep)
+            ptr = 0
+            # adding offset in case of multiple disconted letter (rare case but for genrality)
+            start_offset = re_out.span()[0] + re_idx * (len(rep) - len(uth_word))
+            start_idx = re_out.span()[0]
+            end_idx = re_out.span()[1]
+            last_pos = 0
+            # Adding mapping offsets
+            for idx in range(start_idx, end_idx):
+                if disc_map[ptr] is None:
+                    mappings[idx] = None
+                else:
+                    # Avoiding copyiing object by refrence
+                    mappings[idx] = MappingPos(
+                        pos=(
+                            disc_map[ptr].pos[0] + start_offset,
+                            disc_map[ptr].pos[1] + start_offset,
+                        )
+                    )
+                    last_pos = mappings[idx].pos[1]
+                ptr += 1
+
+            end = (
+                len(mappings)
+                if (re_idx + 1) == len(re_outs)
+                else re_outs[idx + 1].span()[0]
+            )
+            # Shifting the rest of position to the rigth
+            offset = None
+            for idx in range(end_idx, end):
+                if (offset is not None) and (mappings[idx] is not None):
+                    mappings[idx].pos = (
+                        mappings[idx].pos[0] + offset,
+                        mappings[idx].pos[1] + offset,
+                    )
+                elif mappings[idx] is not None:
+                    offset = last_pos - mappings[idx].pos[0]
+                    mappings[idx].pos = (
+                        mappings[idx].pos[0] + offset,
+                        mappings[idx].pos[1] + offset,
+                    )
+
+        return mappings
+
+    def _get_single_word_mapping(self, uth_word: str, rep: str) -> MappingListType:
+        chars_with_madd = re.findall(f"[^{uth.madd}]{uth.madd}?", uth_word)
+        word_parts = rep.split(" ")
+        assert len(word_parts) == len(chars_with_madd)
+
+        mappings = []
+        uth_start = 0
+
+        ph_start = 0
+        ph_end = 0
+        for idx, (chars, word_part) in enumerate(zip(chars_with_madd, word_parts)):
+            ph_end = ph_start + len(word_part)
+            ph_end += 1 if (idx + 1) < len(word_parts) else 0  # accounting for space
+            mappings.append(MappingPos(pos=(ph_start, ph_end)))
+            # Deleting madd sign
+            for c in chars[1:]:
+                mappings.append(None)
+
+            uth_start += len(chars)
+
+            ph_start = ph_end
+        return mappings
 
 
 @dataclass
@@ -26,7 +143,12 @@ class SpecialCases(ConversionOperation):
     )
     regs: tuple[str, str] = ("", "")
 
-    def forward(self, text, moshaf: MoshafAttributes):
+    def forward(
+        self,
+        text: str,
+        moshaf: MoshafAttributes,
+        mappings: MappingListType | None = None,
+    ) -> tuple[str, MappingListType]:
         for case in uth.special_patterns:
             pattern = case.pattern
             if case.pos == "start":
@@ -43,9 +165,12 @@ class SpecialCases(ConversionOperation):
             elif case.target_pattern is not None:
                 rep_pattern = case.target_pattern
 
-            text = re.sub(pattern, rep_pattern, text)
+            text, mappings = sub_with_mapping(pattern, rep_pattern, text, mappings)
 
-        return text
+        # No change
+        if mappings is None:
+            return text, get_mappings(text, text)
+        return text, mappings
 
 
 @dataclass
@@ -83,7 +208,13 @@ class BeginWithHamzatWasl(ConversionOperation):
 
         raise ValueError("Can not found match to extract harak")
 
-    def forward(self, text: str, moshaf):
+    def forward(
+        self,
+        text: str,
+        moshaf: MoshafAttributes,
+        mappings: MappingListType | None = None,
+    ) -> tuple[str, MappingListType]:
+        new_text = text
         if re.search(f"^{uth.hamzat_wasl}", text):
             words = text.split(uth.space)
             first_word = words[0]
@@ -125,8 +256,10 @@ class BeginWithHamzatWasl(ConversionOperation):
                 )
 
             # joing again
-            text = uth.space.join([first_word] + words[1:])
-        return text
+            new_text = uth.space.join([first_word] + words[1:])
+            # TODO: we need to adjust the exact type of Tajweed Rule
+            mappings = get_mappings(text=text, new_text=new_text)
+        return new_text, mappings
 
 
 @dataclass
@@ -349,7 +482,7 @@ class NormalizeTaa(ConversionOperation):
         ]
     )
     arabic_name: str = "تحويب التاء المربطة في الوسط لتاء وفي الآخر لهاء"
-    regs: tuple[str, str] = field(
+    regs: list[tuple[str, str]] = field(
         default_factory=lambda: [
             (f"{uth.taa_marboota}$", f"{uth.haa}"),
             (f"{uth.taa_marboota}", f"{uth.taa_mabsoota}"),
@@ -384,7 +517,7 @@ class PrepareGhonnaIdghamIqlab(ConversionOperation):
         ]
     )
     arabic_name: str = "فك الإقلاب والعغنة الإدغام"
-    regs: tuple[str, str] = field(
+    regs: list[tuple[str, str]] = field(
         default_factory=lambda: [
             # النون المقلبة ميمام
             (
@@ -501,7 +634,12 @@ class Ghonna(ConversionOperation):
     ghonna_len: int = 3
     idgham_yaa_waw_len: int = 2
 
-    def forward(self, text, moshaf: MoshafAttributes) -> str:
+    def forward(
+        self,
+        text: str,
+        moshaf: MoshafAttributes,
+        mappings: MappingListType | None = None,
+    ) -> tuple[str, MappingListType]:
         # الميم المخفار
         if moshaf.meem_mokhfah == "meem":
             meem_mokhfah = ph.meem
@@ -509,40 +647,45 @@ class Ghonna(ConversionOperation):
             meem_mokhfah = ph.meem_mokhfah
         else:
             raise ValueError()
-        text = re.sub(
+        text, mappings = sub_with_mapping(
             f"{uth.meem}{uth.space}?{uth.baa}",
             f"{meem_mokhfah * self.ghonna_len}{uth.baa}",
             text,
+            mappings,
         )
 
         # إدغام النون في الياء و الواو
-        text = re.sub(
+        text, mappings = sub_with_mapping(
             f"{uth.noon}{uth.space}([{uth.yaa}{uth.waw}])",
             r"\1" * (self.idgham_yaa_waw_len + 1),
             text,
+            mappings,
         )
 
         # إخفاء النون
-        text = re.sub(
+        text, mappings = sub_with_mapping(
             f"{uth.noon}{uth.space}?([{uth.noon_ikhfaa_group}])",
             f"{ph.noon_mokhfah * self.ghonna_len}\\1",
             text,
+            mappings,
         )
 
         # النون والميم المشددتين
         # العنة المتطرفة
-        text = re.sub(
+        text, mappings = sub_with_mapping(
             f"([{uth.meem}{uth.noon}]){uth.shadda}$",
             r"\1" * self.ghonna_len,
             text,
+            mappings,
         )
-        text = re.sub(
+        text, mappings = sub_with_mapping(
             f"([{uth.meem}{uth.noon}]){uth.shadda}",
             r"\1" * (self.ghonna_len + 1),
             text,
+            mappings,
         )
 
-        return text
+        return text, mappings
 
 
 @dataclass
@@ -612,48 +755,58 @@ class Madd(ConversionOperation):
         }
     )
 
-    def forward(self, text, moshaf: MoshafAttributes) -> str:
+    def forward(
+        self,
+        text: str,
+        moshaf: MoshafAttributes,
+        mappings: MappingListType | None = None,
+    ) -> tuple[str, MappingListType]:
         # المد المنفصل
         # ها ويا التنبيه
-        text = re.sub(
+        text, mappings = sub_with_mapping(
             f"((?:^|{uth.space}|(?:(?:^|{uth.space})[{uth.faa}{uth.waw}{uth.hamza}]{uth.fatha}))[{uth.yaa}{uth.haa}]{uth.fatha}){uth.alif}{uth.madd}({uth.hamza}.(?!{uth.space}))",
             r"\1" + ph.alif * moshaf.madd_monfasel_len + r"\2",
             text,
+            mappings,
         )
         # normal
         for k, madd_patt in self.madd_map.items():
-            text = re.sub(
+            text, mappings = sub_with_mapping(
                 f"{madd_patt.pattern}{uth.madd}({uth.space}{uth.hamza})",
                 r"\1" + moshaf.madd_monfasel_len * madd_patt.target + r"\2",
                 text,
+                mappings,
             )
 
         # المد المتصل وقفا
         # أقوى السببين
         for k, madd_patt in self.madd_map.items():
-            text = re.sub(
+            text, mappings = sub_with_mapping(
                 f"{madd_patt.pattern}{uth.madd}({uth.hamza}$)",
                 r"\1"
                 + max(moshaf.madd_mottasel_waqf, moshaf.madd_aared_len)
                 * madd_patt.target
                 + r"\2",
                 text,
+                mappings,
             )
 
         # المد المنفصل
         for k, madd_patt in self.madd_map.items():
-            text = re.sub(
+            text, mappings = sub_with_mapping(
                 f"{madd_patt.pattern}{uth.madd}({uth.hamza})",
                 r"\1" + moshaf.madd_mottasel_len * madd_patt.target + r"\2",
                 text,
+                mappings,
             )
 
         # المد اللازم
         # أوجه العنين
-        text = re.sub(
+        text, mappings = sub_with_mapping(
             f"({uth.fatha}){uth.yaa}{uth.madd}",
             r"\1" + (moshaf.madd_yaa_alayn_alharfy - 1) * ph.yaa,
             text,
+            mappings,
         )
         # ميم آل عمران
         if moshaf.meem_aal_imran == "wasl_2":
@@ -662,43 +815,48 @@ class Madd(ConversionOperation):
             meema_len = 6
         else:
             meema_len = 6
-        text = re.sub(
+        text, mappings = sub_with_mapping(
             f"({uth.meem}{uth.kasra}){uth.yaa}{uth.madd}({uth.meem}{uth.fatha})",
             r"\1" + ph.yaa_madd * meema_len + r"\2",
             text,
+            mappings,
         )
 
         for k, madd_patt in self.madd_map.items():
-            text = re.sub(
+            text, mappings = sub_with_mapping(
                 f"{madd_patt.pattern}{uth.madd}(.(?:{uth.shadda}|{uth.ras_haaa}|[{ph.noon}{ph.meem}{ph.noon_mokhfah}]{{2,3}}))",
                 r"\1" + 6 * madd_patt.target + r"\2",
                 text,
+                mappings,
             )
 
         # المد العارض للسكون
         for k, madd_patt in self.madd_map.items():
-            text = re.sub(
+            text, mappings = sub_with_mapping(
                 f"{madd_patt.pattern}([^{uth.shadda}](?:{uth.ras_haaa}$|$|{ph.sakt}))",
                 r"\1" + moshaf.madd_aared_len * madd_patt.target + r"\2",
                 text,
+                mappings,
             )
 
         # مد اللين
-        text = re.sub(
+        text, mappings = sub_with_mapping(
             f"({uth.fatha})([{uth.yaa}{uth.waw}]){uth.ras_haaa}?([^{uth.shadda}]{uth.ras_haaa}?$)",
             r"\1" + (moshaf.madd_alleen_len - 1) * r"\2" + r"\3",
             text,
+            mappings,
         )
 
         # المد الطبيعي
         for k, madd_patt in self.madd_map.items():
-            text = re.sub(
+            text, mappings = sub_with_mapping(
                 f"{madd_patt.pattern}(?![{madd_patt.madd}{uth.ras_haaa}{uth.shadda}{uth.harakat_group}])",
                 r"\1" + 2 * madd_patt.target,
                 text,
+                mappings,
             )
 
-        return text
+        return text, mappings
 
 
 @dataclass
