@@ -5,6 +5,7 @@ from Levenshtein import opcodes
 
 from .moshaf_attributes import MoshafAttributes
 from .tajweed_rulses import TajweedRule
+from .. import alphabet as alph
 
 
 @dataclass
@@ -292,10 +293,10 @@ def get_mappings(
         # becomes
         # لكمَّا
         # We want to delete the first letter and keep the later
-        for idx in range(1, len(text) - 1):
+        for idx in range(1, len(text) - 2):
             if (
                 (text[idx - 1] == text[idx + 1])
-                and (text[idx] == " ")
+                and (text[idx] == " " and text[idx + 2] == alph.uthmani.shadda)
                 and (
                     new_mappings[idx - 1] is not None and new_mappings[idx + 1] is None
                 )

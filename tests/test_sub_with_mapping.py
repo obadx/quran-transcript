@@ -11,10 +11,23 @@ if __name__ == "__main__":
         madd_aared_len=4,
     )
     aya = Aya()
+    aya = Aya(1, 1)
+    # aya = Aya(2, 1)
+    # aya = Aya(75, 27)
+    # aya = Aya(2, 6)
+    # aya = Aya(3, 1)
+    # aya = Aya(30, 28)
+    aya = Aya(2, 9)
     uth_text = aya.get().uthmani
+
+    # uth_text = aya.get_by_imlaey_words(start=7, window=2).uthmani
+    # uth_text = "لَكُم مَّا"
+
     ph_out = quran_phonetizer(uth_text, moshaf)
     ph_text = ph_out.phonemes
-    print(uth_text[24:27])
+    print(uth_text)
+    print(ph_out.phonemes)
+    print(ph_out.mappings)
     for idx, uth_c in enumerate(uth_text):
         print(f"UTH_IDX: `{idx}`, SPAN: `{ph_out.mappings[idx]}`")
         ph_c = ""
@@ -26,6 +39,7 @@ if __name__ == "__main__":
         print("-" * 40)
 
     """
+    * meem moshaddah
     * Lam Ism Allah should be deleted at [8] [Not the best thing but works]
     * No addision for Alif of Ism Allah pos(9, 11) [DONE]
     * Normal Madd [25] pos(20, 21) [DONE]
