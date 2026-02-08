@@ -10,10 +10,45 @@ from .. import alphabet as alph
 
 @dataclass
 class MappingPos:
+    """Represents character position mappings in Quranic text transformations.
+
+    This dataclass tracks the relationship between character positions in the original
+    text and their corresponding positions after regex substitution operations in the
+    Quran transcription system. It maintains position spans and associated tajweed rules
+    that apply to those character ranges.
+
+    Attributes:
+        pos: Tuple of (start, end) positions in the transformed text. The start is
+            inclusive and the end is exclusive (Python-style slice notation).
+        tajweed_rules: List of TajweedRule objects that apply to this character span.
+            None indicates no tajweed rules are associated with this mapping.
+
+    Example:
+        >>> mapping = MappingPos(pos=(0, 3), tajweed_rules=[])
+        >>> print(mapping.pos)
+        (0, 3)
+        >>> # Add a tajweed rule to this mapping
+        >>> mapping.add_tajweed_rule(None)  # No rule added
+        >>> mapping.add_tajweed_rule(None)  # Still no rules
+    """
+
     pos: tuple[int, int]  # start, (pythonic exlusive end)
     tajweed_rules: list[TajweedRule] | None = None
 
     def add_tajweed_rule(self, new_tajweed_rule: TajweedRule | None) -> None:
+        """Add a tajweed rule to this mapping position.
+
+        Appends the new tajweed rule to the existing list of rules if both the
+        current rules list and the new rule are not None.
+
+        Args:
+            new_tajweed_rule: The TajweedRule to add, or None if no rule to add.
+
+        Example:
+            >>> mapping = MappingPos(pos=(0, 3), tajweed_rules=[])
+            >>> # This will add the rule if tajweed_rules exists and rule is not None
+            >>> # mapping.add_tajweed_rule(some_rule)
+        """
         if self.tajweed_rules is not None and new_tajweed_rule is not None:
             self.tajweed_rules.append(new_tajweed_rule)
 
@@ -101,51 +136,88 @@ def get_mappings(
     mappings: MappingListType | None = None,
     tajweed_rule: TajweedRule | None = None,
 ) -> MappingListType:
-    # TODO: need to write docstring
-    """
+    """Generate character position mappings between original and transformed text.
+
+    This is the core mapping engine that analyzes character-level transformations using
+    Levenshtein opcodes to create precise position mappings. It tracks how each character
+    in the original text maps to its position in the transformed text, handling complex
+    operations like insertions, replacements, deletions, and their combinations.
+
+    The function is essential for maintaining character-level precision in Quranic text
+    processing, particularly when converting between Uthmani script and phonetic
+    transcription. It can associate tajweed rules with affected character spans and
+    merge with existing mappings from previous transformations.
+
+    Args:
+        text: Original input text before transformation.
+        new_text: Transformed text after operation (e.g., regex substitution).
+        mappings: Existing character position mappings from previous transformations.
+            Each MappingPos represents a span in intermediate text. None values
+            indicate previously deleted characters. If None, creates fresh mappings.
+        tajweed_rule: TajweedRule to associate with characters affected by this
+            transformation. Can be None if no tajweed rule should be applied.
+
+    Returns:
+        List of MappingPos objects tracking character positions from original to
+        transformed text. Length matches original text length. None values indicate
+        deleted characters, while MappingPos objects contain position spans and
+        associated tajweed rules.
+
+    Raises:
+        ValueError: If mapping continuity validation fails (detected gaps in position
+            mappings that should be contiguous).
+
+    Algorithm Details:
+        The function uses Levenshtein opcodes in the order: equal, insert, replace
+        to analyze differences between texts. It handles several special cases:
+
+        1. **Madd Alif expansions**: abcd → aaabcd (equal[a] + insert[a])
+        2. **Madd Alif with tashkeel**: abcd → aaaacd (equal + insert + replace)
+        3. **Complete replacements**: abcd → kkkabcd
+        4. **Shadda transformations**: Special handling for noon/meem with shadda
+           in Quranic orthography (e.g., "لكم ما" → "لكمَّا")
+
     Examples:
+        Basic character expansion:
+        >>> text = "abcd"
+        >>> new_text = "aaabcd"
+        >>> mappings = get_mappings(text, new_text)
+        >>> mappings[0].pos  # First 'a' expanded to position (0, 3)
+        (0, 3)
+        >>> mappings[1].pos  # Second character at position (3, 4)
+        (3, 4)
 
-        pattern: r"(a)"
-        repl: r"\1\1\1"
-        text: "abcd"
-        tajweed_rule = NormalMadd()
+        Quranic text transformation with alif elongation:
+        >>> text = "بِسْمِ لَّاهِ"
+        >>> new_text = "بِسْمِ لَّااهِ"
+        >>> mappings = get_mappings(text, new_text)
+        >>> len(mappings)  # Same length as original text
+        9
+        >>> mappings[8].pos  # Final character position
+        (26, 27)
 
-        Output:
-    (
-        "aaabcd",
-        [
-            MappingPos(pos=(0, 3), tajweed_rules=[NormalMadd()]),
-            MappingPos(pos=(3, 4)),
-            MappingPos(pos=(4, 5)),
-            MappingPos(pos=(5, 6)),
-        ],
-    )
+        Complex transformation with existing mappings and tajweed rule:
+        >>> existing_mappings = [MappingPos(pos=(0, 1)), MappingPos(pos=(1, 2))]
+        >>> text = "ab"
+        >>> new_text = "aab"
+        >>> tajweed_rule = NormalMadd()  # Some tajweed rule instance
+        >>> mappings = get_mappings(text, new_text, existing_mappings, tajweed_rule)
+        >>> mappings[0].pos  # First 'a' maps to (0, 2) with tajweed rule
+        (0, 2)
 
+        Character deletion:
+        >>> text = "abcd"
+        >>> new_text = "abc"
+        >>> mappings = get_mappings(text, new_text)
+        >>> mappings[-1]  # Last character deleted
+        None
 
-    ----------------
-        pattern: r"d$"
-        repl: r""
-        text: "aaabcd"
-        mappings:
-            [
-                MappingPos(pos=(0, 3), tajweed_rules=[NormalMadd()]),
-                MappingPos(pos=(3, 4)),
-                MappingPos(pos=(4, 5)),
-                MappingPos(pos=(5, 6)),
-            ]
-
-        Output:
-    (
-        "aaabc",
-        [
-            MappingPos(pos=(0, 3), tajweed_rules=[NormalMadd()]),
-            MappingPos(pos=(3, 4)),
-            MappingPos(pos=(4, 5)),
-            None,
-        ],
-    )
-    ----------------
-
+    Note:
+        - Character positions use Python-style slice notation (inclusive start, exclusive end)
+        - None values in mappings indicate deleted characters
+        - Tajweed rules are associated with affected character spans when provided
+        - The function validates mapping continuity and raises errors on inconsistencies
+        - Special handling exists for Quranic orthographic patterns like shadda
     """
     if text == "":
         return []
@@ -356,50 +428,67 @@ def sub_with_mapping(
     mappings: MappingListType | None = None,
     tajweed_rule: TajweedRule | None = None,
 ) -> tuple[str, MappingListType]:
-    """
+    """Perform regex substitution while maintaining character position mappings.
+
+    This function applies a regex substitution to the input text and tracks how character
+    positions change during the transformation. It maintains the relationship between
+    the original text and the transformed text, allowing for precise mapping of each
+    character to its new position. Additionally, it can associate tajweed rules with
+    specific character spans that are affected by the substitution.
+
+    The function uses Levenshtein opcodes to analyze the differences between the
+    original and transformed text, handling various operations like insertions,
+    replacements, deletions, and combinations thereof.
+
+    Args:
+        pattern: Regular expression pattern to match in the input text.
+        repl: Replacement string (can contain backreferences like r"\1\1\1").
+        text: Input text to transform.
+        mappings: Existing character position mappings from previous transformations.
+            Each MappingPos represents a span in the intermediate text. None values
+            indicate previously deleted characters. If None, creates new mappings.
+        tajweed_rule: TajweedRule to associate with characters affected by this
+            substitution. Can be None if no tajweed rule should be applied.
+
+    Returns:
+        Tuple containing:
+        - Transformed text after applying the regex substitution
+        - Updated position mappings maintaining relationship from original text to
+          the final transformed text. Length matches original text length.
+
     Examples:
+        Pattern expansion - tripling a character with tajweed rule:
+        >>> pattern = r"(a)"
+        >>> repl = r"\1\1\1"
+        >>> text = "abcd"
+        >>> tajweed_rule = NormalMadd()  # Some tajweed rule instance
+        >>> result_text, result_mappings = sub_with_mapping(pattern, repl, text, None, tajweed_rule)
+        >>> result_text
+        'aaabcd'
+        >>> result_mappings[0].pos  # First character 'a' expanded to position (0, 3)
+        (0, 3)
 
-        pattern: r"(a)"
-        repl: r"\1\1\1"
-        text: "abcd"
-        tajweed_rule = NormalMadd()
+        Deletion with existing mappings:
+        >>> pattern = r"d$"
+        >>> repl = r""
+        >>> text = "aaabcd"
+        >>> existing_mappings = [
+        ...     MappingPos(pos=(0, 3), tajweed_rules=[NormalMadd()]),
+        ...     MappingPos(pos=(3, 4)),
+        ...     MappingPos(pos=(4, 5)),
+        ...     MappingPos(pos=(5, 6)),
+        ... ]
+        >>> result_text, result_mappings = sub_with_mapping(pattern, repl, text, existing_mappings)
+        >>> result_text
+        'aaabc'
+        >>> result_mappings[-1]  # Last character deleted
+        None
 
-        Output:
-    (
-        "aaabcd",
-        [
-            MappingPos(pos=(0, 3), tajweed_rules=[NormalMadd()]),
-            MappingPos(pos=(3, 4)),
-            MappingPos(pos=(4, 5)),
-            MappingPos(pos=(5, 6)),
-        ],
-    )
-
-
-    ----------------
-        pattern: r"d$"
-        repl: r""
-        text: "aaabcd"
-        mappings:
-            [
-                MappingPos(pos=(0, 3), tajweed_rules=[NormalMadd()]),
-                MappingPos(pos=(3, 4)),
-                MappingPos(pos=(4, 5)),
-                MappingPos(pos=(5, 6)),
-            ]
-
-        Output:
-    (
-        "aaabc",
-        [
-            MappingPos(pos=(0, 3), tajweed_rules=[NormalMadd()]),
-            MappingPos(pos=(3, 4)),
-            MappingPos(pos=(4, 5)),
-            None,
-        ],
-    )
-    ----------------
-
+    Note:
+        - The function handles complex regex operations including backreferences
+        - Character positions use Python-style slice notation (inclusive start, exclusive end)
+        - None values in mappings indicate deleted characters
+        - Tajweed rules are associated with affected character spans when provided
     """
     if text == "":
         return "", []

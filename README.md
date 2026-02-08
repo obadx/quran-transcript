@@ -185,23 +185,6 @@ class MappingPos:
     tajweed_rules: list[TajweedRule] | None = None  # قواعد التجويد المرتبطة
 ```
 
-#### **حالات الاستخدام (Use Cases)**
-
-1. **تحليل الأحرف (Character Analysis)**: تتبع كيفية تحويل أحرف الرسم العثماني المحددة إلى أصوات
-2. **التصحيح (Debugging)**: التحقق من دقة التحويل على مستوى الأحرف
-3. **البحث (Research)**: دراسة الأنماط على مستوى الأحرف في الصوتيات القرآنية
-4. **التعليم (Education)**: إظهار علاقات الحرف بالصوت للطلاب
-
-#### **الواردات المتاحة (Available Imports)**
-```python
-from quran_transcript import (
-    quran_phonetizer,  # وظيفة التحويل الصوتي
-    QuranPhoneticScriptOutput,  # مخرجات التحويل الصوتي
-    MappingPos,  # خرائط المواقع
-    MappingListType,  # نوع قائمة الخرائط
-    MoshafAttributes  # خصائص المصحف
-)
-```
 
 ### الحروف: (43)
 
