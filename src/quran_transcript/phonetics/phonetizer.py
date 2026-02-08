@@ -1,7 +1,7 @@
 import re
 from dataclasses import dataclass
 
-from .conv_base_operation import MappingPos
+from .conv_base_operation import MappingPos, sub_with_mapping
 from .operations import OPERATION_ORDER
 from .moshaf_attributes import MoshafAttributes
 from .sifa import process_sifat, SifaOutput
@@ -22,11 +22,9 @@ def quran_phonetizer(
     text = uhtmani_text
 
     # cleaning extra scpace
-    # TODO: create mapping for this
-    text = re.sub(r"\s+", rf"{alph.uthmani.space}", text)
-    text = re.sub(r"(\s$|^\s)", r"", text)
+    text, mappings = sub_with_mapping(r"\s+", rf"{alph.uthmani.space}", text)
+    text, mappings = sub_with_mapping(r"(\s$|^\s)", r"", text, mappings=mappings)
 
-    mappings = None
     for op in OPERATION_ORDER:
         text, mappings = op.apply(text, moshaf, mappings)
 
@@ -36,8 +34,9 @@ def quran_phonetizer(
         moshaf=moshaf,
     )
 
-    # TODO: create mapping for this
     if remove_spaces:
-        text = re.sub(alph.uthmani.space, r"", text)
+        text, mappings = sub_with_mapping(
+            alph.uthmani.space, r"", text, mappings=mappings
+        )
 
     return QuranPhoneticScriptOutput(phonemes=text, sifat=sifat, mappings=mappings)
