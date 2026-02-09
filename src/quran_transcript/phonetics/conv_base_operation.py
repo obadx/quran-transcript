@@ -359,26 +359,24 @@ def get_mappings(
         elif curr_op[0] == "delete":
             ...
 
-        # This not optimal but in case of noon or meem we want to delete the first letter and leave the next one
-        # for example:
-        # لكم ما
-        # becomes
-        # لكمَّا
-        # We want to delete the first letter and keep the later
-        for idx in range(1, len(text) - 2):
-            if (
-                (text[idx - 1] == text[idx + 1])
-                and (text[idx] == " " and text[idx + 2] == alph.uthmani.shadda)
-                and (
-                    new_mappings[idx - 1] is not None and new_mappings[idx + 1] is None
-                )
-            ):
-                # swaping
-                new_mappings[idx + 1] = new_mappings[idx - 1]
-                new_mappings[idx - 1] = None
-
         last_op = curr_op
         curr_op = next_op
+
+    # This not optimal but in case of إدغام كامل we want to delete the first letter and leave the next one
+    # for example:
+    # لكم ما
+    # becomes
+    # لكمَّا
+    # We want to delete the first letter and keep the later
+    for re_out in re.finditer(
+        f"([^{alph.uthmani.space}]){alph.uthmani.space}?\\1{alph.uthmani.shadda}", text
+    ):
+        first = re_out.span()[0]
+        second = re_out.span()[1] - 2
+        if new_mappings[first] is not None and new_mappings[second] is None:
+            # Swapping
+            new_mappings[second] = new_mappings[first]
+            new_mappings[first] = None
 
     new_mappings = merge_mappings(mappings, new_mappings)
 
