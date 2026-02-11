@@ -23,7 +23,6 @@ class TajweedRule(ABC):
     correctness_type: Literal["match", "count"]
     tag: Optional[str] | None = None
     available_tags: Optional[set] | None = None
-    to_overwrite_rule: Optional[list["TajweedRule"]] | None = None
 
     def __post_init__(self):
         if self.tag is not None and self.available_tags is not None:
@@ -44,6 +43,21 @@ class TajweedRule(ABC):
         return True
 
     @abstractmethod
+    def get_relvant_rule(self, ph_str: str) -> Optional["TajweedRule"]:
+        """Returs a Tajweed rule that is assocaited with the input ph_str"""
+        return self
+
+
+@dataclass
+class Qalqalah(TajweedRule):
+    name: LangName = field(default_factory=lambda: LangName(ar="قلقة", en="Qalqalah"))
+    golden_len: int = 0
+    correctness_type: Literal["match", "count"] = "match"
+
+    def is_ph_str_in(self, ph_str: str) -> bool:
+        """Whether the phonetic script is assoicated with this Tajweed rule or not"""
+        return True
+
     def get_relvant_rule(self, ph_str: str) -> Optional["TajweedRule"]:
         """Returs a Tajweed rule that is assocaited with the input ph_str"""
         return self
@@ -90,7 +104,7 @@ class MaddRule(TajweedRule):
 @dataclass
 class NormalMaddRule(MaddRule):
     name: LangName = field(
-        default_factory=LangName(ar="المد الطبيعي", en="Normal Madd")
+        default_factory=lambda: LangName(ar="المد الطبيعي", en="Normal Madd")
     )
     golden_len: int = 2
 

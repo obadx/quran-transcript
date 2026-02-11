@@ -35,7 +35,9 @@ class MappingPos:
     pos: tuple[int, int]  # start, (pythonic exlusive end)
     tajweed_rules: list[TajweedRule] | None = None
 
-    def add_tajweed_rule(self, new_tajweed_rule: TajweedRule | None) -> None:
+    def add_tajweed_rule(
+        self, new_tajweed_rules: TajweedRule | list[TajweedRule] | None
+    ) -> None:
         """Add a tajweed rule to this mapping position.
 
         Appends the new tajweed rule to the existing list of rules if both the
@@ -49,8 +51,16 @@ class MappingPos:
             >>> # This will add the rule if tajweed_rules exists and rule is not None
             >>> # mapping.add_tajweed_rule(some_rule)
         """
-        if self.tajweed_rules is not None and new_tajweed_rule is not None:
-            self.tajweed_rules.append(new_tajweed_rule)
+        if isinstance(new_tajweed_rules, TajweedRule):
+            new_tajweed_rules = [new_tajweed_rules]
+        elif new_tajweed_rules is None:
+            new_tajweed_rules = []
+
+        if new_tajweed_rules != []:
+            if self.tajweed_rules is None:
+                self.tajweed_rules = []
+            for rule in new_tajweed_rules:
+                self.tajweed_rules.append(rule)
 
 
 MappingListType: TypeAlias = list[MappingPos | None]
@@ -75,6 +85,10 @@ def merge_mappings(
     Returns:
         Merged position mappings maintaining the relationship between the original text
         and the final substituted text. The length matches the original mappings length.
+
+    Raises:
+        ValueError: if `new_mappings` is an empty list
+
 
     Logic:
         - For each non-None old mapping, searches its position range in new_mappings
@@ -102,30 +116,50 @@ def merge_mappings(
         >>> result = merge_mappings(old, new)
         # result: [MappingPos(pos=(0, 5))]  # spans first to last non-None
     """
+
     if mappings is None:
         return new_mappings
 
+    if new_mappings == []:
+        raise ValueError("`new_mappings` should not be an empty list")
+
     # TODO: add Tajweed rules depencance
-    merged_mappings = [None for _ in range(len(mappings))]
+    merged_mappings: MappingListType = [None for _ in range(len(mappings))]
     for idx, old_map in enumerate(mappings):
         if old_map is not None:
             start_map = None
+            new_start_idx = 0
             end_map = None
-            for start_map in new_mappings[old_map.pos[0] : old_map.pos[1]]:
+            new_end_idx = 0
+            for new_start_idx in range(old_map.pos[0], old_map.pos[1]):
+                start_map = new_mappings[new_start_idx]
                 if start_map is not None:
                     break
-            for end_map in new_mappings[old_map.pos[0] : old_map.pos[1]][::-1]:
+            for new_end_idx in range(old_map.pos[1] - 1, old_map.pos[0] - 1, -1):
+                end_map = new_mappings[new_end_idx]
                 if end_map is not None:
                     break
 
             if start_map is not None and end_map is not None:
+                # Avoid copying by reference (instead copying by values)
+                # Avoiding changes mapping with refrenrece by other uninteded code
                 merged_mappings[idx] = MappingPos(
                     pos=(start_map.pos[0], end_map.pos[1])
                 )
+                merged_mappings[idx].add_tajweed_rule(old_map.tajweed_rules)
+                for new_idx in range(new_start_idx, new_end_idx + 1):
+                    if new_mappings[new_idx] is not None:
+                        merged_mappings[idx].add_tajweed_rule(
+                            new_mappings[new_idx].tajweed_rules
+                        )
             elif start_map is not None:
+                # Single start mapping
                 merged_mappings[idx] = MappingPos(pos=start_map.pos)
+                merged_mappings[idx].add_tajweed_rule(start_map.tajweed_rules)
             elif end_map is not None:
+                # Single End mapping
                 merged_mappings[idx] = MappingPos(pos=end_map.pos)
+                merged_mappings[idx].add_tajweed_rule(end_map.tajweed_rules)
 
     return merged_mappings
 
@@ -493,7 +527,7 @@ def sub_with_mapping(
 
     # Apply the regex substitution
     new_text = re.sub(pattern, repl, text)
-    new_mappings = get_mappings(text, new_text, mappings)
+    new_mappings = get_mappings(text, new_text, mappings, tajweed_rule=tajweed_rule)
     return new_text, new_mappings
 
 

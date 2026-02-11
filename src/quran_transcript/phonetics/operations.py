@@ -1,6 +1,7 @@
 from dataclasses import dataclass, field
 import re
 
+
 from .conv_base_operation import (
     ConversionOperation,
     sub_with_mapping,
@@ -11,6 +12,7 @@ from .conv_base_operation import (
 from .moshaf_attributes import MoshafAttributes
 from ..alphabet import uthmani as uth
 from ..alphabet import phonetics as ph
+from .tajweed_rulses import NormalMaddRule
 
 
 @dataclass
@@ -722,6 +724,7 @@ class MaddPattern:
     pattern: str
     target: str
     madd: str
+    name: str
 
 
 @dataclass
@@ -741,16 +744,19 @@ class Madd(ConversionOperation):
                 pattern=f"({uth.fatha}){uth.alif}",
                 target=ph.alif,
                 madd=uth.alif,
+                name="alif",
             ),
             "dam": MaddPattern(
                 pattern=f"({uth.dama}){uth.waw}",
                 target=ph.waw_madd,
                 madd=uth.waw,
+                name="waw",
             ),
             "kasr": MaddPattern(
                 pattern=f"({uth.kasra}){uth.yaa}",
                 target=ph.yaa_madd,
                 madd=uth.yaa,
+                name="yaa",
             ),
         }
     )
@@ -854,6 +860,7 @@ class Madd(ConversionOperation):
                 r"\1" + 2 * madd_patt.target,
                 text,
                 mappings,
+                tajweed_rule=NormalMaddRule(tag=madd_patt.name),
             )
 
         return text, mappings

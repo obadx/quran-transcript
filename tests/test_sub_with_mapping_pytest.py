@@ -13,6 +13,7 @@ from quran_transcript.phonetics.conv_base_operation import (
     MappingListType,
 )
 
+from quran_transcript.phonetics.tajweed_rulses import NormalMaddRule, Qalqalah
 # Import the sub_with_mapping function from the existing test file
 
 
@@ -205,7 +206,7 @@ def test_sub_with_mapping_operations(
                 MappingPos(pos=(7, 8), tajweed_rules=None),
                 None,
                 MappingPos(pos=(8, 9), tajweed_rules=None),
-                MappingPos(pos=(9, 11), tajweed_rules=None),
+                MappingPos(pos=(9, 11), tajweed_rules=[NormalMaddRule(tag="alif")]),
                 MappingPos(pos=(11, 12), tajweed_rules=None),
                 MappingPos(pos=(12, 13), tajweed_rules=None),
                 MappingPos(pos=(13, 14), tajweed_rules=None),
@@ -246,7 +247,7 @@ def test_sub_with_mapping_operations(
                 MappingPos(pos=(7, 8), tajweed_rules=None),
                 None,
                 MappingPos(pos=(8, 9), tajweed_rules=None),
-                MappingPos(pos=(9, 12), tajweed_rules=None),
+                MappingPos(pos=(9, 12), tajweed_rules=[NormalMaddRule(tag="alif")]),
                 MappingPos(pos=(12, 13), tajweed_rules=None),
                 MappingPos(pos=(13, 14), tajweed_rules=None),
                 MappingPos(pos=(14, 15), tajweed_rules=None),
@@ -258,9 +259,9 @@ def test_sub_with_mapping_operations(
                 MappingPos(pos=(18, 19), tajweed_rules=None),
                 MappingPos(pos=(19, 20), tajweed_rules=None),
                 MappingPos(pos=(20, 21), tajweed_rules=None),
-                MappingPos(pos=(21, 22), tajweed_rules=None),  # here the cavet
+                MappingPos(pos=(21, 22), tajweed_rules=None),
                 None,
-                MappingPos(pos=(22, 24), tajweed_rules=None),  # here the cavet
+                MappingPos(pos=(22, 24), tajweed_rules=None),
                 MappingPos(pos=(24, 25), tajweed_rules=None),
                 MappingPos(pos=(25, 26), tajweed_rules=None),
                 MappingPos(pos=(26, 27), tajweed_rules=None),
@@ -479,6 +480,72 @@ class TestMergeMappings:
                     None,
                 ],  # Should span first to last non-None
             ),
+            # Test start and eend in between + tajweed rules (input)
+            (
+                [
+                    MappingPos(pos=(0, 3), tajweed_rules=[NormalMaddRule(tag="alif")]),
+                    MappingPos(pos=(3, 5)),
+                    MappingPos(pos=(5, 6)),
+                ],
+                [
+                    None,
+                    MappingPos(pos=(0, 1)),
+                    None,
+                    MappingPos(pos=(2, 3)),
+                    MappingPos(pos=(3, 6)),
+                    None,
+                ],
+                [
+                    MappingPos(pos=(0, 1), tajweed_rules=[NormalMaddRule(tag="alif")]),
+                    MappingPos(pos=(2, 6)),
+                    None,
+                ],  # Should span first to last non-None
+            ),
+            # Test start and eend in between + tajweed rules (output)
+            (
+                [
+                    MappingPos(pos=(0, 3)),
+                    MappingPos(pos=(3, 5)),
+                    MappingPos(pos=(5, 6)),
+                ],
+                [
+                    None,
+                    MappingPos(pos=(0, 1)),
+                    None,
+                    MappingPos(pos=(2, 3), tajweed_rules=[NormalMaddRule(tag="alif")]),
+                    MappingPos(pos=(3, 6)),
+                    None,
+                ],
+                [
+                    MappingPos(pos=(0, 1)),
+                    MappingPos(pos=(2, 6), tajweed_rules=[NormalMaddRule(tag="alif")]),
+                    None,
+                ],  # Should span first to last non-None
+            ),
+            # Test start and eend in between + tajweed rules (both)
+            (
+                [
+                    MappingPos(pos=(0, 3)),
+                    MappingPos(pos=(3, 5), tajweed_rules=[Qalqalah()]),
+                    MappingPos(pos=(5, 6)),
+                ],
+                [
+                    None,
+                    MappingPos(pos=(0, 1)),
+                    None,
+                    MappingPos(pos=(2, 3), tajweed_rules=[NormalMaddRule(tag="alif")]),
+                    MappingPos(pos=(3, 6)),
+                    None,
+                ],
+                [
+                    MappingPos(pos=(0, 1)),
+                    MappingPos(
+                        pos=(2, 6),
+                        tajweed_rules=[Qalqalah(), NormalMaddRule(tag="alif")],
+                    ),
+                    None,
+                ],  # Should span first to last non-None
+            ),
             # Test partial None mappings - some positions in range are None
             (
                 [MappingPos(pos=(0, 3))],
@@ -517,8 +584,8 @@ class TestMergeMappings:
     def test_merge_mappings_empty_lists(self):
         """Test edge cases with empty lists."""
         # Both empty
-        result = merge_mappings([], [])
-        assert result == []
+        with pytest.raises(ValueError):
+            result = merge_mappings([], [])
 
         # Empty mappings, non-empty new_mappings
         new_mappings = [MappingPos(pos=(0, 1))]
@@ -526,9 +593,9 @@ class TestMergeMappings:
         assert result == []
 
         # Non-empty mappings, empty new_mappings
-        mappings = [MappingPos(pos=(0, 1))]
-        result = merge_mappings(mappings, [])
-        assert result == [None]
+        with pytest.raises(ValueError):
+            mappings = [MappingPos(pos=(0, 1))]
+            result = merge_mappings(mappings, [])
 
     def test_merge_mappings_complex_range(self):
         """Test complex scenario with multiple overlapping ranges."""
@@ -567,7 +634,14 @@ class TestMergeMappings:
                 MappingPos(pos=(0, 6), tajweed_rules=None),
                 MappingPos(pos=(6, 16), tajweed_rules=None),
                 None,
-                MappingPos(pos=(16, 20), tajweed_rules=None),
+                MappingPos(
+                    pos=(16, 20),
+                    tajweed_rules=[
+                        NormalMaddRule(
+                            tag="alif",
+                        )
+                    ],
+                ),
                 MappingPos(pos=(20, 21), tajweed_rules=None),
                 MappingPos(pos=(21, 22), tajweed_rules=None),
                 MappingPos(pos=(22, 23), tajweed_rules=None),
@@ -578,11 +652,25 @@ class TestMergeMappings:
                 MappingPos(pos=(26, 27), tajweed_rules=None),
                 MappingPos(pos=(27, 28), tajweed_rules=None),
                 MappingPos(pos=(28, 29), tajweed_rules=None),
-                MappingPos(pos=(29, 31), tajweed_rules=None),
+                MappingPos(
+                    pos=(29, 31),
+                    tajweed_rules=[
+                        NormalMaddRule(
+                            tag="alif",
+                        )
+                    ],
+                ),
                 MappingPos(pos=(31, 32), tajweed_rules=None),
                 MappingPos(pos=(32, 33), tajweed_rules=None),
                 None,
-                MappingPos(pos=(33, 35), tajweed_rules=None),
+                MappingPos(
+                    pos=(33, 35),
+                    tajweed_rules=[
+                        NormalMaddRule(
+                            tag="alif",
+                        )
+                    ],
+                ),
                 MappingPos(pos=(35, 36), tajweed_rules=None),
                 MappingPos(pos=(36, 37), tajweed_rules=None),
                 MappingPos(pos=(37, 38), tajweed_rules=None),
@@ -594,7 +682,14 @@ class TestMergeMappings:
                 MappingPos(pos=(41, 42), tajweed_rules=None),
                 MappingPos(pos=(42, 43), tajweed_rules=None),
                 None,
-                MappingPos(pos=(43, 45), tajweed_rules=None),
+                MappingPos(
+                    pos=(43, 45),
+                    tajweed_rules=[
+                        NormalMaddRule(
+                            tag="alif",
+                        )
+                    ],
+                ),
                 MappingPos(pos=(45, 46), tajweed_rules=None),
                 MappingPos(pos=(46, 47), tajweed_rules=None),
                 MappingPos(pos=(47, 48), tajweed_rules=None),
@@ -625,7 +720,7 @@ class TestMergeMappings:
                 None,
                 MappingPos(pos=(6, 7), tajweed_rules=None),
                 MappingPos(pos=(7, 8), tajweed_rules=None),
-                MappingPos(pos=(8, 11), tajweed_rules=None),
+                MappingPos(pos=(8, 11), tajweed_rules=[NormalMaddRule(tag="alif")]),
                 MappingPos(pos=(11, 12), tajweed_rules=None),
                 MappingPos(pos=(12, 13), tajweed_rules=None),
                 MappingPos(pos=(13, 14), tajweed_rules=None),
@@ -639,7 +734,7 @@ class TestMergeMappings:
                 MappingPos(pos=(18, 19), tajweed_rules=None),
                 MappingPos(pos=(19, 20), tajweed_rules=None),
                 None,
-                MappingPos(pos=(20, 22), tajweed_rules=None),
+                MappingPos(pos=(20, 22), tajweed_rules=[NormalMaddRule(tag="alif")]),
                 MappingPos(pos=(22, 23), tajweed_rules=None),
                 MappingPos(pos=(23, 24), tajweed_rules=None),
                 MappingPos(pos=(24, 25), tajweed_rules=None),
@@ -671,7 +766,14 @@ class TestMergeMappings:
                 MappingPos(pos=(10, 11), tajweed_rules=None),
                 MappingPos(pos=(11, 12), tajweed_rules=None),
                 MappingPos(pos=(12, 13), tajweed_rules=None),
-                MappingPos(pos=(13, 15), tajweed_rules=None),
+                MappingPos(
+                    pos=(13, 15),
+                    tajweed_rules=[
+                        NormalMaddRule(
+                            tag="yaa",
+                        )
+                    ],
+                ),
                 MappingPos(pos=(15, 16), tajweed_rules=None),
                 MappingPos(pos=(16, 17), tajweed_rules=None),
                 MappingPos(pos=(17, 18), tajweed_rules=None),
@@ -681,7 +783,14 @@ class TestMergeMappings:
                 MappingPos(pos=(21, 22), tajweed_rules=None),
                 MappingPos(pos=(22, 23), tajweed_rules=None),
                 MappingPos(pos=(23, 24), tajweed_rules=None),
-                MappingPos(pos=(24, 26), tajweed_rules=None),
+                MappingPos(
+                    pos=(24, 26),
+                    tajweed_rules=[
+                        NormalMaddRule(
+                            tag="waw",
+                        )
+                    ],
+                ),
                 None,
                 None,
                 MappingPos(pos=(26, 27), tajweed_rules=None),
@@ -745,7 +854,14 @@ class TestMergeMappings:
                 MappingPos(pos=(83, 84), tajweed_rules=None),
                 MappingPos(pos=(84, 85), tajweed_rules=None),
                 MappingPos(pos=(85, 86), tajweed_rules=None),
-                MappingPos(pos=(86, 88), tajweed_rules=None),
+                MappingPos(
+                    pos=(86, 88),
+                    tajweed_rules=[
+                        NormalMaddRule(
+                            tag="alif",
+                        )
+                    ],
+                ),
                 MappingPos(pos=(88, 89), tajweed_rules=None),
                 MappingPos(pos=(89, 90), tajweed_rules=None),
                 MappingPos(pos=(90, 91), tajweed_rules=None),
@@ -772,7 +888,7 @@ class TestMergeMappings:
                 MappingPos(pos=(2, 6), tajweed_rules=None),
                 None,
                 MappingPos(pos=(6, 7), tajweed_rules=None),
-                MappingPos(pos=(7, 9), tajweed_rules=None),
+                MappingPos(pos=(7, 9), tajweed_rules=[NormalMaddRule(tag="alif")]),
             ],
         ),
         (
@@ -788,7 +904,7 @@ class TestMergeMappings:
                 MappingPos(pos=(4, 8), tajweed_rules=None),
                 None,
                 MappingPos(pos=(8, 9), tajweed_rules=None),
-                MappingPos(pos=(9, 11), tajweed_rules=None),
+                MappingPos(pos=(9, 11), tajweed_rules=[NormalMaddRule(tag="alif")]),
             ],
         ),
     ],
@@ -804,11 +920,12 @@ def test_phonetizer_with_mappings(
         madd_aared_len=4,
     )
     ph_out = quran_phonetizer(uth_text, moshaf)
-    assert ph_out.phonemes == ph_text
-    assert exp_mappings == ph_out.mappings
     print(uth_text)
     print(ph_out.phonemes)
     print(ph_out.mappings)
+
+    assert ph_out.phonemes == ph_text
+    assert exp_mappings == ph_out.mappings
     for idx, uth_c in enumerate(uth_text):
         print(f"UTH_IDX: `{idx}`, SPAN: `{ph_out.mappings[idx]}`")
         ph_c = ""

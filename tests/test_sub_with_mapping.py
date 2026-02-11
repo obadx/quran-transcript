@@ -12,12 +12,13 @@ if __name__ == "__main__":
     )
     aya = Aya()
     aya = Aya(1, 1)
+    aya = Aya(12, 1)
     # aya = Aya(2, 1)
     # aya = Aya(75, 27)
-    # aya = Aya(2, 6)
+    aya = Aya(2, 6)
     # aya = Aya(3, 1)
     # aya = Aya(30, 28)
-    aya = Aya(2, 9)
+    # aya = Aya(2, 9)
     uth_text = aya.get().uthmani
 
     # uth_text = aya.get_by_imlaey_words(start=7, window=2).uthmani
