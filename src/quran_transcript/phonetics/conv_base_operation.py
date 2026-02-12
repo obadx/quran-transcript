@@ -34,6 +34,7 @@ class MappingPos:
 
     pos: tuple[int, int]  # start, (pythonic exlusive end)
     tajweed_rules: list[TajweedRule] | None = None
+    deleted: bool = False
 
     def add_tajweed_rule(
         self, new_tajweed_rules: TajweedRule | list[TajweedRule] | None
@@ -51,19 +52,18 @@ class MappingPos:
             >>> # This will add the rule if tajweed_rules exists and rule is not None
             >>> # mapping.add_tajweed_rule(some_rule)
         """
+        if not new_tajweed_rules:  # covers None and []
+            return
+        if self.tajweed_rules is None:
+            self.tajweed_rules = []
+        # if new_tajweed_rules is a single rule, make it a list
         if isinstance(new_tajweed_rules, TajweedRule):
-            new_tajweed_rules = [new_tajweed_rules]
-        elif new_tajweed_rules is None:
-            new_tajweed_rules = []
-
-        if new_tajweed_rules != []:
-            if self.tajweed_rules is None:
-                self.tajweed_rules = []
-            for rule in new_tajweed_rules:
-                self.tajweed_rules.append(rule)
+            self.tajweed_rules.append(new_tajweed_rules)
+        else:
+            self.tajweed_rules.extend(new_tajweed_rules)
 
 
-MappingListType: TypeAlias = list[MappingPos | None]
+MappingListType: TypeAlias = list[MappingPos]
 
 
 def merge_mappings(
@@ -74,6 +74,11 @@ def merge_mappings(
 
     * This function maintains the relationship between character positions in the original text
     and their corresponding positions after one or more regex substitution operations.
+
+    **Important:** This function **mutates** the input `mappings` list in‑place.
+    It updates each `MappingPos` object with a new `pos` tuple and a new `deleted`
+    flag, and also merges the tajweed rules from the corresponding entries in
+    `new_mappings`. The length of the list remains unchanged.
 
     Args:
         mappings: Previous character position mappings from original text. Each MappingPos
@@ -123,45 +128,38 @@ def merge_mappings(
     if new_mappings == []:
         raise ValueError("`new_mappings` should not be an empty list")
 
-    # TODO: add Tajweed rules depencance
-    merged_mappings: MappingListType = [None for _ in range(len(mappings))]
-    for idx, old_map in enumerate(mappings):
-        if old_map is not None:
-            start_map = None
-            new_start_idx = 0
-            end_map = None
-            new_end_idx = 0
-            for new_start_idx in range(old_map.pos[0], old_map.pos[1]):
-                start_map = new_mappings[new_start_idx]
-                if start_map is not None:
-                    break
-            for new_end_idx in range(old_map.pos[1] - 1, old_map.pos[0] - 1, -1):
-                end_map = new_mappings[new_end_idx]
-                if end_map is not None:
-                    break
+    for idx in range(len(mappings)):
+        old_map = mappings[idx]
+        if old_map is None:
+            raise ValueError()
+        start = old_map.pos[0]
+        end = old_map.pos[1]
 
-            if start_map is not None and end_map is not None:
-                # Avoid copying by reference (instead copying by values)
-                # Avoiding changes mapping with refrenrece by other uninteded code
-                merged_mappings[idx] = MappingPos(
-                    pos=(start_map.pos[0], end_map.pos[1])
+        if old_map.deleted:
+            if start < len(new_mappings):
+                mappings[idx].pos = (
+                    new_mappings[start].pos[0],
+                    new_mappings[start].pos[0],
                 )
-                merged_mappings[idx].add_tajweed_rule(old_map.tajweed_rules)
-                for new_idx in range(new_start_idx, new_end_idx + 1):
-                    if new_mappings[new_idx] is not None:
-                        merged_mappings[idx].add_tajweed_rule(
-                            new_mappings[new_idx].tajweed_rules
-                        )
-            elif start_map is not None:
-                # Single start mapping
-                merged_mappings[idx] = MappingPos(pos=start_map.pos)
-                merged_mappings[idx].add_tajweed_rule(start_map.tajweed_rules)
-            elif end_map is not None:
-                # Single End mapping
-                merged_mappings[idx] = MappingPos(pos=end_map.pos)
-                merged_mappings[idx].add_tajweed_rule(end_map.tajweed_rules)
+            else:
+                mappings[idx].pos = (
+                    new_mappings[-1].pos[1],
+                    new_mappings[-1].pos[1],
+                )
 
-    return merged_mappings
+        else:
+            mappings[idx].pos = (
+                new_mappings[start].pos[0],
+                new_mappings[end - 1].pos[1],
+            )
+
+        deleted = True
+        for new_idx in range(start, end):
+            mappings[idx].add_tajweed_rule(new_mappings[new_idx].tajweed_rules)
+            deleted = deleted and new_mappings[new_idx].deleted
+        mappings[idx].deleted = deleted
+
+    return mappings
 
 
 def get_mappings(
@@ -181,6 +179,11 @@ def get_mappings(
     processing, particularly when converting between Uthmani script and phonetic
     transcription. It can associate tajweed rules with affected character spans and
     merge with existing mappings from previous transformations.
+
+    **Important:** This function **mutates** the input `mappings` list in‑place.
+    It updates each `MappingPos` object with a new `pos` tuple and a new `deleted`
+    flag, and also merges the tajweed rules from the corresponding entries in
+    `new_mappings`. The length of the list remains unchanged.
 
     Args:
         text: Original input text before transformation.
@@ -244,24 +247,17 @@ def get_mappings(
         >>> new_text = "abc"
         >>> mappings = get_mappings(text, new_text)
         >>> mappings[-1]  # Last character deleted
-        None
+        MappingsPos(pos=(3,3), deleted=True)
 
     Note:
         - Character positions use Python-style slice notation (inclusive start, exclusive end)
-        - None values in mappings indicate deleted characters
+        - `MappingPos(pos=(x, x), deleted=True)` values in mappings indicate deleted characters
         - Tajweed rules are associated with affected character spans when provided
         - The function validates mapping continuity and raises errors on inconsistencies
         - Special handling exists for Quranic orthographic patterns like shadda
     """
     if text == "":
         return []
-
-    # rev_mapings = {}
-    # if mappings:
-    #     for m_idx, map_pos in enumerate(mappings):
-    #         if map_pos is not None:
-    #             for idx in range(map_pos.pos[0], map_pos.pos[1]):
-    #                 rev_mapings[idx] = m_idx
 
     # NOTE: Opcoes operation order is: equal, insert, replace
     ops = opcodes(text, new_text)
@@ -323,7 +319,9 @@ def get_mappings(
                         )
                         # increae the end pos to append the insert
                         for old_idx in range(next_op[1], next_op[2]):
-                            new_mappings[old_idx] = None
+                            new_mappings[old_idx] = MappingPos(
+                                pos=(next_op[4], next_op[4]), deleted=True
+                            )
                             to_del_poses.add(old_idx)
                 # insert + replace
                 else:
@@ -337,7 +335,9 @@ def get_mappings(
                         new_mappings[next_op[1]] = new_map_pos
                         # assignign the rest to None
                         for old_idx in range(next_op[1] + 1, next_op[2]):
-                            new_mappings[old_idx] = None
+                            new_mappings[old_idx] = MappingPos(
+                                pos=(next_op[4], next_op[4]), deleted=True
+                            )
                             to_del_poses.add(old_idx)
 
                     # equal only
@@ -391,10 +391,17 @@ def get_mappings(
                 if new_mappings[old_idx] is None:
                     new_mappings[old_idx] = MappingPos(pos=(new_idx, new_idx + 1))
         elif curr_op[0] == "delete":
-            ...
+            for old_idx in range(curr_op[1], curr_op[2]):
+                new_mappings[old_idx] = MappingPos(
+                    pos=(curr_op[3], curr_op[3]), deleted=True
+                )
+                new_mappings[old_idx].add_tajweed_rule(tajweed_rule)
 
         last_op = curr_op
         curr_op = next_op
+
+    # TODO: remove this
+    assert all(m is not None for m in new_mappings)
 
     # This not optimal but in case of إدغام كامل we want to delete the first letter and leave the next one
     # for example:
@@ -407,10 +414,15 @@ def get_mappings(
     ):
         first = re_out.span()[0]
         second = re_out.span()[1] - 2
-        if new_mappings[first] is not None and new_mappings[second] is None:
+        if (not new_mappings[first].deleted) and new_mappings[second].deleted:
             # Swapping
             new_mappings[second] = new_mappings[first]
-            new_mappings[first] = None
+            # first and space if exists
+            for idx in range(first, second):
+                new_mappings[idx] = MappingPos(
+                    pos=(new_mappings[second].pos[0], new_mappings[second].pos[0]),
+                    deleted=True,
+                )
 
     new_mappings = merge_mappings(mappings, new_mappings)
 

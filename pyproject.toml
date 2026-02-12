@@ -37,6 +37,9 @@ classifiers = [
 test = [
   "pytest",
 ]
+profile = [
+    "pyinstrument>=5.1.2",
+]
 
 [project.urls]
 Homepage = "https://github.com/obadx/quran-transcript"
