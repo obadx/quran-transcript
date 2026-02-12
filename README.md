@@ -193,6 +193,7 @@ class MappingPos:
     """خرائط المواقع لتحويلات الأحرف (Position mapping for character transformations)"""
     pos: tuple[int, int]  # (بداية، نهاية) - بالطريقة البايثونية
     tajweed_rules: list[TajweedRule] | None = None  # قواعد التجويد المرتبطة
+    deleted: bool = False  # حالة الحذف - True إذا تم حذف الحرف مع حفظ الموقع وتتساوي البداية والنهاية في ال `pos`
 ```
 
 
