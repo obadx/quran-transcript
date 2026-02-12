@@ -17,7 +17,7 @@ if __name__ == "__main__":
     aya = Aya(2, 1)
     aya = Aya(19, 1)
     # aya = Aya(75, 27)
-    # aya = Aya(2, 6)
+    aya = Aya(2, 6)
     # aya = Aya(3, 1)
     # aya = Aya(30, 28)
     # aya = Aya(2, 9)
@@ -44,7 +44,7 @@ if __name__ == "__main__":
 
         print("-" * 40)
 
-    print(profiler.output_text(unicode=True, color=True))
+    print(profiler.output_text(unicode=True, color=True, show_all=True))
     """
     * meem moshaddah
     * Lam Ism Allah should be deleted at [8] [Not the best thing but works]

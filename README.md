@@ -18,6 +18,13 @@
 
 # `quran-transcript` package
 
+## 🆕 ما الجديد في الإصدار 0.3.0 (What's New in Version 0.3.0)
+
+### 📍 خرائط المواقع الجديدة (New Position Mappings)
+- أسرع مرتان  في عملية إنشاء الرسم الصوتي (Faster 2x in phonetizatoin)
+- تمثيل الحروف المحذوفة ب `MappingPos(pos=(x, x), deleted=True` - حيث `x` رقم صحيح أكبر من الصفر -  بدلا من `None` (Represent deleted characther with `MappingPos(pos=(x, x), deleted=True)` -where `x` is an integer >=0- instead of `None`)
+
+
 ## 🆕 ما الجديد في الإصدار 0.2.0 (What's New in Version 0.2.0)
 
 ### 📍 خرائط المواقع الجديدة (New Position Mappings)
@@ -131,24 +138,27 @@ phonetic_script = quran_phonetizer(uthmani_script, moshaf)
 
 print('\n' * 2)
 print(f"الرسم الصوتي:\n{phonetic_script.phonemes}")
+# print(f"صفات الحروف:\n{phonetic_script.sifat}")
+print('\n' * 2)
+print("صفات الحروف:")
+for sifa in phonetic_script.sifat:
+    print(json.dumps(sifa.model_dump(), ensure_ascii=False, indent=4))
+    print()
+
 
 # جديد: عرض خرائط المواقع
 print('\n' * 2)
 print("خرائط المواقع:")
 for idx, (uth_char, mapping) in enumerate(zip(uthmani_script, phonetic_script.mappings)):
-    if mapping is not None:
+    if not mapping.deleted:
         # استخراج الصوت لهذا الحرف
         phoneme = phonetic_script.phonemes[mapping.pos[0]:mapping.pos[1]]
         print(f"حرف: '{uth_char}' -> صوت: '{phoneme}' (موقع: {mapping.pos})")
     else:
         print(f"حرف: '{uth_char}' -> محذوف")
 
-print('\n' * 2)
-print("صفات الحروف:")
-for sifa in phonetic_script.sifat:
-    print(json.dumps(sifa.model_dump(), ensure_ascii=False, indent=4))
-    print()
 ```
+
 > 📘 For more information on `MoshafAttributes`, refer to the [Quran Dataset Documentation](https://github.com/obadx/prepare-quran-dataset?tab=readme-ov-file#moshaf-attributes-docs).
 
 
