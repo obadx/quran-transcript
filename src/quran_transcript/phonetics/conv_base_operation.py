@@ -22,6 +22,7 @@ class MappingPos:
             inclusive and the end is exclusive (Python-style slice notation).
         tajweed_rules: List of TajweedRule objects that apply to this character span.
             None indicates no tajweed rules are associated with this mapping.
+        deleted(bool): Wheter this location is deleted or not. If deleted pos[0] == pos[1]
 
     Example:
         >>> mapping = MappingPos(pos=(0, 3), tajweed_rules=[])
@@ -95,12 +96,6 @@ def merge_mappings(
         ValueError: if `new_mappings` is an empty list
 
 
-    Logic:
-        - For each non-None old mapping, searches its position range in new_mappings
-        - Finds the first and last non-None mapping in that range
-        - Creates a new MappingPos spanning from the first to last non-None position
-        - If only start or end found, uses that position alone
-        - Preserves None values for deleted characters
 
     Examples:
         # Identity mapping - no change
@@ -117,9 +112,9 @@ def merge_mappings(
 
         # Contraction with deletions - range contracts with None values
         >>> old = [MappingPos(pos=(0, 3))]
-        >>> new = [MappingPos(pos=(0, 1)), None, MappingPos(pos=(2, 5))]
+        >>> new = [MappingPos(pos=(0, 1)), MappingPos(pos=(1, 1), deleted=True), MappingPos(pos=(1, 5))]
         >>> result = merge_mappings(old, new)
-        # result: [MappingPos(pos=(0, 5))]  # spans first to last non-None
+        # result: [MappingPos(pos=(0, 5))]  # spans first to last
     """
 
     if mappings is None:
@@ -170,11 +165,6 @@ def get_mappings(
 ) -> MappingListType:
     """Generate character position mappings between original and transformed text.
 
-    This is the core mapping engine that analyzes character-level transformations using
-    Levenshtein opcodes to create precise position mappings. It tracks how each character
-    in the original text maps to its position in the transformed text, handling complex
-    operations like insertions, replacements, deletions, and their combinations.
-
     The function is essential for maintaining character-level precision in Quranic text
     processing, particularly when converting between Uthmani script and phonetic
     transcription. It can associate tajweed rules with affected character spans and
@@ -196,11 +186,12 @@ def get_mappings(
 
     Returns:
         List of MappingPos objects tracking character positions from original to
-        transformed text. Length matches original text length. None values indicate
-        deleted characters, while MappingPos objects contain position spans and
+        transformed text. Length matches original text length. `MappingPos(pos=(x, x), deleted=True)`
+        values indicate deleted characters, while MappingPos objects contain position spans and
         associated tajweed rules.
 
     Raises:
+        AssertionError: if one of the generated mappings is `None`
         ValueError: If mapping continuity validation fails (detected gaps in position
             mappings that should be contiguous).
 
@@ -225,13 +216,13 @@ def get_mappings(
         (3, 4)
 
         Quranic text transformation with alif elongation:
-        >>> text = "بِسْمِ لَّاهِ"
-        >>> new_text = "بِسْمِ لَّااهِ"
+        >>> text = "بِسْمِ لَّاهِ" # len 13
+        >>> new_text = "بِسْمِ لَّااهِ" # len 14
         >>> mappings = get_mappings(text, new_text)
         >>> len(mappings)  # Same length as original text
-        9
-        >>> mappings[8].pos  # Final character position
-        (26, 27)
+        13
+        >>> mappings[10].pos  # 2 beats madd
+        (10, 12)
 
         Complex transformation with existing mappings and tajweed rule:
         >>> existing_mappings = [MappingPos(pos=(0, 1)), MappingPos(pos=(1, 2))]
@@ -241,6 +232,8 @@ def get_mappings(
         >>> mappings = get_mappings(text, new_text, existing_mappings, tajweed_rule)
         >>> mappings[0].pos  # First 'a' maps to (0, 2) with tajweed rule
         (0, 2)
+        >>> mappings[0].tajweed_rules
+        NormalMadd()
 
         Character deletion:
         >>> text = "abcd"
