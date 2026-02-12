@@ -1,6 +1,7 @@
 from dataclasses import dataclass, field
 import re
 
+
 from .conv_base_operation import (
     ConversionOperation,
     sub_with_mapping,
@@ -11,6 +12,7 @@ from .conv_base_operation import (
 from .moshaf_attributes import MoshafAttributes
 from ..alphabet import uthmani as uth
 from ..alphabet import phonetics as ph
+from .tajweed_rulses import NormalMaddRule
 
 
 @dataclass
@@ -76,17 +78,13 @@ class DisassembleHrofMoqatta(ConversionOperation):
             last_pos = 0
             # Adding mapping offsets
             for idx in range(start_idx, end_idx):
-                if disc_map[ptr] is None:
-                    mappings[idx] = None
-                else:
-                    # Avoiding copyiing object by refrence
-                    mappings[idx] = MappingPos(
-                        pos=(
-                            disc_map[ptr].pos[0] + start_offset,
-                            disc_map[ptr].pos[1] + start_offset,
-                        )
-                    )
-                    last_pos = mappings[idx].pos[1]
+                # Avoiding copyiing object by refrence
+                mappings[idx].pos = (
+                    disc_map[ptr].pos[0] + start_offset,
+                    disc_map[ptr].pos[1] + start_offset,
+                )
+                mappings[idx].deleted = disc_map[ptr].deleted
+                last_pos = mappings[idx].pos[1]
                 ptr += 1
 
             end = (
@@ -94,20 +92,15 @@ class DisassembleHrofMoqatta(ConversionOperation):
                 if (re_idx + 1) == len(re_outs)
                 else re_outs[idx + 1].span()[0]
             )
-            # Shifting the rest of position to the rigth
+            # Shifting the rest of position to the right
             offset = None
             for idx in range(end_idx, end):
-                if (offset is not None) and (mappings[idx] is not None):
-                    mappings[idx].pos = (
-                        mappings[idx].pos[0] + offset,
-                        mappings[idx].pos[1] + offset,
-                    )
-                elif mappings[idx] is not None:
+                if offset is None:
                     offset = last_pos - mappings[idx].pos[0]
-                    mappings[idx].pos = (
-                        mappings[idx].pos[0] + offset,
-                        mappings[idx].pos[1] + offset,
-                    )
+                mappings[idx].pos = (
+                    mappings[idx].pos[0] + offset,
+                    mappings[idx].pos[1] + offset,
+                )
 
         return mappings
 
@@ -127,7 +120,11 @@ class DisassembleHrofMoqatta(ConversionOperation):
             mappings.append(MappingPos(pos=(ph_start, ph_end)))
             # Deleting madd sign
             for c in chars[1:]:
-                mappings.append(None)
+                mappings.append(
+                    MappingPos(
+                        pos=(mappings[-1].pos[1], mappings[-1].pos[1]), deleted=True
+                    )
+                )
 
             uth_start += len(chars)
 
@@ -722,6 +719,7 @@ class MaddPattern:
     pattern: str
     target: str
     madd: str
+    name: str
 
 
 @dataclass
@@ -741,16 +739,19 @@ class Madd(ConversionOperation):
                 pattern=f"({uth.fatha}){uth.alif}",
                 target=ph.alif,
                 madd=uth.alif,
+                name="alif",
             ),
             "dam": MaddPattern(
                 pattern=f"({uth.dama}){uth.waw}",
                 target=ph.waw_madd,
                 madd=uth.waw,
+                name="waw",
             ),
             "kasr": MaddPattern(
                 pattern=f"({uth.kasra}){uth.yaa}",
                 target=ph.yaa_madd,
                 madd=uth.yaa,
+                name="yaa",
             ),
         }
     )
@@ -854,6 +855,7 @@ class Madd(ConversionOperation):
                 r"\1" + 2 * madd_patt.target,
                 text,
                 mappings,
+                tajweed_rule=NormalMaddRule(tag=madd_patt.name),
             )
 
         return text, mappings

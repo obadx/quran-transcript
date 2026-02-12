@@ -1,5 +1,6 @@
 from quran_transcript.phonetics.phonetizer import quran_phonetizer
 from quran_transcript import Aya, MoshafAttributes
+from pyinstrument import Profiler
 
 
 if __name__ == "__main__":
@@ -12,18 +13,23 @@ if __name__ == "__main__":
     )
     aya = Aya()
     aya = Aya(1, 1)
-    # aya = Aya(2, 1)
+    # aya = Aya(12, 1)
+    aya = Aya(2, 1)
+    aya = Aya(19, 1)
     # aya = Aya(75, 27)
-    # aya = Aya(2, 6)
+    aya = Aya(2, 6)
     # aya = Aya(3, 1)
     # aya = Aya(30, 28)
-    aya = Aya(2, 9)
+    # aya = Aya(2, 9)
     uth_text = aya.get().uthmani
 
     # uth_text = aya.get_by_imlaey_words(start=7, window=2).uthmani
     # uth_text = "لَكُم مَّا"
 
+    profiler = Profiler()
+    profiler.start()
     ph_out = quran_phonetizer(uth_text, moshaf)
+    profiler.stop()
     ph_text = ph_out.phonemes
     print(uth_text)
     print(ph_out.phonemes)
@@ -38,6 +44,7 @@ if __name__ == "__main__":
 
         print("-" * 40)
 
+    print(profiler.output_text(unicode=True, color=True, show_all=True))
     """
     * meem moshaddah
     * Lam Ism Allah should be deleted at [8] [Not the best thing but works]

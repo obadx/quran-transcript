@@ -1,20 +1,19 @@
-from quran_transcript.phonetics.tajweed_rulses import NormalMaddRule
 from quran_transcript.phonetics.error_explainer import ReciterError, explain_error
-from quran_transcript.phonetics.conv_base_operation import MappingPos
+
+from quran_transcript import quran_phonetizer, MoshafAttributes
 
 
 if __name__ == "__main__":
-    normal_madd_alif = NormalMaddRule(tag="alif")
-    normal_madd_waw = NormalMaddRule(tag="waw")
-    uthmani_text = "قالوا"
-    ref_mapping = [
-        MappingPos(pos=(0, 1)),
-        MappingPos(pos=(1, 3), tajweed_rules=[normal_madd_alif]),
-        MappingPos(pos=(3, 4)),
-        MappingPos(pos=(4, 6), tajweed_rules=[normal_madd_waw]),
-        None,
-    ]
-    ref_ph_text = "قاالۥۥ"
+    uthmani_text = "قَالُوٓا۟"
+
+    moshaf = MoshafAttributes(
+        rewaya="hafs",
+        madd_monfasel_len=4,
+        madd_mottasel_len=4,
+        madd_mottasel_waqf=4,
+        madd_aared_len=4,
+    )
+    ref_ph_out = quran_phonetizer(uthmani_text, moshaf)
 
     predicted_text = "كالۥۥ"
     predicted_text = "فكالۥۥ"
@@ -22,9 +21,9 @@ if __name__ == "__main__":
 
     errors = explain_error(
         uthmani_text=uthmani_text,
-        ref_ph_text=ref_ph_text,
+        ref_ph_text=ref_ph_out.phonemes,
         predicted_ph_text=predicted_text,
-        mappings=ref_mapping,
+        mappings=ref_ph_out.mappings,
     )
     for err in errors:
         print(err)
