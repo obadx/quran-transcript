@@ -18,6 +18,7 @@ if __name__ == "__main__":
     aya = Aya(19, 1)
     # aya = Aya(75, 27)
     aya = Aya(2, 6)
+    aya = Aya(2, 7)
     # aya = Aya(3, 1)
     # aya = Aya(30, 28)
     # aya = Aya(2, 9)
@@ -25,6 +26,8 @@ if __name__ == "__main__":
 
     # uth_text = aya.get_by_imlaey_words(start=7, window=2).uthmani
     # uth_text = "لَكُم مَّا"
+    uth_text = "غِشَـٰوَةٌۭ وَلَهُمْ"
+    uth_text = "قَلِيلًۭا مِّمَّا"
 
     profiler = Profiler()
     profiler.start()

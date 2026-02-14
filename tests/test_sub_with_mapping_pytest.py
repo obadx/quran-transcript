@@ -12,6 +12,10 @@ from quran_transcript.phonetics.conv_base_operation import (
     get_mappings,
     MappingListType,
 )
+from quran_transcript.phonetics.search import (
+    get_uth_word_boundaries_in_ph,
+    clean_uthmani_spaces,
+)
 
 from quran_transcript.phonetics.tajweed_rulses import NormalMaddRule, Qalqalah
 # Import the sub_with_mapping function from the existing test file
@@ -921,6 +925,75 @@ class TestMergeMappings:
                 MappingPos(pos=(26, 26), tajweed_rules=None, deleted=True),
             ],
         ),
+        (
+            "غِشَـٰوَةٌۭ وَلَهُمْ",
+            "غِشَااوَتُوووَلَهُم",
+            [
+                MappingPos(pos=(0, 1), tajweed_rules=None, deleted=False),
+                MappingPos(pos=(1, 2), tajweed_rules=None, deleted=False),
+                MappingPos(pos=(2, 3), tajweed_rules=None, deleted=False),
+                MappingPos(pos=(3, 4), tajweed_rules=None, deleted=False),
+                MappingPos(pos=(4, 4), tajweed_rules=None, deleted=True),
+                MappingPos(
+                    pos=(4, 6),
+                    tajweed_rules=[NormalMaddRule(tag="alif")],
+                ),
+                MappingPos(pos=(6, 7), tajweed_rules=None, deleted=False),
+                MappingPos(pos=(7, 8), tajweed_rules=None, deleted=False),
+                MappingPos(pos=(8, 9), tajweed_rules=None, deleted=False),
+                MappingPos(pos=(9, 12), tajweed_rules=None, deleted=False),
+                MappingPos(
+                    pos=(12, 12), tajweed_rules=None, deleted=True
+                ),  # determiner
+                MappingPos(pos=(12, 12), tajweed_rules=None, deleted=True),  # space
+                MappingPos(pos=(12, 13), tajweed_rules=None, deleted=False),
+                MappingPos(pos=(13, 14), tajweed_rules=None, deleted=False),
+                MappingPos(pos=(14, 15), tajweed_rules=None, deleted=False),
+                MappingPos(pos=(15, 16), tajweed_rules=None, deleted=False),
+                MappingPos(pos=(16, 17), tajweed_rules=None, deleted=False),
+                MappingPos(pos=(17, 18), tajweed_rules=None, deleted=False),
+                MappingPos(pos=(18, 19), tajweed_rules=None, deleted=False),
+                MappingPos(pos=(19, 19), tajweed_rules=None, deleted=True),
+            ],
+        ),
+        (
+            "قَلِيلًۭا مِّمَّا",
+            "قَلِۦۦلَممممِممممَاا",
+            [
+                MappingPos(pos=(0, 1), tajweed_rules=None, deleted=False),
+                MappingPos(pos=(1, 2), tajweed_rules=None, deleted=False),
+                MappingPos(pos=(2, 3), tajweed_rules=None, deleted=False),
+                MappingPos(pos=(3, 4), tajweed_rules=None, deleted=False),
+                MappingPos(
+                    pos=(4, 6),
+                    tajweed_rules=[
+                        NormalMaddRule(
+                            tag="yaa",
+                        )
+                    ],
+                ),
+                MappingPos(pos=(6, 7), tajweed_rules=None, deleted=False),
+                MappingPos(pos=(7, 8), tajweed_rules=None, deleted=False),
+                MappingPos(pos=(8, 8), tajweed_rules=None, deleted=True),
+                MappingPos(pos=(8, 8), tajweed_rules=None, deleted=True),
+                MappingPos(pos=(8, 8), tajweed_rules=None, deleted=True),
+                MappingPos(pos=(8, 12), tajweed_rules=None, deleted=False),
+                MappingPos(pos=(12, 12), tajweed_rules=None, deleted=True),
+                MappingPos(pos=(12, 13), tajweed_rules=None, deleted=False),
+                MappingPos(pos=(13, 17), tajweed_rules=None, deleted=False),
+                MappingPos(pos=(17, 17), tajweed_rules=None, deleted=True),
+                MappingPos(pos=(17, 18), tajweed_rules=None, deleted=False),
+                MappingPos(
+                    pos=(18, 20),
+                    tajweed_rules=[
+                        NormalMaddRule(
+                            tag="alif",
+                        )
+                    ],
+                    deleted=False,
+                ),
+            ],
+        ),
     ],
 )
 def test_phonetizer_with_mappings(
@@ -964,7 +1037,9 @@ def test_sub_with_mapping_stress_test():
     for aya in start_aya.get_ayat_after():
         uthmani_text = aya.get().uthmani
         print(f"UTH:\n{uthmani_text}")
-        ph_out = quran_phonetizer(uthmani_text, moshaf)
+        ph_out = quran_phonetizer(uthmani_text, moshaf, remove_spaces=True)
+        # Ensuring that space is not assigned to any mapping
+        get_uth_word_boundaries_in_ph(uthmani_text, ph_out.mappings)
 
 
 if __name__ == "__main__":

@@ -373,9 +373,19 @@ def get_mappings(
                 range(curr_op[1], curr_op[2]), range(curr_op[3], curr_op[4])
             ):
                 if new_mappings[old_idx] is None and old_idx not in to_del_poses:
-                    new_map_pos = MappingPos(pos=(new_idx, new_idx + 1))
-                    new_map_pos.add_tajweed_rule(tajweed_rule)
-                    new_mappings[old_idx] = new_map_pos
+                    if text[old_idx] != alph.uthmani.space:
+                        new_map_pos = MappingPos(pos=(new_idx, new_idx + 1))
+                        new_map_pos.add_tajweed_rule(tajweed_rule)
+                        new_mappings[old_idx] = new_map_pos
+                    else:
+                        # Move mappings assingesd to space to the last pos
+                        new_mappings[old_idx] = MappingPos(
+                            pos=(new_idx + 1, new_idx + 1), deleted=True
+                        )
+                        new_mappings[old_idx - 1].pos = (
+                            new_mappings[old_idx - 1].pos[0],
+                            new_idx + 1,
+                        )
 
         elif curr_op[0] == "equal":
             for old_idx, new_idx in zip(
@@ -395,6 +405,18 @@ def get_mappings(
 
     # TODO: remove this
     assert all(m is not None for m in new_mappings)
+
+    # Special case where we have Idgham tanween
+    # Special sympol `tanweed_idgham_detrminer` has no meaning moving it to the tanween
+    for re_out in re.finditer(f"{alph.uthmani.tanween_idhaam_dterminer}[^$]", text):
+        idx = re_out.span()[0]
+        if text[idx] != new_text[new_mappings[idx].pos[0]]:
+            new_mappings[idx - 1].pos = (
+                new_mappings[idx - 1].pos[0],
+                new_mappings[idx].pos[1],
+            )
+            new_mappings[idx].pos = new_mappings[idx].pos[1], new_mappings[idx].pos[1]
+            new_mappings[idx].deleted = True
 
     # This not optimal but in case of إدغام كامل we want to delete the first letter and leave the next one
     # for example:
