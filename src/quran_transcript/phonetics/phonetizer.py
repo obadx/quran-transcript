@@ -1,7 +1,7 @@
 import re
 from dataclasses import dataclass
 
-from .conv_base_operation import MappingPos, sub_with_mapping
+from .conv_base_operation import MappingPos, sub_with_mapping, MappingListType
 from .operations import OPERATION_ORDER
 from .moshaf_attributes import MoshafAttributes
 from .sifa import process_sifat, SifaOutput
@@ -12,7 +12,7 @@ from .. import alphabet as alph
 class QuranPhoneticScriptOutput:
     phonemes: str
     sifat: list[SifaOutput]
-    mappings: list[MappingPos | None]  # `None` for deletion
+    mappings: MappingListType  # `None` for deletion
     # TODO: Add mappings with sifat
 
 
