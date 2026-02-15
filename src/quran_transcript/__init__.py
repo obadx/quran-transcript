@@ -17,6 +17,12 @@ from .phonetics.phonetizer import quran_phonetizer, QuranPhoneticScriptOutput
 from .phonetics.sifa import SifaOutput, chunck_phonemes
 from .phonetics.moshaf_attributes import MoshafAttributes
 from .phonetics.conv_base_operation import MappingListType, MappingPos
+from .phonetics.search import (
+    PhonemesSearchSpan,
+    PhonmesSearhResult,
+    NoPhonemesSearchResult,
+    PhoneticSearch,
+)
 
 from . import alphabet as alphabet
 
@@ -44,4 +50,8 @@ __all__ = [
     "chunck_phonemes",
     "MappingListType",
     "MappingPos",
+    "PhonemesSearchSpan",
+    "PhonmesSearhResult",
+    "NoPhonemesSearchResult",
+    "PhoneticSearch",
 ]

@@ -216,7 +216,7 @@ class MappingPos:
 ### 📖 مثال على استخدام البحث الصوتي (Example of Phonetic Search)
 
 ```python
-from quran_transcript.phonetics.search import PhoneticSearch
+from quran_transcript import PhoneticSearch
 
 # إنشاء كائن البحث (سيحمل الفهرس تلقائياً)
 searcher = PhoneticSearch()
