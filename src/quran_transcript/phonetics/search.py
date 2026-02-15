@@ -14,15 +14,35 @@ from .conv_base_operation import MappingListType
 from .. import alphabet as alph
 
 
-def clean_uthmani_spaces(uth_text: str):
-    """remove residual spaces from the uthmani text"""
+def clean_uthmani_spaces(uth_text: str) -> str:
+    """Remove residual spaces from Uthmani text.
+
+    Replaces any whitespace sequence with the Uthmani space character,
+    and strips leading/trailing spaces.
+
+    Args:
+        uth_text: Raw Uthmani text possibly containing multiple spaces.
+
+    Returns:
+        Cleaned Uthmani text with single Uthmani spaces between words.
+    """
     uth_text = re.sub(r"\s+", f"{alph.uthmani.space}", uth_text)
     uth_text = re.sub(r"(\s$|^\s)", r"", uth_text)
     return uth_text
 
 
-def normalize_phonetic_groups(ph_groups: list[str]):
-    """Normalizing phonetic group level by selecting first index of evey phoneme group"""
+def normalize_phonetic_groups(ph_groups: list[str]) -> str:
+    """Normalize a list of phoneme groups by taking the first character of each group.
+
+    This is used to create a simplified phonetic representation where each group
+    (e.g., a consonant with diacritics) is reduced to its base character.
+
+    Args:
+        ph_groups: List of phoneme group strings.
+
+    Returns:
+        Concatenated string of the first character from each group.
+    """
     out = ""
     for g in ph_groups:
         out += g[0]
@@ -32,7 +52,19 @@ def normalize_phonetic_groups(ph_groups: list[str]):
 def get_uth_word_boundaries_in_ph(
     uth_text: str, mappings: MappingListType
 ) -> list[int]:
-    """gets the uthmani word boundary indices in the phonetic script using mappings from uthmani to phonetic script"""
+    """Get Uthmani word boundary indices in the phonetic script.
+
+    Uses the mapping from Uthmani characters to phonetic positions. Each Uthmani
+    space is expected to correspond to a deleted mapping entry, and the phonetic
+    start index of that deleted entry marks the word boundary.
+
+    Args:
+        uth_text: Uthmani text (spaces are explicit).
+        mappings: List of Mapping objects linking Uthmani indices to phonetic ranges.
+
+    Returns:
+        List of phonetic indices where each Uthmani word ends.
+    """
     boundries = []
     for idx in range(len(uth_text)):
         if uth_text[idx] == alph.uthmani.space:
@@ -44,6 +76,18 @@ def get_uth_word_boundaries_in_ph(
 
 
 def get_phonetic_to_char_uthmani(mappings: MappingListType) -> dict[int, int]:
+    """Create a mapping from phonetic index to Uthmani character index.
+
+    For each phonetic position, store the index of the Uthmani character it originated from.
+    Also adds an extra mapping for the position immediately after the last phonetic character
+    to the total number of Uthmani characters (as an exclusive end marker).
+
+    Args:
+        mappings: List of Mapping objects.
+
+    Returns:
+        Dictionary where keys are phonetic indices and values are Uthmani character indices.
+    """
     ph_to_uth = {}
     for uth_idx, m in enumerate(mappings):
         for ph_idx in range(m.pos[0], m.pos[1]):
@@ -53,11 +97,23 @@ def get_phonetic_to_char_uthmani(mappings: MappingListType) -> dict[int, int]:
 
 
 def create_phonemes_index(output_dir: Path | None = None):
-    """Creates Phonemes index as a 2D numpay array
+    """Create a phoneme index and reference phoneme string and save to disk.
 
-    every row is:
-    [sura_idx][aya_idx][uth_word_start_idx][uth char start idx][uth char end idx][ph start idx][ph end idx]
+    Iterates over all ayas, generates phonetic representation for each,
+    normalizes phoneme groups, and builds a 2D numpy array with the following
+    columns per phoneme group:
+        [sura_idx, aya_idx, uth_word_start_idx, uth_char_start_idx, uth_char_end_idx,
+         ph_start_idx, ph_end_idx]
 
+    Also writes the concatenated normalized phonemes to a text file as a reference.
+
+    TODO:
+        - Decide whether we need both uth_word_start_idx and uth_word_end_idx or just a single word index.
+        - Add handling for deleted Uthmani characters at the end.
+
+    Args:
+        output_dir: Directory where 'ph_index.npy' and 'ref_norm_ph.txt' will be saved.
+                    If None, defaults to the package's 'quran-script' folder.
     """
     moshaf = MoshafAttributes(
         rewaya="hafs",
@@ -145,7 +201,10 @@ def create_phonemes_index(output_dir: Path | None = None):
     print(f"Reference phonemes saved to {ref_ph_path}")
 
 
-class NoPhonemesSearchResult(Exception): ...
+class NoPhonemesSearchResult(Exception):
+    """Exception raised when no search results are found."""
+
+    pass
 
 
 @dataclass
@@ -153,25 +212,43 @@ class PhonemesSearchSpan:
     """Represents a position in the Uthmani Quran text.
 
     All indices are 0‑based except sura and aya which are 1‑based.
+
+    Attributes:
+        sura_idx: Sura number (1..114)
+        aya_idx: Aya number (1..)
+        uthmani_word_idx: 0‑based index of the word within the aya
+        uthmani_char_idx: 0‑based character index within the word
+                          (inclusive for start, exclusive for end)
+        phonemes_idx: 0‑based index in the phoneme sequence
+                      (inclusive for start, exclusive for end)
     """
 
-    sura_idx: int  # 1..114
-    aya_idx: int  # 1..
-    uthmani_word_idx: int  # 0‑based within the aya (inclusive)
-    uthmani_char_idx: (
-        int  # 0‑based within the word (inclusive in case of start & exclusive in end)
-    )
-    phonemes_idx: int  # 0‑based  (inclusive in case of start & exclusive in end)
+    sura_idx: int
+    aya_idx: int
+    uthmani_word_idx: int
+    uthmani_char_idx: int
+    phonemes_idx: int
 
 
 @dataclass
 class PhonmesSearhResult:
+    """Result of a phonetic search containing start and end spans.
+
+    Attributes:
+        start: Span marking the beginning of the match.
+        end: Span marking the end of the match (exclusive).
+    """
+
     start: PhonemesSearchSpan
     end: PhonemesSearchSpan
 
 
 class PhoneticSearch:
-    """Fuzzy search in the Quran phonetic script using precomputed index."""
+    """Fuzzy search in the Quran phonetic script using precomputed index.
+
+    Loads the index (ph_index.npy) and reference phoneme string (ref_norm_ph.txt)
+    and provides methods to search for phonetic patterns.
+    """
 
     def __init__(self, data_dir: Optional[Path] = None):
         """Load the index and reference phoneme string.
@@ -179,6 +256,10 @@ class PhoneticSearch:
         Args:
             data_dir: Directory containing 'ph_index.npy' and 'ref_norm_ph.txt'.
                       If None, uses the package's default 'quran-script' folder.
+
+        Raises:
+            FileNotFoundError: If either required file is missing.
+            ValueError: If reference length does not match index length.
         """
         if data_dir is None:
             data_dir = Path(pkg_resources.files("quran_transcript")) / "quran-script"
@@ -206,12 +287,31 @@ class PhoneticSearch:
             )
 
     def _normalize_query(self, query: str) -> str:
-        """Apply the same normalization to the query as was used for the index."""
+        """Apply the same normalization to the query as was used for the index.
+
+        Args:
+            query: Raw phonetic query string.
+
+        Returns:
+            Normalized query string (first character of each phoneme group).
+        """
         groups = chunck_phonemes(query)
         return normalize_phonetic_groups(groups)
 
     def _ref_idx_to_span(self, ref_idx: int, end=False) -> PhonemesSearchSpan:
-        """Convert a reference index (ph_idx_start) to a SearchSpan."""
+        """Convert a reference index (ph_idx_start) to a PhonemesSearchSpan.
+
+        Args:
+            ref_idx: Index into the reference phoneme string (and correspondingly into the index array).
+            end: If True, return the span using the uth_char_end_idx and ph_end_idx columns;
+                 otherwise use start columns.
+
+        Returns:
+            PhonemesSearchSpan corresponding to that reference position.
+
+        Raises:
+            IndexError: If ref_idx is out of range.
+        """
         if ref_idx < 0 or ref_idx >= len(self.index):
             raise IndexError(f"Reference index {ref_idx} out of range")
         row = self.index[ref_idx]
@@ -232,12 +332,25 @@ class PhoneticSearch:
     ) -> list[PhonmesSearhResult]:
         """Find all substrings in the Quran phonetic script that match the query.
 
+        Performs fuzzy matching using Levenshtein distance. The query is normalized
+        internally before searching.
+
+        TODO:
+            - Implement boundary restrictions with `start` and `window` parameters.
+
         Args:
-            query: Phonetic query string (will be normalized internally).
-            max_edits: Maximum allowed Levenshtein distance.
+            query: Phonetic query string (will be normalized).
+            start: Optional (sura, aya, word) tuple to limit search start.
+            window: Optional maximum number of phoneme groups to search from start.
+            error_ratio: Maximum allowed Levenshtein distance as a fraction of query length.
+                         Must be between 0 and 1.
 
         Returns:
-            tuple of (start_span, end_span) pairs. The end span is exclusive.
+            List of PhonmesSearhResult objects, each containing start and end spans.
+
+        Raises:
+            ValueError: If query is empty or error_ratio is out of bounds.
+            NoPhonemesSearchResult: If no matches are found.
         """
         if not query:
             raise ValueError("Query is longer then the Holy Quarn Text")
@@ -267,6 +380,17 @@ class PhoneticSearch:
         return results
 
     def get_uthmani_from_result(self, r: PhonmesSearhResult) -> str:
+        """Extract the Uthmani text corresponding to a search result.
+
+        Traverses ayas from the start to the end span and collects the relevant
+        Uthmani words, joining them with the Uthmani space character.
+
+        Args:
+            r: A PhonmesSearhResult object.
+
+        Returns:
+            Uthmani text snippet representing the matched portion.
+        """
         out_uth_words = []
         aya = Aya(r.start.sura_idx, r.start.aya_idx)
         start_word_idx = r.start.uthmani_word_idx
@@ -285,3 +409,4 @@ class PhoneticSearch:
                 aya = aya.step(1)
 
         return alph.uthmani.space.join(out_uth_words)
+
