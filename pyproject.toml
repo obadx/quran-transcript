@@ -19,6 +19,8 @@ dependencies = [
     "pydantic>=2.12.5",
     "xmltodict",
     'typing_extensions>=4.0.0; python_version < "3.11"',
+    "numpy>=2.2.6",
+    "fuzzysearch>=0.8.1",
 ]
 requires-python = ">=3.10"
 classifiers = [
@@ -47,6 +49,7 @@ Issues = "https://github.com/obadx/quran-transcript/issues"
 
 [project.scripts]
 mattr-docs = "quran_transcript.phonetics.generate_moshaf_docs:main"
+ph-ndx = "quran_transcript.phonetics.search:create_phonemes_index"
 
 # for addint data: https://setuptools.pypa.io/en/latest/userguide/datafiles.html#package-data
 [tool.setuptools.package-data]
