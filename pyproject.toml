@@ -20,6 +20,7 @@ dependencies = [
     "xmltodict",
     'typing_extensions>=4.0.0; python_version < "3.11"',
     "numpy>=2.2.6",
+    "fuzzysearch>=0.8.1",
 ]
 requires-python = ">=3.10"
 classifiers = [

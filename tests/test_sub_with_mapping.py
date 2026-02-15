@@ -19,6 +19,7 @@ if __name__ == "__main__":
     # aya = Aya(75, 27)
     aya = Aya(2, 6)
     aya = Aya(2, 7)
+    aya = Aya(27, 62)
     # aya = Aya(3, 1)
     # aya = Aya(30, 28)
     # aya = Aya(2, 9)
@@ -26,12 +27,13 @@ if __name__ == "__main__":
 
     # uth_text = aya.get_by_imlaey_words(start=7, window=2).uthmani
     # uth_text = "لَكُم مَّا"
-    uth_text = "غِشَـٰوَةٌۭ وَلَهُمْ"
-    uth_text = "قَلِيلًۭا مِّمَّا"
+    # uth_text = "غِشَـٰوَةٌۭ وَلَهُمْ"
+    # uth_text = "قَلِيلًۭا مِّمَّا"
+    # uth_text = "أَمَّن يُجِيبُ"
 
     profiler = Profiler()
     profiler.start()
-    ph_out = quran_phonetizer(uth_text, moshaf)
+    ph_out = quran_phonetizer(uth_text, moshaf, remove_spaces=True)
     profiler.stop()
     ph_text = ph_out.phonemes
     print(uth_text)
