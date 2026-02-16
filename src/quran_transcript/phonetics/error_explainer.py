@@ -22,8 +22,10 @@ class ReciterError:
     preditected_ph: str
     expected_len: Optional[int] | None = None
     predicted_len: Optional[int] | None = None
-    tajweed_rules: Optional[list[TajweedRule]] | None = None
-    predicted_tajweed_rules: Optional[list[TajweedRule]] | None = None
+    ref_tajweed_rules: Optional[list[TajweedRule]] | None = None
+    inserted_tajweed_rules: Optional[list[TajweedRule]] | None = None
+    replaced_tajweed_rules: Optional[list[TajweedRule]] | None = None
+    missing_tajweed_rules: Optional[list[TajweedRule]] | None = None
 
 
 @dataclass
@@ -131,16 +133,22 @@ def explain_error(
     )
 
     # Aligning Phonemes groups using first chat of  every one
-    alignmets = align_phonemes_groups(ref_ph_groups, pred_ph_groups)
+    alignments = align_phonemes_groups(ref_ph_groups, pred_ph_groups)
     errors = []
     pred_ph_start = 0
     ref_ph_start = 0
     pred_ph_end = 0
     ref_ph_end = 0
 
-    for align in alignmets:
-        ref_ph = ref_ph_groups[align.ref_idx]
-        pred_ph = pred_ph_groups[align.pred_idx]
+    for align in alignments:
+        if align.ref_idx < len(ref_ph_groups):
+            ref_ph = ref_ph_groups[align.ref_idx]
+        else:
+            ref_ph = ""
+        if align.pred_idx < len(pred_ph_groups):
+            pred_ph = pred_ph_groups[align.pred_idx]
+        else:
+            pred_ph = ""
         pred_ph_end = pred_ph_start + len(pred_ph)
 
         if align.op_type != "insert":
@@ -151,6 +159,7 @@ def explain_error(
             )
             ph_pos = (ref_ph_start, ref_ph_end)
         else:
+            # TODO: Make the uthmani posision more precise. Now we bound it to the aligments
             uthmani_pos = (
                 ref_ph_to_uthmani[ref_ph_start],
                 ref_ph_to_uthmani[ref_ph_start],
@@ -193,8 +202,8 @@ def explain_error(
                                 preditected_ph=pred_ph,
                                 expected_len=ref_len,
                                 predicted_len=pred_len,
-                                tajweed_rules=[taj_rule],
-                                predicted_tajweed_rules=[pred_taj_rule],
+                                ref_tajweed_rules=[taj_rule],
+                                replaced_tajweed_rules=[pred_taj_rule],
                             )
                         )
                     else:
@@ -206,7 +215,7 @@ def explain_error(
                                 speech_error_type="replace",
                                 expected_ph=ref_ph,
                                 preditected_ph=pred_ph,
-                                tajweed_rules=[taj_rule],
+                                ref_tajweed_rules=[taj_rule],
                             )
                         )
 
@@ -240,16 +249,17 @@ def explain_error(
             if ref_ph == pred_ph:
                 ...
             # We have Tajweed rule
-            elif ref_ph_groups_tajweed_rules[align.ref_idx] is not None:
+            elif ref_ph_groups_tajweed_rules[align.ref_idx]:
                 for taj_rule in ref_ph_groups_tajweed_rules[align.ref_idx]:
                     exp_len = None
                     pred_len = None
+                    missing_taj_rules = None
                     if taj_rule.correctness_type == "count":
                         pred_len = taj_rule.count(ref_ph, pred_ph)
                         exp_len = taj_rule.golden_len
-                    # TODO: What to do with `match`
                     elif taj_rule.correctness_type == "match":
-                        ...
+                        if not taj_rule.match(ref_ph, pred_ph):
+                            missing_taj_rules = [taj_rule]
                     else:
                         raise ValueError(
                             f"Invalid mathing type: `{taj_rule.correctness_type}`. Available: `match`, `count`"
@@ -264,14 +274,30 @@ def explain_error(
                             preditected_ph=pred_ph,
                             expected_len=exp_len,
                             predicted_len=pred_len,
-                            tajweed_rules=[taj_rule],
+                            ref_tajweed_rules=[taj_rule],
+                            missing_tajweed_rules=missing_taj_rules,
                         )
                     )
 
                 # Tashkeel (Harakat)
-                # TODO:
-            elif ref_ph_groups[align.ref_idx][-1] in alph.phonetic_groups.harakat:
-                ...
+            elif ref_ph[-1] in alph.phonetic_groups.harakat:
+                if len(pred_ph) > len(ref_ph):
+                    sp_tp = "insert"
+                elif len(pred_ph) < len(ref_ph):
+                    sp_tp = "delete"
+                else:
+                    sp_tp = "replace"
+
+                errors.append(
+                    ReciterError(
+                        uthmani_pos=uthmani_pos,
+                        ph_pos=ph_pos,
+                        error_type="tashkeel",
+                        speech_error_type=sp_tp,
+                        expected_ph=ref_ph,
+                        preditected_ph=pred_ph,
+                    )
+                )
 
             # TODO: imala, sakt, dammao momala
             elif ref_ph_groups[align.ref_idx][-1] in alph.phonetic_groups.residuals:
