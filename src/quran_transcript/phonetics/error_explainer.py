@@ -9,7 +9,7 @@ import Levenshtein as lv
 
 
 from .tajweed_rulses import TajweedRule, NormalMaddRule
-from .conv_base_operation import MappingPos
+from .conv_base_operation import MappingPos, MappingListType
 
 
 @dataclass
@@ -77,46 +77,47 @@ def align_phonemes_groups(
 
 
 def extract_ref_phonetic_to_uthmani(
-    mappings: list[MappingPos | None],
+    mappings: MappingListType,
 ) -> dict[int, int]:
     ref_ph_to_uthmani = {}
     for idx, map_pos in enumerate(mappings):
-        if map_pos is not None:
-            for ph_idx in range(*map_pos.pos):
-                if ph_idx in ref_ph_to_uthmani:
-                    raise ValueError(
-                        f"Same phonetic scripts has multiple uthmani script. Phonetic posision: `{ph_idx}`, Uthmani Poses: `{ref_ph_to_uthmani[ph_idx]}, {idx}`"
-                    )
-                else:
-                    ref_ph_to_uthmani[ph_idx] = idx
+        for ph_idx in range(*map_pos.pos):
+            if ph_idx in ref_ph_to_uthmani:
+                raise ValueError(
+                    f"Same phonetic scripts has multiple uthmani script. Phonetic posision: `{ph_idx}`, Uthmani Poses: `{ref_ph_to_uthmani[ph_idx]}, {idx}`"
+                )
+            else:
+                ref_ph_to_uthmani[ph_idx] = idx
     return ref_ph_to_uthmani
 
 
 def get_ref_phonetic_groups_tajweed_rules(
     ref_ph_groups: list[str],
-    mappings: list[MappingPos | None],
+    mappings: MappingListType,
     ref_ph_to_uthmani: dict[int, int],
-) -> list[None | list[TajweedRule]]:
-    ref_tajweed_rules = [None] * len(ref_ph_groups)
+) -> list[list[TajweedRule]]:
+    ref_tajweed_rules: list[TajweedRule] = [[] for _ in range(len(ref_ph_groups))]
     start = 0
     end = 0
-    # Computing Tajweed rules
-    # TODO: O(n^2) too bad should be O(n)
+    # Computing Tajweed rules O(len(ref_ph_text))
     for ph_g_idx, ph_g in enumerate(ref_ph_groups):
         end += len(ph_g)
-        for map_pos in mappings:
-            if map_pos is not None:
-                if start >= map_pos.pos[0] and end <= map_pos.pos[1]:
-                    if ref_tajweed_rules[ph_g_idx] is None:
-                        ref_tajweed_rules[ph_g_idx] = map_pos.tajweed_rules
-                    else:
-                        ref_tajweed_rules[ph_g_idx] += map_pos.tajweed_rules
+        used_uth_ids = set()
+        for ph_idx in range(start, end):
+            uth_idx = ref_ph_to_uthmani[ph_idx]
+            if uth_idx not in used_uth_ids:
+                used_uth_ids.add(uth_idx)
+                if mappings[uth_idx].tajweed_rules:
+                    ref_tajweed_rules[ph_g_idx].extend(mappings[uth_idx].tajweed_rules)
         start = end
     return ref_tajweed_rules
 
 
 def explain_error(
-    uthmani_text, ref_ph_text, predicted_ph_text, mappings: list[MappingPos | None]
+    uthmani_text: str,
+    ref_ph_text: str,
+    predicted_ph_text: str,
+    mappings: MappingListType,
 ) -> list[ReciterError]:
     """ """
     ref_ph_groups = chunck_phonemes(ref_ph_text)
@@ -171,7 +172,7 @@ def explain_error(
 
         elif align.op_type == "replace":
             pred_rules = []
-            if ref_ph_groups_tajweed_rules[align.ref_idx] is not None:
+            if ref_ph_groups_tajweed_rules[align.ref_idx]:
                 for taj_rule in ref_ph_groups_tajweed_rules[align.ref_idx]:
                     pred_taj_rule = taj_rule.get_relvant_rule(pred_ph)
                     if pred_taj_rule is not None:
@@ -283,30 +284,3 @@ def explain_error(
         ref_ph_start = ref_ph_end
 
     return errors
-
-
-if __name__ == "__main__":
-    uthmani_text = "قالوا"
-    ph_text = "قاالۥۥ"
-    predicted_text = "كالۥۥ"
-    predicted_text = "فكالۥۥ"
-    predicted_text = "فكۥۥلۥۥ"
-
-    normal_madd_alif = NormalMaddRule(tag="alif")
-    normal_madd_waw = NormalMaddRule(tag="waw")
-
-    mapping = [
-        MappingPos(pos=(0, 1)),
-        MappingPos(pos=(1, 3), tajweed_rules=[normal_madd_alif]),
-        MappingPos(pos=(3, 4)),
-        MappingPos(pos=(4, 6), tajweed_rules=[normal_madd_waw]),
-        None,
-    ]
-    errors = explain_error(
-        uthmani_text=uthmani_text,
-        ref_ph_text=ph_text,
-        predicted_ph_text=predicted_text,
-        mappings=mapping,
-    )
-    for err in errors:
-        print(err)

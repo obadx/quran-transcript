@@ -441,6 +441,35 @@ def get_mappings(
 
     new_mappings = merge_mappings(mappings, new_mappings)
 
+    # Special case where skoon sign is repaced with qalalah sign
+    # We want the qalqlah sign associated with the letter it self not the
+    # Did not want that but no way to solve exept with this
+    for re_out in re.finditer(
+        f"[^{alph.uthmani.ras_haaa}{alph.uthmani.shadda}]({alph.phonetics.qlqla})",
+        new_text,
+    ):
+        qlq_idx = re_out.span(1)[0]
+        char_idx = qlq_idx - 1
+        # getting skon or shadda idx in the merged mappings
+        m_idx = 0
+        for m_idx in range(len(new_mappings)):
+            if new_mappings[m_idx].pos[0] == qlq_idx:
+                break
+        # Avodig the case where we have qalqlah at the end with no (shadda or skonJ)
+        if new_mappings[m_idx - 1].tajweed_rules is None:
+            print("here")
+            new_mappings[m_idx - 1].pos = (
+                new_mappings[m_idx - 1].pos[0],
+                new_mappings[m_idx].pos[1],
+            )
+            new_mappings[m_idx - 1].tajweed_rules = new_mappings[m_idx].tajweed_rules
+            new_mappings[m_idx].pos = (
+                new_mappings[m_idx].pos[1],
+                new_mappings[m_idx].pos[1],
+            )
+            new_mappings[m_idx].deleted = True
+            new_mappings[m_idx].tajweed_rules = None
+
     # TODO: remove this
     curr_m = None
     next_m = None
@@ -579,6 +608,7 @@ def sub_with_mapping(
 class ConversionOperation:
     regs: list[tuple[str, str]] | tuple[str, str]
     arabic_name: str
+    tajweed_rules: list[TajweedRule | None] | TajweedRule | None = None
     ops_before: list["ConversionOperation"] | None = None
 
     def __post_init__(self):
@@ -588,14 +618,22 @@ class ConversionOperation:
         if self.ops_before is None:
             self.ops_before = []
 
+        if self.tajweed_rules:
+            if not isinstance(self.tajweed_rules, list):
+                self.tajweed_rules = [self.tajweed_rules]
+        else:
+            self.tajweed_rules = [None for _ in range(len(self.regs))]
+
     def forward(
         self,
         text,
         moshaf: MoshafAttributes,
         mappings: MappingListType | None = None,
     ) -> tuple[str, MappingListType]:
-        for input_reg, out_reg in self.regs:
-            text, mappings = sub_with_mapping(input_reg, out_reg, text, mappings)
+        for (input_reg, out_reg), taj_rule in zip(self.regs, self.tajweed_rules):
+            text, mappings = sub_with_mapping(
+                input_reg, out_reg, text, mappings, tajweed_rule=taj_rule
+            )
         return text, mappings
 
     def apply(

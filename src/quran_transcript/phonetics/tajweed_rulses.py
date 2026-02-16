@@ -54,6 +54,9 @@ class Qalqalah(TajweedRule):
     golden_len: int = 0
     correctness_type: Literal["match", "count"] = "match"
 
+    def match(self, ref_text, pred_text) -> bool:
+        return ref_text == pred_text
+
     def is_ph_str_in(self, ph_str: str) -> bool:
         """Whether the phonetic script is assoicated with this Tajweed rule or not"""
         return True

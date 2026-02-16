@@ -17,8 +17,10 @@ if __name__ == "__main__":
 
     predicted_text = "كالۥۥ"
     predicted_text = "فكالۥۥ"
-    predicted_text = "فكۥۥلۥۥ"
+    # predicted_text = "فكۥۥلۥۥ"
 
+    print(ref_ph_out.phonemes)
+    print(predicted_text)
     errors = explain_error(
         uthmani_text=uthmani_text,
         ref_ph_text=ref_ph_out.phonemes,
@@ -27,3 +29,4 @@ if __name__ == "__main__":
     )
     for err in errors:
         print(err)
+        print("-" * 50)

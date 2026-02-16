@@ -12,7 +12,7 @@ from .conv_base_operation import (
 from .moshaf_attributes import MoshafAttributes
 from ..alphabet import uthmani as uth
 from ..alphabet import phonetics as ph
-from .tajweed_rulses import NormalMaddRule
+from .tajweed_rulses import NormalMaddRule, Qalqalah, TajweedRule
 
 
 @dataclass
@@ -868,6 +868,7 @@ class Qalqla(ConversionOperation):
         f"([{uth.qlqla_group}](?:{uth.shadda}$|{uth.ras_haaa}|$))",
         r"\1" + ph.qlqla,
     )
+    tajweed_rules: TajweedRule = field(default_factory=lambda: Qalqalah())
     ops_before: list[ConversionOperation] = field(
         default_factory=lambda: [
             CleanEnd(),

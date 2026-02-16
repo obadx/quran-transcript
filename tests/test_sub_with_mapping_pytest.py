@@ -994,6 +994,61 @@ class TestMergeMappings:
                 ),
             ],
         ),
+        (
+            "لَمْ يَلِدْ وَلَمْ يُولَدْ",
+            "لَم يَلِدڇ وَلَم يُۥۥلَدڇ",
+            [
+                MappingPos(pos=(0, 1), tajweed_rules=None, deleted=False),
+                MappingPos(pos=(1, 2), tajweed_rules=None, deleted=False),
+                MappingPos(pos=(2, 3), tajweed_rules=None, deleted=False),
+                MappingPos(pos=(3, 3), tajweed_rules=None, deleted=True),
+                MappingPos(pos=(3, 4), tajweed_rules=None, deleted=False),
+                MappingPos(pos=(4, 5), tajweed_rules=None, deleted=False),
+                MappingPos(pos=(5, 6), tajweed_rules=None, deleted=False),
+                MappingPos(pos=(6, 7), tajweed_rules=None, deleted=False),
+                MappingPos(pos=(7, 8), tajweed_rules=None, deleted=False),
+                MappingPos(pos=(8, 10), tajweed_rules=[Qalqalah()]),
+                MappingPos(pos=(10, 10), tajweed_rules=None, deleted=True),
+                MappingPos(pos=(10, 11), tajweed_rules=None, deleted=False),
+                MappingPos(pos=(11, 12), tajweed_rules=None, deleted=False),
+                MappingPos(pos=(12, 13), tajweed_rules=None, deleted=False),
+                MappingPos(pos=(13, 14), tajweed_rules=None, deleted=False),
+                MappingPos(pos=(14, 15), tajweed_rules=None, deleted=False),
+                MappingPos(pos=(15, 16), tajweed_rules=None, deleted=False),
+                MappingPos(pos=(16, 16), tajweed_rules=None, deleted=True),
+                MappingPos(pos=(16, 17), tajweed_rules=None, deleted=False),
+                MappingPos(pos=(17, 18), tajweed_rules=None, deleted=False),
+                MappingPos(pos=(18, 19), tajweed_rules=None, deleted=False),
+                MappingPos(
+                    pos=(19, 21),
+                    tajweed_rules=[
+                        NormalMaddRule(
+                            tag="waw",
+                        )
+                    ],
+                ),
+                MappingPos(pos=(21, 22), tajweed_rules=None, deleted=False),
+                MappingPos(pos=(22, 23), tajweed_rules=None, deleted=False),
+                MappingPos(
+                    pos=(23, 25),
+                    tajweed_rules=[Qalqalah()],
+                ),
+                MappingPos(pos=(25, 25), tajweed_rules=None, deleted=True),
+            ],
+        ),
+        (
+            "قَرِيبٌ",
+            "قَرِۦۦۦۦبڇ",
+            [
+                MappingPos(pos=(0, 1), tajweed_rules=None, deleted=False),
+                MappingPos(pos=(1, 2), tajweed_rules=None, deleted=False),
+                MappingPos(pos=(2, 3), tajweed_rules=None, deleted=False),
+                MappingPos(pos=(3, 4), tajweed_rules=None, deleted=False),
+                MappingPos(pos=(4, 8), tajweed_rules=None, deleted=False),
+                MappingPos(pos=(8, 10), tajweed_rules=[Qalqalah()]),
+                MappingPos(pos=(10, 10), tajweed_rules=None, deleted=True),
+            ],
+        ),
     ],
 )
 def test_phonetizer_with_mappings(
