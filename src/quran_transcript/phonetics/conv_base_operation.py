@@ -406,6 +406,21 @@ def get_mappings(
     # TODO: remove this
     assert all(m is not None for m in new_mappings)
 
+    # Special Case where we want to assgin the tag for Leen Madd
+    for m_idx in range(len(new_mappings)):
+        if new_mappings[m_idx].tajweed_rules:
+            for taj_idx in range(len(new_mappings[m_idx].tajweed_rules)):
+                if (
+                    new_mappings[m_idx].tajweed_rules[taj_idx].name.en == "Leen Madd"
+                    and new_mappings[m_idx].tajweed_rules[taj_idx].tag is None
+                ):
+                    tag = (
+                        new_mappings[m_idx]
+                        .tajweed_rules[taj_idx]
+                        ._madd_to_tag[new_text[new_mappings[m_idx].pos[0]]]
+                    )
+                    new_mappings[m_idx].tajweed_rules[taj_idx].tag = tag
+
     # Special case where we have Idgham tanween
     # Special sympol `tanweed_idgham_detrminer` has no meaning moving it to the tanween
     for re_out in re.finditer(f"{alph.uthmani.tanween_idhaam_dterminer}[^$]", text):

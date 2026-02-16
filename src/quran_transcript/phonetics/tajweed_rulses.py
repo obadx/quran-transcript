@@ -63,7 +63,12 @@ class Qalqalah(TajweedRule):
 
     def get_relvant_rule(self, ph_str: str) -> Optional["TajweedRule"]:
         """Returs a Tajweed rule that is assocaited with the input ph_str"""
-        return self
+        if not ph_str:
+            return None
+        elif ph_str[-1] == alph.phonetics.qlqla:
+            return self
+        else:
+            return None
 
 
 @dataclass
@@ -98,7 +103,7 @@ class MaddRule(TajweedRule):
     def get_relvant_rule(self, ph_str: str) -> Optional["TajweedRule"]:
         """Returs a Tajweed rule that is assocaited with the input ph_str"""
         if not ph_str:
-            raise ValueError("Empty String")
+            return None
         elif ph_str[0] not in self._madd_to_tag:
             return None
         return replace(self, tag=self._madd_to_tag[ph_str[0]])
@@ -110,6 +115,71 @@ class NormalMaddRule(MaddRule):
         default_factory=lambda: LangName(ar="المد الطبيعي", en="Normal Madd")
     )
     golden_len: int = 2
+
+
+@dataclass
+class MonfaselMaddRule(MaddRule):
+    name: LangName = field(
+        default_factory=lambda: LangName(ar="المد المنفصل", en="Monfasel Madd")
+    )
+    golden_len: int = 4
+
+
+@dataclass
+class MottaselMaddPauseRule(MaddRule):
+    name: LangName = field(
+        default_factory=lambda: LangName(
+            ar="المد المتصل وقفا", en="Mottasel Madd at Pause"
+        )
+    )
+    golden_len: int = 4
+
+
+@dataclass
+class MottaselMaddRule(MaddRule):
+    name: LangName = field(
+        default_factory=lambda: LangName(ar="المد المتصل", en="Mottasel Madd")
+    )
+    golden_len: int = 4
+
+
+@dataclass
+class LazemMaddRule(MaddRule):
+    name: LangName = field(
+        default_factory=lambda: LangName(ar="المد اللازم", en="Lazem Madd")
+    )
+    golden_len: int = 6
+
+
+@dataclass
+class AaredMaddRule(MaddRule):
+    name: LangName = field(
+        default_factory=lambda: LangName(ar="المد العارض للسكون", en="Aared Madd")
+    )
+    golden_len: int = 4
+
+
+@dataclass
+class LeenMaddRule(MaddRule):
+    name: LangName = field(
+        default_factory=lambda: LangName(ar="مد اللين", en="Leen Madd")
+    )
+    golden_len: int = 4
+
+    def __post_init__(self):
+        self.available_tags = {"waw", "yaa"}
+        super().__post_init__()
+        self._madd_to_tag = {
+            alph.phonetics.waw: "waw",
+            alph.phonetics.yaa: "yaa",
+        }
+
+    def count(self, ref_text, pred_text) -> int:
+        # The case where we have Tashkeel after madd (Error from the model)
+        if pred_text[-1] != pred_text[0]:
+            return pred_text[:-1].count(ref_text[0]) + 1
+        else:
+            return pred_text.count(ref_text[0]) + 1
 
 
 # TODO:

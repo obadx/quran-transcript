@@ -17,7 +17,11 @@ from quran_transcript.phonetics.search import (
     clean_uthmani_spaces,
 )
 
-from quran_transcript.phonetics.tajweed_rulses import NormalMaddRule, Qalqalah
+from quran_transcript.phonetics.tajweed_rulses import (
+    NormalMaddRule,
+    Qalqalah,
+    LeenMaddRule,
+)
 # Import the sub_with_mapping function from the existing test file
 
 
@@ -1047,6 +1051,35 @@ class TestMergeMappings:
                 MappingPos(pos=(4, 8), tajweed_rules=None, deleted=False),
                 MappingPos(pos=(8, 10), tajweed_rules=[Qalqalah()]),
                 MappingPos(pos=(10, 10), tajweed_rules=None, deleted=True),
+            ],
+        ),
+        (
+            "لِإِيلَـٰفِ قُرَيْشٍ",
+            "لِءِۦۦلَاافِ قُرَيييش",
+            [
+                MappingPos(pos=(0, 1), tajweed_rules=None, deleted=False),
+                MappingPos(pos=(1, 2), tajweed_rules=None, deleted=False),
+                MappingPos(pos=(2, 3), tajweed_rules=None, deleted=False),
+                MappingPos(pos=(3, 4), tajweed_rules=None, deleted=False),
+                MappingPos(pos=(4, 6), tajweed_rules=[NormalMaddRule(tag="yaa")]),
+                MappingPos(pos=(6, 7), tajweed_rules=None, deleted=False),
+                MappingPos(pos=(7, 8), tajweed_rules=None, deleted=False),
+                MappingPos(pos=(8, 8), tajweed_rules=None, deleted=True),
+                MappingPos(pos=(8, 10), tajweed_rules=[NormalMaddRule(tag="alif")]),
+                MappingPos(pos=(10, 11), tajweed_rules=None, deleted=False),
+                MappingPos(pos=(11, 12), tajweed_rules=None, deleted=False),
+                MappingPos(pos=(12, 13), tajweed_rules=None, deleted=False),
+                MappingPos(pos=(13, 14), tajweed_rules=None, deleted=False),
+                MappingPos(pos=(14, 15), tajweed_rules=None, deleted=False),
+                MappingPos(pos=(15, 16), tajweed_rules=None, deleted=False),
+                MappingPos(pos=(16, 17), tajweed_rules=None, deleted=False),
+                MappingPos(
+                    pos=(17, 20),
+                    tajweed_rules=[LeenMaddRule(golden_len=4, tag="yaa")],
+                ),
+                MappingPos(pos=(20, 20), tajweed_rules=None, deleted=True),
+                MappingPos(pos=(20, 21), tajweed_rules=None, deleted=False),
+                MappingPos(pos=(21, 21), tajweed_rules=None, deleted=True),
             ],
         ),
     ],

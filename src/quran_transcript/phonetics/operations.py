@@ -12,7 +12,17 @@ from .conv_base_operation import (
 from .moshaf_attributes import MoshafAttributes
 from ..alphabet import uthmani as uth
 from ..alphabet import phonetics as ph
-from .tajweed_rulses import NormalMaddRule, Qalqalah, TajweedRule
+from .tajweed_rulses import (
+    TajweedRule,
+    Qalqalah,
+    NormalMaddRule,
+    MonfaselMaddRule,
+    MottaselMaddPauseRule,
+    MottaselMaddRule,
+    LazemMaddRule,
+    AaredMaddRule,
+    LeenMaddRule,
+)
 
 
 @dataclass
@@ -769,6 +779,7 @@ class Madd(ConversionOperation):
             r"\1" + ph.alif * moshaf.madd_monfasel_len + r"\2",
             text,
             mappings,
+            MonfaselMaddRule(golden_len=moshaf.madd_monfasel_len, tag="alif"),
         )
         # normal
         for k, madd_patt in self.madd_map.items():
@@ -777,6 +788,9 @@ class Madd(ConversionOperation):
                 r"\1" + moshaf.madd_monfasel_len * madd_patt.target + r"\2",
                 text,
                 mappings,
+                MonfaselMaddRule(
+                    golden_len=moshaf.madd_monfasel_len, tag=madd_patt.name
+                ),
             )
 
         # المد المتصل وقفا
@@ -790,6 +804,10 @@ class Madd(ConversionOperation):
                 + r"\2",
                 text,
                 mappings,
+                MottaselMaddPauseRule(
+                    golden_len=max(moshaf.madd_mottasel_waqf, moshaf.madd_aared_len),
+                    tag=madd_patt.name,
+                ),
             )
 
         # المد المنفصل
@@ -799,6 +817,9 @@ class Madd(ConversionOperation):
                 r"\1" + moshaf.madd_mottasel_len * madd_patt.target + r"\2",
                 text,
                 mappings,
+                MottaselMaddRule(
+                    golden_len=moshaf.madd_mottasel_len, tag=madd_patt.name
+                ),
             )
 
         # المد اللازم
@@ -808,10 +829,13 @@ class Madd(ConversionOperation):
             r"\1" + (moshaf.madd_yaa_alayn_alharfy - 1) * ph.yaa,
             text,
             mappings,
+            LeenMaddRule(golden_len=moshaf.madd_yaa_alayn_alharfy, tag="yaa"),
         )
         # ميم آل عمران
+        meem_aal_imran_taj_rule = LazemMaddRule(tag="alif")
         if moshaf.meem_aal_imran == "wasl_2":
             meema_len = 2
+            meem_aal_imran_taj_rule = NormalMaddRule(tag="alif")
         elif moshaf.meem_aal_imran == "wasl_6":
             meema_len = 6
         else:
@@ -821,6 +845,7 @@ class Madd(ConversionOperation):
             r"\1" + ph.yaa_madd * meema_len + r"\2",
             text,
             mappings,
+            meem_aal_imran_taj_rule,
         )
 
         for k, madd_patt in self.madd_map.items():
@@ -829,6 +854,7 @@ class Madd(ConversionOperation):
                 r"\1" + 6 * madd_patt.target + r"\2",
                 text,
                 mappings,
+                LazemMaddRule(tag=madd_patt.name),
             )
 
         # المد العارض للسكون
@@ -838,6 +864,7 @@ class Madd(ConversionOperation):
                 r"\1" + moshaf.madd_aared_len * madd_patt.target + r"\2",
                 text,
                 mappings,
+                AaredMaddRule(golden_len=moshaf.madd_aared_len, tag=madd_patt.name),
             )
 
         # مد اللين
@@ -846,6 +873,7 @@ class Madd(ConversionOperation):
             r"\1" + (moshaf.madd_alleen_len - 1) * r"\2" + r"\3",
             text,
             mappings,
+            LeenMaddRule(golden_len=moshaf.madd_alleen_len),
         )
 
         # المد الطبيعي
