@@ -12,7 +12,18 @@ from .conv_base_operation import (
 from .moshaf_attributes import MoshafAttributes
 from ..alphabet import uthmani as uth
 from ..alphabet import phonetics as ph
-from .tajweed_rulses import NormalMaddRule
+from .tajweed_rulses import (
+    TajweedRule,
+    Qalqalah,
+    NormalMaddRule,
+    MonfaselMaddRule,
+    MottaselMaddPauseRule,
+    MottaselMaddRule,
+    LazemMaddRule,
+    AaredMaddRule,
+    LeenMaddRule,
+    IdghamKamel,
+)
 
 
 @dataclass
@@ -271,7 +282,7 @@ class BeginWithSaken(ConversionOperation):
 @dataclass
 class ConvertAlifMaksora(ConversionOperation):
     arabic_name: str = "تحويل الأف المقصورة إله: حضف أو ألف أو ياء"
-    regs: list[tuple[str, str]] = field(
+    regs: list[tuple[str, str, TajweedRule] | tuple[str, str]] = field(
         default_factory=lambda: [
             # حذف الأف المقصورة من الاسم المقصور النكرة
             (
@@ -362,7 +373,7 @@ class RemoveSkoonMostadeer(ConversionOperation):
 @dataclass
 class SkoonMostateel(ConversionOperation):
     arabic_name: str = "ضبط السكون المستطيل"
-    regs: list[tuple[str, str]] = field(
+    regs: list[tuple[str, str, TajweedRule] | tuple[str, str]] = field(
         default_factory=lambda: [
             # remove from the middle
             (
@@ -381,7 +392,7 @@ class SkoonMostateel(ConversionOperation):
 @dataclass
 class MaddAlewad(ConversionOperation):
     arabic_name: str = "ضبط مد العوض وسطا ووقفا"
-    regs: list[tuple[str, str]] = field(
+    regs: list[tuple[str, str, TajweedRule] | tuple[str, str]] = field(
         default_factory=lambda: [
             # remove from the middle
             (
@@ -411,7 +422,7 @@ class EnlargeSmallLetters(ConversionOperation):
     arabic_name: str = (
         "تكبير الألف والياء والاو والنون الصغار مع حذف مد الصلة عند الوقف"
     )
-    regs: list[tuple[str, str]] = field(
+    regs: list[tuple[str, str, TajweedRule] | tuple[str, str]] = field(
         default_factory=lambda: [
             # small alif
             (
@@ -479,7 +490,7 @@ class NormalizeTaa(ConversionOperation):
         ]
     )
     arabic_name: str = "تحويب التاء المربطة في الوسط لتاء وفي الآخر لهاء"
-    regs: list[tuple[str, str]] = field(
+    regs: list[tuple[str, str, TajweedRule] | tuple[str, str]] = field(
         default_factory=lambda: [
             (f"{uth.taa_marboota}$", f"{uth.haa}"),
             (f"{uth.taa_marboota}", f"{uth.taa_mabsoota}"),
@@ -514,7 +525,7 @@ class PrepareGhonnaIdghamIqlab(ConversionOperation):
         ]
     )
     arabic_name: str = "فك الإقلاب والعغنة الإدغام"
-    regs: list[tuple[str, str]] = field(
+    regs: list[tuple[str, str, TajweedRule] | tuple[str, str]] = field(
         default_factory=lambda: [
             # النون المقلبة ميمام
             (
@@ -578,6 +589,7 @@ class PrepareGhonnaIdghamIqlab(ConversionOperation):
             (
                 f"([{uth.fatha}{uth.dama}]{uth.yaa}|[{uth.fatha}{uth.kasra}]{uth.waw}|[{uth.pure_letters_without_yaa_and_waw_group}]){uth.space}?([{uth.pure_letters_group}]{uth.shadda})",
                 r"\2",
+                # IdghamKamel(),
             ),
         ]
     )
@@ -591,7 +603,7 @@ class IltiqaaAlsaknan(ConversionOperation):
         ]
     )
     arabic_name: str = "التقاء الساكنان وكسر التنوين"
-    regs: list[tuple[str, str]] = field(
+    regs: list[tuple[str, str] | tuple[str, str, TajweedRule]] = field(
         default_factory=lambda: [
             # كسر التنوين
             (
@@ -769,6 +781,7 @@ class Madd(ConversionOperation):
             r"\1" + ph.alif * moshaf.madd_monfasel_len + r"\2",
             text,
             mappings,
+            MonfaselMaddRule(golden_len=moshaf.madd_monfasel_len, tag="alif"),
         )
         # normal
         for k, madd_patt in self.madd_map.items():
@@ -777,6 +790,9 @@ class Madd(ConversionOperation):
                 r"\1" + moshaf.madd_monfasel_len * madd_patt.target + r"\2",
                 text,
                 mappings,
+                MonfaselMaddRule(
+                    golden_len=moshaf.madd_monfasel_len, tag=madd_patt.name
+                ),
             )
 
         # المد المتصل وقفا
@@ -790,6 +806,10 @@ class Madd(ConversionOperation):
                 + r"\2",
                 text,
                 mappings,
+                MottaselMaddPauseRule(
+                    golden_len=max(moshaf.madd_mottasel_waqf, moshaf.madd_aared_len),
+                    tag=madd_patt.name,
+                ),
             )
 
         # المد المنفصل
@@ -799,6 +819,9 @@ class Madd(ConversionOperation):
                 r"\1" + moshaf.madd_mottasel_len * madd_patt.target + r"\2",
                 text,
                 mappings,
+                MottaselMaddRule(
+                    golden_len=moshaf.madd_mottasel_len, tag=madd_patt.name
+                ),
             )
 
         # المد اللازم
@@ -808,10 +831,13 @@ class Madd(ConversionOperation):
             r"\1" + (moshaf.madd_yaa_alayn_alharfy - 1) * ph.yaa,
             text,
             mappings,
+            LeenMaddRule(golden_len=moshaf.madd_yaa_alayn_alharfy, tag="yaa"),
         )
         # ميم آل عمران
+        meem_aal_imran_taj_rule = LazemMaddRule(tag="alif")
         if moshaf.meem_aal_imran == "wasl_2":
             meema_len = 2
+            meem_aal_imran_taj_rule = NormalMaddRule(tag="alif")
         elif moshaf.meem_aal_imran == "wasl_6":
             meema_len = 6
         else:
@@ -821,6 +847,7 @@ class Madd(ConversionOperation):
             r"\1" + ph.yaa_madd * meema_len + r"\2",
             text,
             mappings,
+            meem_aal_imran_taj_rule,
         )
 
         for k, madd_patt in self.madd_map.items():
@@ -829,6 +856,7 @@ class Madd(ConversionOperation):
                 r"\1" + 6 * madd_patt.target + r"\2",
                 text,
                 mappings,
+                LazemMaddRule(tag=madd_patt.name),
             )
 
         # المد العارض للسكون
@@ -838,6 +866,7 @@ class Madd(ConversionOperation):
                 r"\1" + moshaf.madd_aared_len * madd_patt.target + r"\2",
                 text,
                 mappings,
+                AaredMaddRule(golden_len=moshaf.madd_aared_len, tag=madd_patt.name),
             )
 
         # مد اللين
@@ -846,6 +875,7 @@ class Madd(ConversionOperation):
             r"\1" + (moshaf.madd_alleen_len - 1) * r"\2" + r"\3",
             text,
             mappings,
+            LeenMaddRule(golden_len=moshaf.madd_alleen_len),
         )
 
         # المد الطبيعي
@@ -864,9 +894,10 @@ class Madd(ConversionOperation):
 @dataclass
 class Qalqla(ConversionOperation):
     arabic_name: str = "إضافة علامة القلقة"
-    regs: tuple[str, str] = (
+    regs: tuple[str, str, TajweedRule] = (
         f"([{uth.qlqla_group}](?:{uth.shadda}$|{uth.ras_haaa}|$))",
         r"\1" + ph.qlqla,
+        Qalqalah(),
     )
     ops_before: list[ConversionOperation] = field(
         default_factory=lambda: [
@@ -878,7 +909,7 @@ class Qalqla(ConversionOperation):
 @dataclass
 class RemoveRasHaaAndShadda(ConversionOperation):
     arabic_name: str = "حذف السكون والشدة م تكرار الحرف المشدد"
-    regs: list[tuple[str, str]] = field(
+    regs: list[tuple[str, str, TajweedRule] | tuple[str, str]] = field(
         default_factory=lambda: [
             # shadda
             (

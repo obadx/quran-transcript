@@ -17,7 +17,14 @@ from quran_transcript.phonetics.search import (
     clean_uthmani_spaces,
 )
 
-from quran_transcript.phonetics.tajweed_rulses import NormalMaddRule, Qalqalah
+from quran_transcript.phonetics.tajweed_rulses import (
+    NormalMaddRule,
+    Qalqalah,
+    LeenMaddRule,
+    AaredMaddRule,
+    LazemMaddRule,
+    MottaselMaddRule,
+)
 # Import the sub_with_mapping function from the existing test file
 
 
@@ -639,7 +646,14 @@ class TestMergeMappings:
             "ءَلِف لَاااااام رَاا تِلكَ ءَاايَااتُ لكِتَاابِ لمُبِۦۦۦۦن",
             [
                 MappingPos(pos=(0, 6), tajweed_rules=None),
-                MappingPos(pos=(6, 16), tajweed_rules=None),
+                MappingPos(
+                    pos=(6, 16),
+                    tajweed_rules=[
+                        LazemMaddRule(
+                            tag="alif",
+                        )
+                    ],
+                ),
                 MappingPos(pos=(16, 16), deleted=True),
                 MappingPos(
                     pos=(16, 20),
@@ -707,7 +721,15 @@ class TestMergeMappings:
                 MappingPos(pos=(50, 51), tajweed_rules=None),
                 MappingPos(pos=(51, 52), tajweed_rules=None),
                 MappingPos(pos=(52, 53), tajweed_rules=None),
-                MappingPos(pos=(53, 57), tajweed_rules=None),
+                MappingPos(
+                    pos=(53, 57),
+                    tajweed_rules=[
+                        AaredMaddRule(
+                            golden_len=4,
+                            tag="yaa",
+                        )
+                    ],
+                ),
                 MappingPos(pos=(57, 58), tajweed_rules=None),
                 MappingPos(pos=(58, 58), deleted=True),
             ],
@@ -752,8 +774,16 @@ class TestMergeMappings:
                 MappingPos(pos=(27, 28), tajweed_rules=None),
                 MappingPos(pos=(28, 29), tajweed_rules=None),
                 MappingPos(pos=(29, 30), tajweed_rules=None),
-                MappingPos(pos=(30, 34), tajweed_rules=None),
-                MappingPos(pos=(34, 35), tajweed_rules=None),
+                MappingPos(
+                    pos=(30, 34),
+                    tajweed_rules=[
+                        AaredMaddRule(
+                            golden_len=4,
+                            tag="yaa",
+                        )
+                    ],
+                ),
+                MappingPos(pos=(34, 35), deleted=False),
                 MappingPos(pos=(35, 35), deleted=True),
             ],
         ),
@@ -805,7 +835,10 @@ class TestMergeMappings:
                 MappingPos(pos=(28, 29), tajweed_rules=None),
                 MappingPos(pos=(29, 30), tajweed_rules=None),
                 MappingPos(pos=(30, 31), tajweed_rules=None),
-                MappingPos(pos=(31, 35), tajweed_rules=None),
+                MappingPos(
+                    pos=(31, 35),
+                    tajweed_rules=[MottaselMaddRule(golden_len=4, tag="alif")],
+                ),
                 MappingPos(pos=(35, 35), deleted=True),
                 MappingPos(pos=(35, 36), tajweed_rules=None),
                 MappingPos(pos=(36, 38), tajweed_rules=None),
@@ -878,7 +911,15 @@ class TestMergeMappings:
                 MappingPos(pos=(93, 94), tajweed_rules=None),
                 MappingPos(pos=(94, 95), tajweed_rules=None),
                 MappingPos(pos=(95, 96), tajweed_rules=None),
-                MappingPos(pos=(96, 100), tajweed_rules=None),
+                MappingPos(
+                    pos=(96, 100),
+                    tajweed_rules=[
+                        AaredMaddRule(
+                            golden_len=4,
+                            tag="waw",
+                        )
+                    ],
+                ),
                 MappingPos(pos=(100, 101), tajweed_rules=None),
                 MappingPos(pos=(101, 101), deleted=True),
             ],
@@ -919,9 +960,16 @@ class TestMergeMappings:
             "ءَلِف لَااااااممممِۦۦۦۦۦۦم",
             [
                 MappingPos(pos=(0, 6), tajweed_rules=None, deleted=False),
-                MappingPos(pos=(6, 14), tajweed_rules=None, deleted=False),
+                MappingPos(
+                    pos=(6, 14),
+                    tajweed_rules=[LazemMaddRule(tag="alif")],
+                    deleted=False,
+                ),
                 MappingPos(pos=(14, 14), tajweed_rules=None, deleted=True),
-                MappingPos(pos=(14, 26), tajweed_rules=None, deleted=False),
+                MappingPos(
+                    pos=(14, 26),
+                    tajweed_rules=[LazemMaddRule(tag="yaa")],
+                ),
                 MappingPos(pos=(26, 26), tajweed_rules=None, deleted=True),
             ],
         ),
@@ -992,6 +1040,90 @@ class TestMergeMappings:
                     ],
                     deleted=False,
                 ),
+            ],
+        ),
+        (
+            "لَمْ يَلِدْ وَلَمْ يُولَدْ",
+            "لَم يَلِدڇ وَلَم يُۥۥلَدڇ",
+            [
+                MappingPos(pos=(0, 1), tajweed_rules=None, deleted=False),
+                MappingPos(pos=(1, 2), tajweed_rules=None, deleted=False),
+                MappingPos(pos=(2, 3), tajweed_rules=None, deleted=False),
+                MappingPos(pos=(3, 3), tajweed_rules=None, deleted=True),
+                MappingPos(pos=(3, 4), tajweed_rules=None, deleted=False),
+                MappingPos(pos=(4, 5), tajweed_rules=None, deleted=False),
+                MappingPos(pos=(5, 6), tajweed_rules=None, deleted=False),
+                MappingPos(pos=(6, 7), tajweed_rules=None, deleted=False),
+                MappingPos(pos=(7, 8), tajweed_rules=None, deleted=False),
+                MappingPos(pos=(8, 10), tajweed_rules=[Qalqalah()]),
+                MappingPos(pos=(10, 10), tajweed_rules=None, deleted=True),
+                MappingPos(pos=(10, 11), tajweed_rules=None, deleted=False),
+                MappingPos(pos=(11, 12), tajweed_rules=None, deleted=False),
+                MappingPos(pos=(12, 13), tajweed_rules=None, deleted=False),
+                MappingPos(pos=(13, 14), tajweed_rules=None, deleted=False),
+                MappingPos(pos=(14, 15), tajweed_rules=None, deleted=False),
+                MappingPos(pos=(15, 16), tajweed_rules=None, deleted=False),
+                MappingPos(pos=(16, 16), tajweed_rules=None, deleted=True),
+                MappingPos(pos=(16, 17), tajweed_rules=None, deleted=False),
+                MappingPos(pos=(17, 18), tajweed_rules=None, deleted=False),
+                MappingPos(pos=(18, 19), tajweed_rules=None, deleted=False),
+                MappingPos(
+                    pos=(19, 21),
+                    tajweed_rules=[
+                        NormalMaddRule(
+                            tag="waw",
+                        )
+                    ],
+                ),
+                MappingPos(pos=(21, 22), tajweed_rules=None, deleted=False),
+                MappingPos(pos=(22, 23), tajweed_rules=None, deleted=False),
+                MappingPos(
+                    pos=(23, 25),
+                    tajweed_rules=[Qalqalah()],
+                ),
+                MappingPos(pos=(25, 25), tajweed_rules=None, deleted=True),
+            ],
+        ),
+        (
+            "قَرِيبٌ",
+            "قَرِۦۦۦۦبڇ",
+            [
+                MappingPos(pos=(0, 1), tajweed_rules=None, deleted=False),
+                MappingPos(pos=(1, 2), tajweed_rules=None, deleted=False),
+                MappingPos(pos=(2, 3), tajweed_rules=None, deleted=False),
+                MappingPos(pos=(3, 4), tajweed_rules=None, deleted=False),
+                MappingPos(pos=(4, 8), tajweed_rules=[AaredMaddRule(tag="yaa")]),
+                MappingPos(pos=(8, 10), tajweed_rules=[Qalqalah()]),
+                MappingPos(pos=(10, 10), tajweed_rules=None, deleted=True),
+            ],
+        ),
+        (
+            "لِإِيلَـٰفِ قُرَيْشٍ",
+            "لِءِۦۦلَاافِ قُرَيييش",
+            [
+                MappingPos(pos=(0, 1), tajweed_rules=None, deleted=False),
+                MappingPos(pos=(1, 2), tajweed_rules=None, deleted=False),
+                MappingPos(pos=(2, 3), tajweed_rules=None, deleted=False),
+                MappingPos(pos=(3, 4), tajweed_rules=None, deleted=False),
+                MappingPos(pos=(4, 6), tajweed_rules=[NormalMaddRule(tag="yaa")]),
+                MappingPos(pos=(6, 7), tajweed_rules=None, deleted=False),
+                MappingPos(pos=(7, 8), tajweed_rules=None, deleted=False),
+                MappingPos(pos=(8, 8), tajweed_rules=None, deleted=True),
+                MappingPos(pos=(8, 10), tajweed_rules=[NormalMaddRule(tag="alif")]),
+                MappingPos(pos=(10, 11), tajweed_rules=None, deleted=False),
+                MappingPos(pos=(11, 12), tajweed_rules=None, deleted=False),
+                MappingPos(pos=(12, 13), tajweed_rules=None, deleted=False),
+                MappingPos(pos=(13, 14), tajweed_rules=None, deleted=False),
+                MappingPos(pos=(14, 15), tajweed_rules=None, deleted=False),
+                MappingPos(pos=(15, 16), tajweed_rules=None, deleted=False),
+                MappingPos(pos=(16, 17), tajweed_rules=None, deleted=False),
+                MappingPos(
+                    pos=(17, 20),
+                    tajweed_rules=[LeenMaddRule(golden_len=4, tag="yaa")],
+                ),
+                MappingPos(pos=(20, 20), tajweed_rules=None, deleted=True),
+                MappingPos(pos=(20, 21), tajweed_rules=None, deleted=False),
+                MappingPos(pos=(21, 21), tajweed_rules=None, deleted=True),
             ],
         ),
     ],

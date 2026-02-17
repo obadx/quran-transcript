@@ -406,6 +406,21 @@ def get_mappings(
     # TODO: remove this
     assert all(m is not None for m in new_mappings)
 
+    # Special Case where we want to assgin the tag for Leen Madd
+    for m_idx in range(len(new_mappings)):
+        if new_mappings[m_idx].tajweed_rules:
+            for taj_idx in range(len(new_mappings[m_idx].tajweed_rules)):
+                if (
+                    new_mappings[m_idx].tajweed_rules[taj_idx].name.en == "Leen Madd"
+                    and new_mappings[m_idx].tajweed_rules[taj_idx].tag is None
+                ):
+                    tag = (
+                        new_mappings[m_idx]
+                        .tajweed_rules[taj_idx]
+                        ._madd_to_tag[new_text[new_mappings[m_idx].pos[0]]]
+                    )
+                    new_mappings[m_idx].tajweed_rules[taj_idx].tag = tag
+
     # Special case where we have Idgham tanween
     # Special sympol `tanweed_idgham_detrminer` has no meaning moving it to the tanween
     for re_out in re.finditer(f"{alph.uthmani.tanween_idhaam_dterminer}[^$]", text):
@@ -440,6 +455,34 @@ def get_mappings(
                 )
 
     new_mappings = merge_mappings(mappings, new_mappings)
+
+    # Special case where skoon sign is repaced with qalalah sign
+    # We want the qalqlah sign associated with the letter it self not the
+    # Did not want that but no way to solve exept with this
+    for re_out in re.finditer(
+        f"[^{alph.uthmani.ras_haaa}{alph.uthmani.shadda}]({alph.phonetics.qlqla})",
+        new_text,
+    ):
+        qlq_idx = re_out.span(1)[0]
+        char_idx = qlq_idx - 1
+        # getting skon or shadda idx in the merged mappings
+        m_idx = 0
+        for m_idx in range(len(new_mappings)):
+            if new_mappings[m_idx].pos[0] == qlq_idx:
+                break
+        # Avodig the case where we have qalqlah at the end with no (shadda or skonJ)
+        if new_mappings[m_idx - 1].tajweed_rules is None:
+            new_mappings[m_idx - 1].pos = (
+                new_mappings[m_idx - 1].pos[0],
+                new_mappings[m_idx].pos[1],
+            )
+            new_mappings[m_idx - 1].tajweed_rules = new_mappings[m_idx].tajweed_rules
+            new_mappings[m_idx].pos = (
+                new_mappings[m_idx].pos[1],
+                new_mappings[m_idx].pos[1],
+            )
+            new_mappings[m_idx].deleted = True
+            new_mappings[m_idx].tajweed_rules = None
 
     # TODO: remove this
     curr_m = None
@@ -577,7 +620,11 @@ def sub_with_mapping(
 
 @dataclass
 class ConversionOperation:
-    regs: list[tuple[str, str]] | tuple[str, str]
+    regs: (
+        list[tuple[str, str, TajweedRule] | tuple[str, str]]
+        | tuple[str, str, TajweedRule]
+        | tuple[str, str]
+    )
     arabic_name: str
     ops_before: list["ConversionOperation"] | None = None
 
@@ -594,8 +641,18 @@ class ConversionOperation:
         moshaf: MoshafAttributes,
         mappings: MappingListType | None = None,
     ) -> tuple[str, MappingListType]:
-        for input_reg, out_reg in self.regs:
-            text, mappings = sub_with_mapping(input_reg, out_reg, text, mappings)
+        for reg in self.regs:
+            if len(reg) == 2:
+                input_reg, out_reg = reg
+                taj_rule = None
+            elif len(reg) == 3:
+                input_reg, out_reg, taj_rule = reg
+            else:
+                raise ValueError("Invalid Input")
+
+            text, mappings = sub_with_mapping(
+                input_reg, out_reg, text, mappings, tajweed_rule=taj_rule
+            )
         return text, mappings
 
     def apply(

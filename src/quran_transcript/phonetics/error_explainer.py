@@ -9,7 +9,7 @@ import Levenshtein as lv
 
 
 from .tajweed_rulses import TajweedRule, NormalMaddRule
-from .conv_base_operation import MappingPos
+from .conv_base_operation import MappingPos, MappingListType
 
 
 @dataclass
@@ -22,8 +22,10 @@ class ReciterError:
     preditected_ph: str
     expected_len: Optional[int] | None = None
     predicted_len: Optional[int] | None = None
-    tajweed_rules: Optional[list[TajweedRule]] | None = None
-    predicted_tajweed_rules: Optional[list[TajweedRule]] | None = None
+    ref_tajweed_rules: Optional[list[TajweedRule]] | None = None
+    inserted_tajweed_rules: Optional[list[TajweedRule]] | None = None
+    replaced_tajweed_rules: Optional[list[TajweedRule]] | None = None
+    missing_tajweed_rules: Optional[list[TajweedRule]] | None = None
 
 
 @dataclass
@@ -77,48 +79,161 @@ def align_phonemes_groups(
 
 
 def extract_ref_phonetic_to_uthmani(
-    mappings: list[MappingPos | None],
+    mappings: MappingListType,
 ) -> dict[int, int]:
     ref_ph_to_uthmani = {}
     for idx, map_pos in enumerate(mappings):
-        if map_pos is not None:
-            for ph_idx in range(*map_pos.pos):
-                if ph_idx in ref_ph_to_uthmani:
-                    raise ValueError(
-                        f"Same phonetic scripts has multiple uthmani script. Phonetic posision: `{ph_idx}`, Uthmani Poses: `{ref_ph_to_uthmani[ph_idx]}, {idx}`"
-                    )
-                else:
-                    ref_ph_to_uthmani[ph_idx] = idx
+        for ph_idx in range(*map_pos.pos):
+            if ph_idx in ref_ph_to_uthmani:
+                raise ValueError(
+                    f"Same phonetic scripts has multiple uthmani script. Phonetic posision: `{ph_idx}`, Uthmani Poses: `{ref_ph_to_uthmani[ph_idx]}, {idx}`"
+                )
+            else:
+                ref_ph_to_uthmani[ph_idx] = idx
     return ref_ph_to_uthmani
 
 
 def get_ref_phonetic_groups_tajweed_rules(
     ref_ph_groups: list[str],
-    mappings: list[MappingPos | None],
+    mappings: MappingListType,
     ref_ph_to_uthmani: dict[int, int],
-) -> list[None | list[TajweedRule]]:
-    ref_tajweed_rules = [None] * len(ref_ph_groups)
+) -> list[list[TajweedRule]]:
+    ref_tajweed_rules: list[TajweedRule] = [[] for _ in range(len(ref_ph_groups))]
     start = 0
     end = 0
-    # Computing Tajweed rules
-    # TODO: O(n^2) too bad should be O(n)
+    # Computing Tajweed rules O(len(ref_ph_text))
     for ph_g_idx, ph_g in enumerate(ref_ph_groups):
         end += len(ph_g)
-        for map_pos in mappings:
-            if map_pos is not None:
-                if start >= map_pos.pos[0] and end <= map_pos.pos[1]:
-                    if ref_tajweed_rules[ph_g_idx] is None:
-                        ref_tajweed_rules[ph_g_idx] = map_pos.tajweed_rules
-                    else:
-                        ref_tajweed_rules[ph_g_idx] += map_pos.tajweed_rules
+        used_uth_ids = set()
+        for ph_idx in range(start, end):
+            uth_idx = ref_ph_to_uthmani[ph_idx]
+            if uth_idx not in used_uth_ids:
+                used_uth_ids.add(uth_idx)
+                if mappings[uth_idx].tajweed_rules:
+                    ref_tajweed_rules[ph_g_idx].extend(mappings[uth_idx].tajweed_rules)
         start = end
     return ref_tajweed_rules
 
 
+def get_tasshkeel_error(
+    ref_ph: str,
+    pred_ph: str,
+    uthmani_pos: tuple[int, int],
+    ph_pos: tuple[int, int],
+) -> ReciterError:
+    if len(pred_ph) > len(ref_ph):
+        sp_tp = "insert"
+    elif len(pred_ph) < len(ref_ph):
+        sp_tp = "delete"
+    else:
+        sp_tp = "replace"
+
+    err = ReciterError(
+        uthmani_pos=uthmani_pos,
+        ph_pos=ph_pos,
+        error_type="tashkeel",
+        speech_error_type=sp_tp,
+        expected_ph=ref_ph,
+        preditected_ph=pred_ph,
+    )
+    return err
+
+
 def explain_error(
-    uthmani_text, ref_ph_text, predicted_ph_text, mappings: list[MappingPos | None]
+    uthmani_text: str,
+    ref_ph_text: str,
+    predicted_ph_text: str,
+    mappings: MappingListType,
 ) -> list[ReciterError]:
-    """ """
+    """Explain errors in a predicted phonetic transcription compared to the reference.
+
+    This function performs a detailed alignment between the reference (correct) phonetic
+    transcription and a predicted transcription (e.g., from a speech recognition system
+    or a learner's recitation). It breaks both strings into phoneme groups (using
+    `chunck_phonemes`) and aligns them using Levenshtein opcodes on the first character
+    of each group. For each aligned group, it checks for:
+        - Insertions, deletions, or substitutions of whole groups.
+        - Tajweed rule violations (e.g., incorrect Madd length, missing Qalqalah or Ghonnah).
+        - Mismatches in short vowels (harakat) or other diacritics.
+        - Special phonetic marks (Imala, Sakt, etc.) – currently placeholders.
+
+    The function uses the provided `mappings` to locate each error in the original
+    Uthmani text and to associate Tajweed rules with reference phoneme groups.
+    The result is a list of `ReciterError` objects that can be used for feedback,
+    error analysis, or pronunciation training.
+
+    Args:
+        uthmani_text: The original Uthmani script text (used to locate the error source).
+        ref_ph_text: The reference phonetic string (correct recitation), as produced by
+                     `quran_phonetizer` or a similar function.
+        predicted_ph_text: The predicted phonetic string to be evaluated.
+        mappings: A list of `MappingPos` objects that link each Uthmani character to its
+                  corresponding range(s) in the reference phonetic string. This mapping
+                  must cover the entire `ref_ph_text` and be consistent (no phonetic index
+                  maps to two different Uthmani indices).
+
+    Returns:
+        A list of `ReciterError` dataclass instances, each describing a single error.
+        The list is ordered by the occurrence of errors along the phonetic sequence.
+        Each error contains:
+            - Uthmani and phonetic positions (start, end) where the error occurs.
+            - Error type: "tajweed", "normal", or "tashkeel".
+            - Speech error type: "insert", "delete", or "replace".
+            - Expected and predicted phonetic substrings.
+            - For tajweed errors: expected/predicted lengths (if applicable) and the
+              relevant Tajweed rules (reference, replaced, missing).
+        Errors are not merged; every mismatch in a phoneme group produces at least one error.
+
+    Raises:
+        ValueError: If the same phonetic index is mapped to multiple Uthmani indices
+                    (inconsistent mapping) or if an unsupported `correctness_type` is
+                    encountered in a Tajweed rule.
+
+    Examples:
+        Basic usage with a single word:
+            >>> moshaf = MoshafAttributes(...)
+            >>> uth_text = "قَالُوٓا۟"
+            >>> ref_out = quran_phonetizer(uth_text, moshaf)
+            >>> pred_text = "كالۥۥ"
+            >>> errors = explain_error(uth_text, ref_out.phonemes, pred_text, ref_out.mappings)
+            >>> for err in errors:
+            ...     print(err.error_type, err.speech_error_type, err.expected_ph, err.preditected_ph)
+            tajweed replace اااااا ۥۥ
+            tashkeel delete لُ ل
+
+        Example showing a missing Qalqalah:
+            >>> uth_text = "ٱلْحَقُّ"
+            >>> ref_out = quran_phonetizer(uth_text, moshaf)
+            >>> pred_text = "ءَلحقق"
+            >>> errors = explain_error(uth_text, ref_out.phonemes, pred_text, ref_out.mappings)
+            >>> for err in errors:
+            ...     if err.error_type == 'tajweed' and err.ref_tajweed_rules:
+            ...         print(err.ref_tajweed_rules[0].name.en)
+            Qalqalah
+
+        Example with a Madd error (Lazem Madd):
+            >>> uth_text = "الٓمٓ"
+            >>> ref_out = quran_phonetizer(uth_text, moshaf)
+            >>> pred_text = "ءَلِف لَاااااممممِۦۦۦۦۦۦم"
+            >>> errors = explain_error(uth_text, ref_out.phonemes, pred_text, ref_out.mappings)
+            >>> for err in errors:
+            ...     if err.ref_tajweed_rules:
+            ...         rule = err.ref_tajweed_rules[0]
+            ...         print(rule.name.en, err.expected_len, err.predicted_len)
+            Lazem Madd 6 5
+
+    Notes:
+        - The alignment is performed on the **first character** of each phoneme group.
+          This works because the first character is the base consonant or vowel, and the
+          rest of the group contains diacritics or lengthening marks. However, it means
+          that errors involving only the diacritics of an otherwise correctly pronounced
+          base will be caught in the "equal" branch (via tashkeel or tajweed checks).
+        - Inserted groups that have no corresponding reference are given a zero‑width
+          Uthmani position (start = end) based on the nearest preceding reference group.
+          This is a heuristic and may be refined in the future.
+        - The function contains TODOs for improving the precision of Uthmani positions
+          in insertions and for handling special phonetic marks like Imala and Sakt.
+    """
     ref_ph_groups = chunck_phonemes(ref_ph_text)
     pred_ph_groups = chunck_phonemes(predicted_ph_text)
 
@@ -130,16 +245,22 @@ def explain_error(
     )
 
     # Aligning Phonemes groups using first chat of  every one
-    alignmets = align_phonemes_groups(ref_ph_groups, pred_ph_groups)
+    alignments = align_phonemes_groups(ref_ph_groups, pred_ph_groups)
     errors = []
     pred_ph_start = 0
     ref_ph_start = 0
     pred_ph_end = 0
     ref_ph_end = 0
 
-    for align in alignmets:
-        ref_ph = ref_ph_groups[align.ref_idx]
-        pred_ph = pred_ph_groups[align.pred_idx]
+    for align in alignments:
+        if align.ref_idx < len(ref_ph_groups):
+            ref_ph = ref_ph_groups[align.ref_idx]
+        else:
+            ref_ph = ""
+        if align.pred_idx < len(pred_ph_groups):
+            pred_ph = pred_ph_groups[align.pred_idx]
+        else:
+            pred_ph = ""
         pred_ph_end = pred_ph_start + len(pred_ph)
 
         if align.op_type != "insert":
@@ -150,6 +271,7 @@ def explain_error(
             )
             ph_pos = (ref_ph_start, ref_ph_end)
         else:
+            # TODO: Make the uthmani posision more precise. Now we bound it to the aligments
             uthmani_pos = (
                 ref_ph_to_uthmani[ref_ph_start],
                 ref_ph_to_uthmani[ref_ph_start],
@@ -171,7 +293,7 @@ def explain_error(
 
         elif align.op_type == "replace":
             pred_rules = []
-            if ref_ph_groups_tajweed_rules[align.ref_idx] is not None:
+            if ref_ph_groups_tajweed_rules[align.ref_idx]:
                 for taj_rule in ref_ph_groups_tajweed_rules[align.ref_idx]:
                     pred_taj_rule = taj_rule.get_relvant_rule(pred_ph)
                     if pred_taj_rule is not None:
@@ -192,8 +314,8 @@ def explain_error(
                                 preditected_ph=pred_ph,
                                 expected_len=ref_len,
                                 predicted_len=pred_len,
-                                tajweed_rules=[taj_rule],
-                                predicted_tajweed_rules=[pred_taj_rule],
+                                ref_tajweed_rules=[taj_rule],
+                                replaced_tajweed_rules=[pred_taj_rule],
                             )
                         )
                     else:
@@ -205,7 +327,7 @@ def explain_error(
                                 speech_error_type="replace",
                                 expected_ph=ref_ph,
                                 preditected_ph=pred_ph,
-                                tajweed_rules=[taj_rule],
+                                ref_tajweed_rules=[taj_rule],
                             )
                         )
 
@@ -239,16 +361,17 @@ def explain_error(
             if ref_ph == pred_ph:
                 ...
             # We have Tajweed rule
-            elif ref_ph_groups_tajweed_rules[align.ref_idx] is not None:
+            elif ref_ph_groups_tajweed_rules[align.ref_idx]:
                 for taj_rule in ref_ph_groups_tajweed_rules[align.ref_idx]:
                     exp_len = None
                     pred_len = None
+                    missing_taj_rules = None
                     if taj_rule.correctness_type == "count":
                         pred_len = taj_rule.count(ref_ph, pred_ph)
                         exp_len = taj_rule.golden_len
-                    # TODO: What to do with `match`
                     elif taj_rule.correctness_type == "match":
-                        ...
+                        if not taj_rule.match(ref_ph, pred_ph):
+                            missing_taj_rules = [taj_rule]
                     else:
                         raise ValueError(
                             f"Invalid mathing type: `{taj_rule.correctness_type}`. Available: `match`, `count`"
@@ -263,14 +386,33 @@ def explain_error(
                             preditected_ph=pred_ph,
                             expected_len=exp_len,
                             predicted_len=pred_len,
-                            tajweed_rules=[taj_rule],
+                            ref_tajweed_rules=[taj_rule],
+                            missing_tajweed_rules=missing_taj_rules,
                         )
                     )
+                    if (
+                        ref_ph[-1] in alph.phonetic_groups.harakat
+                        and pred_ph[-1] != ref_ph[-1]
+                    ):
+                        errors.append(
+                            get_tasshkeel_error(
+                                ref_ph=ref_ph,
+                                pred_ph=pred_ph,
+                                uthmani_pos=uthmani_pos,
+                                ph_pos=ph_pos,
+                            )
+                        )
 
                 # Tashkeel (Harakat)
-                # TODO:
-            elif ref_ph_groups[align.ref_idx][-1] in alph.phonetic_groups.harakat:
-                ...
+            elif ref_ph[-1] in alph.phonetic_groups.harakat:
+                errors.append(
+                    get_tasshkeel_error(
+                        ref_ph=ref_ph,
+                        pred_ph=pred_ph,
+                        uthmani_pos=uthmani_pos,
+                        ph_pos=ph_pos,
+                    )
+                )
 
             # TODO: imala, sakt, dammao momala
             elif ref_ph_groups[align.ref_idx][-1] in alph.phonetic_groups.residuals:
@@ -283,30 +425,3 @@ def explain_error(
         ref_ph_start = ref_ph_end
 
     return errors
-
-
-if __name__ == "__main__":
-    uthmani_text = "قالوا"
-    ph_text = "قاالۥۥ"
-    predicted_text = "كالۥۥ"
-    predicted_text = "فكالۥۥ"
-    predicted_text = "فكۥۥلۥۥ"
-
-    normal_madd_alif = NormalMaddRule(tag="alif")
-    normal_madd_waw = NormalMaddRule(tag="waw")
-
-    mapping = [
-        MappingPos(pos=(0, 1)),
-        MappingPos(pos=(1, 3), tajweed_rules=[normal_madd_alif]),
-        MappingPos(pos=(3, 4)),
-        MappingPos(pos=(4, 6), tajweed_rules=[normal_madd_waw]),
-        None,
-    ]
-    errors = explain_error(
-        uthmani_text=uthmani_text,
-        ref_ph_text=ph_text,
-        predicted_ph_text=predicted_text,
-        mappings=mapping,
-    )
-    for err in errors:
-        print(err)
