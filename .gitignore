@@ -4,5 +4,11 @@
 # builds
 **/*.egg-info
 
+# Jupyter Notebook checkpoints
+.ipynb_checkpoints/
+**/.ipynb_checkpoints/
+*-checkpoint.ipynb
+*.ipynb
+
 # Last Working Aya
 APP_AYA_IDS.json
