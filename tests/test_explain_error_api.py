@@ -1,6 +1,9 @@
-from quran_transcript.phonetics.error_explainer import ReciterError, explain_error
-
-from quran_transcript import quran_phonetizer, MoshafAttributes
+from quran_transcript import (
+    quran_phonetizer,
+    MoshafAttributes,
+    ReciterError,
+    explain_error,
+)
 
 
 if __name__ == "__main__":
@@ -17,10 +20,10 @@ if __name__ == "__main__":
     predicted_text = "فكالۥۥ"
     predicted_text = "فكۥۥلۥۥ"
 
-    uthmani_text = "ٱلْحَقُّ"
-    predicted_text = "ءَلحَقق"
-    predicted_text = "ءَلحقق"
-    predicted_text = "ءَلحُقق"
+    # uthmani_text = "ٱلْحَقُّ"
+    # predicted_text = "ءَلحَقق"
+    # predicted_text = "ءَلحقق"
+    # predicted_text = "ءَلحُقق"
 
     # uthmani_text = "الٓمٓ"
     # predicted_text = "ءَلِف لَااااااممممِۦۦۦۦۦۦم"

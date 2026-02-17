@@ -23,6 +23,7 @@ from .phonetics.search import (
     NoPhonemesSearchResult,
     PhoneticSearch,
 )
+from .phonetics.error_explainer import explain_error, ReciterError
 
 from . import alphabet as alphabet
 
@@ -54,4 +55,6 @@ __all__ = [
     "PhonmesSearhResult",
     "NoPhonemesSearchResult",
     "PhoneticSearch",
+    "explain_error",
+    "ReciterError",
 ]

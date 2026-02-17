@@ -145,7 +145,95 @@ def explain_error(
     predicted_ph_text: str,
     mappings: MappingListType,
 ) -> list[ReciterError]:
-    """ """
+    """Explain errors in a predicted phonetic transcription compared to the reference.
+
+    This function performs a detailed alignment between the reference (correct) phonetic
+    transcription and a predicted transcription (e.g., from a speech recognition system
+    or a learner's recitation). It breaks both strings into phoneme groups (using
+    `chunck_phonemes`) and aligns them using Levenshtein opcodes on the first character
+    of each group. For each aligned group, it checks for:
+        - Insertions, deletions, or substitutions of whole groups.
+        - Tajweed rule violations (e.g., incorrect Madd length, missing Qalqalah or Ghonnah).
+        - Mismatches in short vowels (harakat) or other diacritics.
+        - Special phonetic marks (Imala, Sakt, etc.) – currently placeholders.
+
+    The function uses the provided `mappings` to locate each error in the original
+    Uthmani text and to associate Tajweed rules with reference phoneme groups.
+    The result is a list of `ReciterError` objects that can be used for feedback,
+    error analysis, or pronunciation training.
+
+    Args:
+        uthmani_text: The original Uthmani script text (used to locate the error source).
+        ref_ph_text: The reference phonetic string (correct recitation), as produced by
+                     `quran_phonetizer` or a similar function.
+        predicted_ph_text: The predicted phonetic string to be evaluated.
+        mappings: A list of `MappingPos` objects that link each Uthmani character to its
+                  corresponding range(s) in the reference phonetic string. This mapping
+                  must cover the entire `ref_ph_text` and be consistent (no phonetic index
+                  maps to two different Uthmani indices).
+
+    Returns:
+        A list of `ReciterError` dataclass instances, each describing a single error.
+        The list is ordered by the occurrence of errors along the phonetic sequence.
+        Each error contains:
+            - Uthmani and phonetic positions (start, end) where the error occurs.
+            - Error type: "tajweed", "normal", or "tashkeel".
+            - Speech error type: "insert", "delete", or "replace".
+            - Expected and predicted phonetic substrings.
+            - For tajweed errors: expected/predicted lengths (if applicable) and the
+              relevant Tajweed rules (reference, replaced, missing).
+        Errors are not merged; every mismatch in a phoneme group produces at least one error.
+
+    Raises:
+        ValueError: If the same phonetic index is mapped to multiple Uthmani indices
+                    (inconsistent mapping) or if an unsupported `correctness_type` is
+                    encountered in a Tajweed rule.
+
+    Examples:
+        Basic usage with a single word:
+            >>> moshaf = MoshafAttributes(...)
+            >>> uth_text = "قَالُوٓا۟"
+            >>> ref_out = quran_phonetizer(uth_text, moshaf)
+            >>> pred_text = "كالۥۥ"
+            >>> errors = explain_error(uth_text, ref_out.phonemes, pred_text, ref_out.mappings)
+            >>> for err in errors:
+            ...     print(err.error_type, err.speech_error_type, err.expected_ph, err.preditected_ph)
+            tajweed replace اااااا ۥۥ
+            tashkeel delete لُ ل
+
+        Example showing a missing Qalqalah:
+            >>> uth_text = "ٱلْحَقُّ"
+            >>> ref_out = quran_phonetizer(uth_text, moshaf)
+            >>> pred_text = "ءَلحقق"
+            >>> errors = explain_error(uth_text, ref_out.phonemes, pred_text, ref_out.mappings)
+            >>> for err in errors:
+            ...     if err.error_type == 'tajweed' and err.ref_tajweed_rules:
+            ...         print(err.ref_tajweed_rules[0].name.en)
+            Qalqalah
+
+        Example with a Madd error (Lazem Madd):
+            >>> uth_text = "الٓمٓ"
+            >>> ref_out = quran_phonetizer(uth_text, moshaf)
+            >>> pred_text = "ءَلِف لَاااااممممِۦۦۦۦۦۦم"
+            >>> errors = explain_error(uth_text, ref_out.phonemes, pred_text, ref_out.mappings)
+            >>> for err in errors:
+            ...     if err.ref_tajweed_rules:
+            ...         rule = err.ref_tajweed_rules[0]
+            ...         print(rule.name.en, err.expected_len, err.predicted_len)
+            Lazem Madd 6 5
+
+    Notes:
+        - The alignment is performed on the **first character** of each phoneme group.
+          This works because the first character is the base consonant or vowel, and the
+          rest of the group contains diacritics or lengthening marks. However, it means
+          that errors involving only the diacritics of an otherwise correctly pronounced
+          base will be caught in the "equal" branch (via tashkeel or tajweed checks).
+        - Inserted groups that have no corresponding reference are given a zero‑width
+          Uthmani position (start = end) based on the nearest preceding reference group.
+          This is a heuristic and may be refined in the future.
+        - The function contains TODOs for improving the precision of Uthmani positions
+          in insertions and for handling special phonetic marks like Imala and Sakt.
+    """
     ref_ph_groups = chunck_phonemes(ref_ph_text)
     pred_ph_groups = chunck_phonemes(predicted_ph_text)
 
