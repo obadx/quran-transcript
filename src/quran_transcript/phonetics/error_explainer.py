@@ -115,6 +115,30 @@ def get_ref_phonetic_groups_tajweed_rules(
     return ref_tajweed_rules
 
 
+def get_tasshkeel_error(
+    ref_ph: str,
+    pred_ph: str,
+    uthmani_pos: tuple[int, int],
+    ph_pos: tuple[int, int],
+) -> ReciterError:
+    if len(pred_ph) > len(ref_ph):
+        sp_tp = "insert"
+    elif len(pred_ph) < len(ref_ph):
+        sp_tp = "delete"
+    else:
+        sp_tp = "replace"
+
+    err = ReciterError(
+        uthmani_pos=uthmani_pos,
+        ph_pos=ph_pos,
+        error_type="tashkeel",
+        speech_error_type=sp_tp,
+        expected_ph=ref_ph,
+        preditected_ph=pred_ph,
+    )
+    return err
+
+
 def explain_error(
     uthmani_text: str,
     ref_ph_text: str,
@@ -278,24 +302,27 @@ def explain_error(
                             missing_tajweed_rules=missing_taj_rules,
                         )
                     )
+                    if (
+                        ref_ph[-1] in alph.phonetic_groups.harakat
+                        and pred_ph[-1] != ref_ph[-1]
+                    ):
+                        errors.append(
+                            get_tasshkeel_error(
+                                ref_ph=ref_ph,
+                                pred_ph=pred_ph,
+                                uthmani_pos=uthmani_pos,
+                                ph_pos=ph_pos,
+                            )
+                        )
 
                 # Tashkeel (Harakat)
             elif ref_ph[-1] in alph.phonetic_groups.harakat:
-                if len(pred_ph) > len(ref_ph):
-                    sp_tp = "insert"
-                elif len(pred_ph) < len(ref_ph):
-                    sp_tp = "delete"
-                else:
-                    sp_tp = "replace"
-
                 errors.append(
-                    ReciterError(
+                    get_tasshkeel_error(
+                        ref_ph=ref_ph,
+                        pred_ph=pred_ph,
                         uthmani_pos=uthmani_pos,
                         ph_pos=ph_pos,
-                        error_type="tashkeel",
-                        speech_error_type=sp_tp,
-                        expected_ph=ref_ph,
-                        preditected_ph=pred_ph,
                     )
                 )
 

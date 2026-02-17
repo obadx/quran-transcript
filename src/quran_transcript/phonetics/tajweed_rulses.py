@@ -96,7 +96,7 @@ class MaddRule(TajweedRule):
     def is_ph_str_in(self, ph_str: str) -> bool:
         """Whether the phonetic script is assoicated with this Tajweed rule or not"""
         if ph_str:
-            return ph_str[0] in self._madd_to_tags
+            return ph_str[0] in self._madd_to_tag
         else:
             return False
 
@@ -180,6 +180,121 @@ class LeenMaddRule(MaddRule):
             return pred_text[:-1].count(ref_text[0]) + 1
         else:
             return pred_text.count(ref_text[0]) + 1
+
+
+@dataclass
+class IdghamKamel(TajweedRule):
+    name: LangName = field(
+        default_factory=lambda: LangName(ar="إدغام كامل", en="Full Merging")
+    )
+    golden_len: int = 0
+    correctness_type: Literal["match", "count"] = "match"
+
+    def match(self, ref_text, pred_text) -> bool:
+        return ref_text == pred_text
+
+    def is_ph_str_in(self, ph_str: str) -> bool:
+        """Whether the phonetic script is assoicated with this Tajweed rule or not"""
+        return True
+
+    def get_relvant_rule(self, ph_str: str) -> Optional["TajweedRule"]:
+        """Returs a Tajweed rule that is assocaited with the input ph_str"""
+        return None
+
+
+@dataclass
+class GhonnahMetadata:
+    name: LangName
+    tag: str
+    offset: int = 0
+
+
+@dataclass
+class Ghonnah(TajweedRule):
+    name: LangName
+    golden_len: int = 4
+    correctness_type: Literal["match", "count"] = "count"
+    offset: int = 0
+
+    def __post_init__(self):
+        self.available_tags = {
+            "noon",
+            "noon_yaa",
+            "noon_waw",
+            "noon_mokhfah",
+            "meem",
+            "meem_mokhfah",
+        }
+        super().__post_init__()
+        self._ph_to_metadata = {
+            alph.phonetics.noon: GhonnahMetadata(
+                name=field(
+                    default_factory=lambda: LangName(
+                        ar="النون المشددة أو المدغمة", en="Moshadad or Modgham Noon"
+                    )
+                ),
+                tag="noon",
+                offset=0,
+            ),
+            alph.phonetics.yaa: GhonnahMetadata(
+                name=field(default_factory=lambda: LangName(ar="", en="")),
+                tag="noon_yaa",
+                offset=1,
+            ),
+            alph.phonetics.waw: GhonnahMetadata(
+                name=field(default_factory=lambda: LangName(ar="", en="")),
+                tag="noon_waw",
+                offset=1,
+            ),
+            alph.phonetics.noon_mokhfah: GhonnahMetadata(
+                name=field(default_factory=lambda: LangName(ar="", en="")),
+                tag="noon_mokhfah",
+                offset=1,
+            ),
+            alph.phonetics.meem: GhonnahMetadata(
+                name=field(default_factory=lambda: LangName(ar="", en="")),
+                tag="meem",
+                offset=0,
+            ),
+            alph.phonetics.meem_mokhfah: GhonnahMetadata(
+                name=field(default_factory=lambda: LangName(ar="", en="")),
+                tag="meem_mokhfah",
+                offset=0,
+            ),
+        }
+
+    def count(self, ref_text, pred_text) -> int:
+        return pred_text.count(ref_text[0]) + self.offset
+
+    def is_ph_str_in(self, ph_str: str) -> bool:
+        """Whether the phonetic script is assoicated with this Tajweed rule or not"""
+        if ph_str:
+            return ph_str[0] in self._ph_to_metadata
+        else:
+            return False
+
+    def get_relvant_rule(self, ph_str: str) -> Optional["TajweedRule"]:
+        """Returs a Tajweed rule that is assocaited with the input ph_str"""
+        if not ph_str:
+            return None
+        elif ph_str[0] not in self._ph_to_metadata:
+            return None
+        return replace(
+            self,
+            name=self._ph_to_metadata[ph_str[0]].name,
+            offset=self._ph_to_metadata[ph_str[0]].offset,
+            tag=self._ph_to_metadata[ph_str[0]].tag,
+        )
+
+
+@dataclass
+class MoshaddadOrModghamNoonRule(MaddRule):
+    name: LangName = field(
+        default_factory=lambda: LangName(
+            ar="النون المشددة أو المدغمة", en="Moshaddad or ModghamNoon"
+        )
+    )
+    golden_len: int = 4
 
 
 # TODO:
