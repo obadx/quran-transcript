@@ -29,6 +29,8 @@ def moshaf():
 )
 def test_explain_error_cases(uthmani_text, predicted_text, moshaf):
     ref_ph_out = quran_phonetizer(uthmani_text, moshaf)
+    print(uthmani_text)
+    print(predicted_text)
     errors = explain_error(
         uthmani_text=uthmani_text,
         ref_ph_text=ref_ph_out.phonemes,
@@ -42,4 +44,3 @@ def test_explain_error_cases(uthmani_text, predicted_text, moshaf):
     for err in errors:
         assert 0 <= err.uthmani_pos[0] <= err.uthmani_pos[1] <= len(uthmani_text)
         assert 0 <= err.ph_pos[0] <= err.ph_pos[1] <= len(ref_ph_out.phonemes)
-

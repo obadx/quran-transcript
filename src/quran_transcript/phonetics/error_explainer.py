@@ -272,10 +272,17 @@ def explain_error(
             ph_pos = (ref_ph_start, ref_ph_end)
         else:
             # TODO: Make the uthmani posision more precise. Now we bound it to the aligments
-            uthmani_pos = (
-                ref_ph_to_uthmani[ref_ph_start],
-                ref_ph_to_uthmani[ref_ph_start],
-            )
+            if ref_ph_start in ref_ph_to_uthmani:
+                uthmani_pos = (
+                    ref_ph_to_uthmani[ref_ph_start],
+                    ref_ph_to_uthmani[ref_ph_start],
+                )
+            else:
+                uthmani_pos = (
+                    ref_ph_to_uthmani[ref_ph_start - 1],
+                    ref_ph_to_uthmani[ref_ph_start - 1],
+                )
+
             ph_pos = (ref_ph_start, ref_ph_start)
 
         # TODO: for insert and replace try to make explanation for special phoneme like madd, ikhfaa, iqlab, ..
@@ -418,8 +425,26 @@ def explain_error(
             elif ref_ph_groups[align.ref_idx][-1] in alph.phonetic_groups.residuals:
                 ...
 
+            # Sakin Letter
             else:
-                raise ValueError("Uncaptured Error Explanation")
+                error_type = (
+                    "tashkeel"
+                    if pred_ph[-1] in alph.phonetic_groups.harakat
+                    else "normal"
+                )
+
+                errors.append(
+                    ReciterError(
+                        uthmani_pos=uthmani_pos,
+                        ph_pos=ph_pos,
+                        error_type=error_type,  # TODO: try to estimate what is the Tajweed rule associated with this error type
+                        speech_error_type="insert",
+                        expected_ph=ref_ph,
+                        preditected_ph=pred_ph,
+                    )
+                )
+
+                # raise ValueError("Uncaptured Error Explanation")
 
         pred_ph_start = pred_ph_end
         ref_ph_start = ref_ph_end

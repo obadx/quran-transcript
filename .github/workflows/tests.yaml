@@ -44,3 +44,4 @@ jobs:
         pytest -vv tests/aya_pytest.py
         pytest -vv tests/test_sub_with_mapping_pytest.py
         pytest -vv tests/test_phonemes_search_pytest.py
+        pytest -vv tests/test_explain_error_pytest.py
