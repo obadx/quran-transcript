@@ -29,6 +29,9 @@ if __name__ == "__main__":
     # predicted_text = "ءَلِف لَااااااممممِۦۦۦۦۦۦم"
     # predicted_text = "ءَلِف لَاااااممممِۦۦۦۦۦۦم"
 
+    uthmani_text = "لَكَ"
+    predicted_text = "لَكَا"
+
     ref_ph_out = quran_phonetizer(uthmani_text, moshaf)
     print(ref_ph_out.phonemes)
     print(predicted_text)
