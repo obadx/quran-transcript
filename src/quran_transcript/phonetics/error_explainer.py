@@ -115,6 +115,36 @@ def get_ref_phonetic_groups_tajweed_rules(
     return ref_tajweed_rules
 
 
+def infer_speech_error_type(expected_ph: str, predicted_ph: str, fallback: str) -> str:
+    if not expected_ph and predicted_ph:
+        return "insert"
+    if expected_ph and not predicted_ph:
+        return "delete"
+    if len(predicted_ph) > len(expected_ph):
+        return "insert"
+    if len(predicted_ph) < len(expected_ph):
+        return "delete"
+    if expected_ph != predicted_ph:
+        return "replace"
+    return fallback
+
+
+def normalize_error_details(errors: list[ReciterError]) -> list[ReciterError]:
+    for err in errors:
+        expected_ph = err.expected_ph or ""
+        predicted_ph = err.preditected_ph or ""
+        err.speech_error_type = infer_speech_error_type(
+            expected_ph,
+            predicted_ph,
+            err.speech_error_type,
+        )
+        if err.expected_len is None:
+            err.expected_len = len(expected_ph)
+        if err.predicted_len is None:
+            err.predicted_len = len(predicted_ph)
+    return errors
+
+
 def explain_error(
     uthmani_text, ref_ph_text, predicted_ph_text, mappings: list[MappingPos | None]
 ) -> list[ReciterError]:
@@ -282,7 +312,7 @@ def explain_error(
         pred_ph_start = pred_ph_end
         ref_ph_start = ref_ph_end
 
-    return errors
+    return normalize_error_details(errors)
 
 
 if __name__ == "__main__":
