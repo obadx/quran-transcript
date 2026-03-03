@@ -22,6 +22,8 @@ class ReciterError:
     preditected_ph: str
     expected_len: Optional[int] | None = None
     predicted_len: Optional[int] | None = None
+    error_code: str = ""
+    symbol_metadata: Optional[dict[str, dict[str, str]]] | None = None
     tajweed_rules: Optional[list[TajweedRule]] | None = None
     predicted_tajweed_rules: Optional[list[TajweedRule]] | None = None
 
@@ -129,6 +131,89 @@ def infer_speech_error_type(expected_ph: str, predicted_ph: str, fallback: str) 
     return fallback
 
 
+PHONEME_META_BY_ATTR = {
+    "fatha": {"label_en": "Fatha (a)", "symbol_class": "vowel"},
+    "dama": {"label_en": "Damma (u)", "symbol_class": "vowel"},
+    "kasra": {"label_en": "Kasra (i)", "symbol_class": "vowel"},
+    "alif": {"label_en": "Alif", "symbol_class": "letter"},
+    "waw_madd": {"label_en": "Waw madd", "symbol_class": "madd"},
+    "yaa_madd": {"label_en": "Yaa madd", "symbol_class": "madd"},
+    "noon_mokhfah": {"label_en": "Noon ghunnah", "symbol_class": "nasal"},
+    "meem_mokhfah": {"label_en": "Meem ikhfa", "symbol_class": "nasal"},
+    "qlqla": {"label_en": "Qalqalah marker", "symbol_class": "marker"},
+    "sakt": {"label_en": "Sakt marker", "symbol_class": "marker"},
+    "fatha_momala": {"label_en": "Imala marker", "symbol_class": "marker"},
+    "hamza_mosahala": {"label_en": "Hamza musahala", "symbol_class": "marker"},
+    "dama_mokhtalasa": {"label_en": "Damma mukhtalasa", "symbol_class": "vowel"},
+}
+
+
+def build_symbol_metadata(expected_ph: str, predicted_ph: str) -> dict[str, dict[str, str]]:
+    attr_by_symbol = {}
+    for attr, value in vars(alph.phonetics).items():
+        if not attr.startswith("_") and isinstance(value, str) and len(value) == 1:
+            attr_by_symbol[value] = attr
+
+    out = {}
+    for symbol in set(expected_ph + predicted_ph):
+        attr = attr_by_symbol.get(symbol)
+        if attr is None:
+            out[symbol] = {
+                "attr": "unknown",
+                "label_en": "Unknown phoneme symbol",
+                "symbol_class": "unknown",
+            }
+            continue
+
+        meta = PHONEME_META_BY_ATTR.get(attr)
+        if meta is None:
+            if symbol in alph.phonetic_groups.harakat:
+                symbol_class = "vowel"
+            elif symbol in alph.phonetic_groups.residuals:
+                symbol_class = "marker"
+            else:
+                symbol_class = "letter"
+            label_en = attr.replace("_", " ")
+        else:
+            symbol_class = meta["symbol_class"]
+            label_en = meta["label_en"]
+
+        out[symbol] = {
+            "attr": attr,
+            "label_en": label_en,
+            "symbol_class": symbol_class,
+        }
+    return out
+
+
+def infer_error_code(err: ReciterError) -> str:
+    if err.error_type == "tajweed":
+        if err.expected_len is not None and err.predicted_len is not None:
+            if err.predicted_len < err.expected_len:
+                return "TAJWEED_LENGTH_SHORT"
+            if err.predicted_len > err.expected_len:
+                return "TAJWEED_LENGTH_LONG"
+            return "TAJWEED_RULE_REPLACE"
+        if err.speech_error_type == "insert":
+            return "TAJWEED_EXTRA_SOUND"
+        if err.speech_error_type == "delete":
+            return "TAJWEED_MISSING_SOUND"
+        return "TAJWEED_RULE_REPLACE"
+
+    if err.error_type == "tashkeel":
+        if err.speech_error_type == "insert":
+            return "TASHKEEL_EXTRA"
+        if err.speech_error_type == "delete":
+            return "TASHKEEL_MISSING"
+        return "TASHKEEL_REPLACE"
+
+    if err.speech_error_type == "insert":
+        return "PHONEME_EXTRA"
+    if err.speech_error_type == "delete":
+        return "PHONEME_MISSING"
+    return "PHONEME_REPLACE"
+
+
 def normalize_error_details(errors: list[ReciterError]) -> list[ReciterError]:
     for err in errors:
         expected_ph = err.expected_ph or ""
@@ -142,6 +227,8 @@ def normalize_error_details(errors: list[ReciterError]) -> list[ReciterError]:
             err.expected_len = len(expected_ph)
         if err.predicted_len is None:
             err.predicted_len = len(predicted_ph)
+        err.error_code = infer_error_code(err)
+        err.symbol_metadata = build_symbol_metadata(expected_ph, predicted_ph)
     return errors
 
 
