@@ -597,6 +597,9 @@ def sub_with_mapping(
 
     # Apply the regex substitution
     new_text = re.sub(pattern, repl, text)
+    # If no changes occur, then skip remapping
+    if new_text == text and mappings is not None:
+        return text, mappings
     new_mappings = get_mappings(text, new_text, mappings, tajweed_rule=tajweed_rule)
     return new_text, new_mappings
 
