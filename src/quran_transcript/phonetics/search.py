@@ -14,6 +14,12 @@ from .conv_base_operation import MappingListType
 from .. import alphabet as alph
 
 
+# segment_type values used in the 8th column of `ph_index.npy`
+SEGMENT_QURAN = 0
+SEGMENT_ISTIAATHA = 1
+SEGMENT_BISMILLAH = 2
+
+
 def clean_uthmani_spaces(uth_text: str) -> str:
     """Remove residual spaces from Uthmani text.
 
@@ -96,6 +102,76 @@ def get_phonetic_to_char_uthmani(mappings: MappingListType) -> dict[int, int]:
     return ph_to_uth
 
 
+def _process_uthmani_segment(
+    uth_text: str,
+    sura_idx: int,
+    aya_idx: int,
+    segment_type: int,
+    moshaf: MoshafAttributes,
+) -> tuple[str, list[list[int]]]:
+    """Phonetize a standalone Uthmani text segment (Istiaatha or Bismillah) and
+    build its portion of the phoneme index.
+
+    This mirrors the per-aya processing loop in `create_phonemes_index`, but
+    for fixed-text segments that are not part of an aya's own word list.
+    Reconstruction of these segments back to Uthmani text (Part 4 /
+    `get_uthmani_from_result`) uses the constant strings directly rather than
+    walking `Aya` objects, so the `uth_word_idx` produced here is local to
+    this segment's own word list (e.g. `alph.istiaatha.uthmani.split(" ")`).
+
+    Args:
+        uth_text: Uthmani text of the segment (Istiaatha or Bismillah).
+        sura_idx: The sura this segment is attached to (1-based).
+        aya_idx: Always 1 -- these segments only occur before a sura's first aya.
+        segment_type: SEGMENT_ISTIAATHA or SEGMENT_BISMILLAH.
+        moshaf: Moshaf attributes used for phonetization.
+
+    Returns:
+        (normalized phoneme string for this segment, list of index rows)
+    """
+    uth_text = clean_uthmani_spaces(uth_text)
+    ph_out = quran_phonetizer(uth_text, moshaf, remove_spaces=True)
+    ph_groups = chunck_phonemes(ph_out.phonemes)
+    ph_norm = normalize_phonetic_groups(ph_groups)
+    uth_word_bound = get_uth_word_boundaries_in_ph(uth_text, ph_out.mappings)
+    ph_to_uth_idx = get_phonetic_to_char_uthmani(ph_out.mappings)
+
+    rows = []
+    ph_start_idx = 0
+    ph_end_idx = 0
+    next_ph_end_idx = 0
+    uth_word_idx = 0
+    curr_wrd_bound_idx = 0
+    for g_idx, ph_g in enumerate(ph_groups):
+        ph_end_idx = ph_start_idx + len(ph_g)
+        if (g_idx + 1) < len(ph_groups):
+            next_ph_end_idx = ph_end_idx + len(ph_groups[g_idx + 1])
+
+        rows.append(
+            [
+                sura_idx,
+                aya_idx,
+                uth_word_idx,
+                ph_to_uth_idx[ph_start_idx],
+                ph_to_uth_idx[ph_end_idx],
+                ph_start_idx,
+                ph_end_idx,
+                segment_type,
+            ]
+        )
+
+        if curr_wrd_bound_idx < len(uth_word_bound):
+            if (ph_end_idx >= uth_word_bound[curr_wrd_bound_idx]) or (
+                ph_end_idx < uth_word_bound[curr_wrd_bound_idx]
+                and next_ph_end_idx > uth_word_bound[curr_wrd_bound_idx]
+            ):
+                uth_word_idx += 1
+                curr_wrd_bound_idx += 1
+        ph_start_idx = ph_end_idx
+
+    return ph_norm, rows
+
+
 def create_phonemes_index(output_dir: Path | None = None):
     """Create a phoneme index and reference phoneme string and save to disk.
 
@@ -103,7 +179,20 @@ def create_phonemes_index(output_dir: Path | None = None):
     normalizes phoneme groups, and builds a 2D numpy array with the following
     columns per phoneme group:
         [sura_idx, aya_idx, uth_word_start_idx, uth_char_start_idx, uth_char_end_idx,
-         ph_start_idx, ph_end_idx]
+         ph_start_idx, ph_end_idx, segment_type]
+
+    `segment_type` distinguishes what kind of text a phoneme group belongs to:
+        0 = core Quranic text (an aya)
+        1 = Istiaatha (أعوذ بالله من الشيطان الرجيم) -- prepended before
+            every sura's first aya
+        2 = Bismillah (بسم الله الرحمن الرحيم) -- prepended before every
+            sura's first aya *except* sura 9 (no Bismillah is recited there)
+            and sura 1 (there, Bismillah is textually aya 1 itself, so it's
+            already indexed as segment_type=0 and not duplicated here)
+
+    For Istiaatha/Bismillah, `uth_word_start_idx`/`uth_char_*_idx` are local
+    to that segment's own word list (see `_process_uthmani_segment`), not to
+    any aya's word list.
 
     Also writes the concatenated normalized phonemes to a text file as a reference.
 
@@ -126,7 +215,36 @@ def create_phonemes_index(output_dir: Path | None = None):
     ph_grp_to_index = []
     ref_ph = ""
     for aya in start_aya.get_ayat_after():
-        uth_text = aya.get().uthmani
+        aya_info = aya.get()
+
+        if aya_info.aya_idx == 1:
+            # Istiaatha is prepended before every sura's first aya
+            istiaatha_ph, istiaatha_rows = _process_uthmani_segment(
+                aya_info.istiaatha_uthmani,
+                sura_idx=aya_info.sura_idx,
+                aya_idx=1,
+                segment_type=SEGMENT_ISTIAATHA,
+                moshaf=moshaf,
+            )
+            ref_ph += istiaatha_ph
+            ph_grp_to_index.extend(istiaatha_rows)
+
+            # Bismillah: `bismillah_uthmani` is already None for sura 1
+            # (it's aya 1 itself) and sura 9 (not recited there), so a
+            # plain None-check is sufficient -- no need to special-case
+            # those suras here.
+            if aya_info.bismillah_uthmani is not None:
+                bismillah_ph, bismillah_rows = _process_uthmani_segment(
+                    aya_info.bismillah_uthmani,
+                    sura_idx=aya_info.sura_idx,
+                    aya_idx=1,
+                    segment_type=SEGMENT_BISMILLAH,
+                    moshaf=moshaf,
+                )
+                ref_ph += bismillah_ph
+                ph_grp_to_index.extend(bismillah_rows)
+
+        uth_text = aya_info.uthmani
         uth_text = clean_uthmani_spaces(uth_text)
         ph_out = quran_phonetizer(uth_text, moshaf, remove_spaces=True)
         ph_text = ph_out.phonemes
@@ -145,22 +263,20 @@ def create_phonemes_index(output_dir: Path | None = None):
         uth_word_idx = 0
         curr_wrd_bound_idx = 0
         for g_idx, ph_g in enumerate(ph_groups):
-            # print(uth_word_idx)
-            # print(ph_g)
-            # print("-" * 10)
             ph_end_idx = ph_start_idx + len(ph_g)
             if (g_idx + 1) < len(ph_groups):
                 next_ph_end_idx = ph_end_idx + len(ph_groups[g_idx + 1])
 
             ph_grp_to_index.append(
                 [
-                    aya.get().sura_idx,
-                    aya.get().aya_idx,
+                    aya_info.sura_idx,
+                    aya_info.aya_idx,
                     uth_word_idx,
                     ph_to_uth_idx[ph_start_idx],
                     ph_to_uth_idx[ph_end_idx],
                     ph_start_idx,
                     ph_end_idx,
+                    SEGMENT_QURAN,
                 ]
             )
 
@@ -215,12 +331,15 @@ class PhonemesSearchSpan:
 
     Attributes:
         sura_idx: Sura number (1..114)
-        aya_idx: Aya number (1..)
-        uthmani_word_idx: 0‑based index of the word within the aya
+        aya_idx: Aya number (1..). For Istiaatha/Bismillah spans this is
+            always 1 (they're always attached to a sura's first aya).
+        uthmani_word_idx: 0‑based index of the word within the aya (or,
+            for Istiaatha/Bismillah, within that segment's own word list).
         uthmani_char_idx: 0‑based character index within the word
                           (inclusive for start, exclusive for end)
         phonemes_idx: 0‑based index in the phoneme sequence
                       (inclusive for start, exclusive for end)
+        segment_type: 0=quran, 1=istiaatha, 2=bismillah.
     """
 
     sura_idx: int
@@ -228,6 +347,7 @@ class PhonemesSearchSpan:
     uthmani_word_idx: int
     uthmani_char_idx: int
     phonemes_idx: int
+    segment_type: int = SEGMENT_QURAN
 
 
 @dataclass
@@ -250,27 +370,49 @@ class PhoneticSearch:
     and provides methods to search for phonetic patterns.
     """
 
-    def __init__(self, data_dir: Optional[Path] = None):
+    def __init__(
+        self,
+        data_dir: Optional[Path] = None,
+        start: tuple[int, int] = (1, 1),
+        end: tuple[int, int] = (114, 6),
+    ):
         """Load the index and reference phoneme string.
 
         Args:
             data_dir: Directory containing 'ph_index.npy' and 'ref_norm_ph.txt'.
                       If None, uses the package's default 'quran-script' folder.
+            start: (sura, aya) inclusive 1-based lower bound. The index and
+                reference string are filtered to this range, so `search()`
+                will never return matches before this point. Istiaatha and
+                Bismillah attached to a sura's first aya are included/excluded
+                using the same (sura, 1) bound as that aya.
+            end: (sura, aya) inclusive 1-based upper bound.
 
         Raises:
             FileNotFoundError: If either required file is missing.
-            ValueError: If reference length does not match index length.
+            ValueError: If reference length does not match index length, or
+                if the index file predates the `segment_type` column (8th
+                column) added for Istiaatha/Bismillah support.
         """
         if data_dir is None:
             data_dir = Path(pkg_resources.files("quran_transcript")) / "quran-script"
         else:
             data_dir = Path(data_dir)
 
-        # Load index: [sura, aya, word_idx, char_idx, ph_idx_start]
+        # Load index: [sura, aya, word_idx, char_start_idx, char_end_idx,
+        #              ph_start_idx, ph_end_idx, segment_type]
         index_path = data_dir / "ph_index.npy"
         if not index_path.exists():
             raise FileNotFoundError(f"Index file not found: {index_path}")
-        self.index = np.load(index_path)  # shape (N, 5), dtype uint16
+        self.index = np.load(index_path)  # shape (N, 8), dtype uint16
+
+        if self.index.ndim != 2 or self.index.shape[1] != 8:
+            raise ValueError(
+                f"`ph_index.npy` has shape {self.index.shape}, expected "
+                "(N, 8). This looks like an index built before Istiaatha/"
+                "Bismillah support was added (7 columns). Rebuild it with "
+                "`python -m ph-ndx`."
+            )
 
         # Load reference phoneme string (normalized: first phoneme of each group)
         ref_path = data_dir / "ref_norm_ph.txt"
@@ -285,6 +427,43 @@ class PhoneticSearch:
                 f"Reference length ({len(self.ref_ph_norm)}) does not match "
                 f"index length ({len(self.index)})"
             )
+
+        self.start = start
+        self.end = end
+        self._apply_boundary(start, end)
+
+    def _apply_boundary(self, start: tuple[int, int], end: tuple[int, int]) -> None:
+        """Filter `self.index` and `self.ref_ph_norm` to the (sura, aya) range.
+
+        Comparison is lexicographic on (sura_idx, aya_idx), inclusive on both
+        ends. Istiaatha/Bismillah rows carry aya_idx=1 (the sura's first aya),
+        so they're naturally included/excluded alongside that aya.
+
+        Args:
+            start: (sura, aya) inclusive lower bound.
+            end: (sura, aya) inclusive upper bound.
+        """
+        start_sura, start_aya = start
+        end_sura, end_aya = end
+        assert (start_sura, start_aya) <= (end_sura, end_aya), (
+            f"`start` {start} must not be after `end` {end}"
+        )
+
+        sura_col = self.index[:, 0].astype(np.int64)
+        aya_col = self.index[:, 1].astype(np.int64)
+
+        after_start = (sura_col > start_sura) | (
+            (sura_col == start_sura) & (aya_col >= start_aya)
+        )
+        before_end = (sura_col < end_sura) | (
+            (sura_col == end_sura) & (aya_col <= end_aya)
+        )
+        mask = after_start & before_end
+
+        self.index = self.index[mask]
+        self.ref_ph_norm = "".join(
+            ch for ch, keep in zip(self.ref_ph_norm, mask.tolist()) if keep
+        )
 
     def _normalize_query(self, query: str) -> str:
         """Apply the same normalization to the query as was used for the index.
@@ -321,6 +500,7 @@ class PhoneticSearch:
             uthmani_word_idx=int(row[2]),
             uthmani_char_idx=int(row[4]) if end else int(row[3]),
             phonemes_idx=int(row[6]) if end else int(row[5]),
+            segment_type=int(row[7]),
         )
 
     def search(
@@ -329,14 +509,19 @@ class PhoneticSearch:
         start: tuple[int, int, int] | None = None,
         window: int | None = None,
         error_ratio: float = 0.1,
+        include_istiaatha: bool = False,
+        include_bismillah: bool = False,
     ) -> list[PhonmesSearhResult]:
         """Find all substrings in the Quran phonetic script that match the query.
 
         Performs fuzzy matching using Levenshtein distance. The query is normalized
-        internally before searching.
+        internally before searching. The searchable range is the (start, end)
+        boundary given to `__init__`; matches touching Istiaatha or Bismillah
+        phonemes are dropped unless the corresponding `include_*` flag is set.
 
         TODO:
-            - Implement boundary restrictions with `start` and `window` parameters.
+            - Implement fine-grained restriction with `start`/`window` params
+              (coarse-grained boundary is available via `__init__(start=, end=)`).
 
         Args:
             query: Phonetic query string (will be normalized).
@@ -344,13 +529,22 @@ class PhoneticSearch:
             window: Optional maximum number of phoneme groups to search from start.
             error_ratio: Maximum allowed Levenshtein distance as a fraction of query length.
                          Must be between 0 and 1.
+            include_istiaatha: If False (default), drop any match that overlaps
+                Istiaatha phonemes.
+            include_bismillah: If False (default), drop any match that overlaps
+                a standalone Bismillah segment. Note this does not affect
+                Surah 1 / Surah 27's Bismillah, since those are indexed as
+                ordinary Quran text (segment_type=quran), not as a separate
+                Bismillah segment.
 
         Returns:
             List of PhonmesSearhResult objects, each containing start and end spans.
 
         Raises:
             ValueError: If query is empty or error_ratio is out of bounds.
-            NoPhonemesSearchResult: If no matches are found.
+            NoPhonemesSearchResult: If no matches are found (either no fuzzy
+                matches at all, or all fuzzy matches were filtered out by the
+                include_istiaatha/include_bismillah flags).
         """
         if not query:
             raise ValueError("Query is longer then the Holy Quarn Text")
@@ -358,7 +552,7 @@ class PhoneticSearch:
         assert error_ratio >= 0 and error_ratio <= 1
 
         # TODO:
-        # Add boudary to search resutls with start and window
+        # Add fine-grained boundary to search results with start and window
 
         # Normalize query
         norm_query = self._normalize_query(query)
@@ -371,29 +565,148 @@ class PhoneticSearch:
 
         results = []
         for out in outs:
+            seg_types = set(int(t) for t in self.index[out.start : out.end, 7])
+            if not include_istiaatha and SEGMENT_ISTIAATHA in seg_types:
+                continue
+            if not include_bismillah and SEGMENT_BISMILLAH in seg_types:
+                continue
             results.append(
                 PhonmesSearhResult(
                     start=self._ref_idx_to_span(out.start, end=False),
                     end=self._ref_idx_to_span(out.end - 1, end=True),
                 )
             )
+
+        if not results:
+            raise NoPhonemesSearchResult(
+                "No Resutls found after filtering Istiaatha/Bismillah matches. "
+                "Try `include_istiaatha=True` / `include_bismillah=True`, or "
+                "increase the error ratio."
+            )
         return results
+
+    def _get_segment_uthmani_words(
+        self, sura_idx: int, segment_type: int
+    ) -> list[str]:
+        """Return the Uthmani word list for a fixed-text segment.
+
+        Args:
+            sura_idx: The sura this segment is attached to (1-based).
+            segment_type: SEGMENT_ISTIAATHA or SEGMENT_BISMILLAH.
+
+        Returns:
+            The segment's Uthmani text split into words.
+
+        Raises:
+            ValueError: If segment_type is SEGMENT_QURAN (no fixed word list),
+                or if the sura has no Bismillah segment (sura 1 or 9).
+        """
+        aya = Aya(sura_idx, 1)
+        if segment_type == SEGMENT_ISTIAATHA:
+            text = aya.get().istiaatha_uthmani
+        elif segment_type == SEGMENT_BISMILLAH:
+            text = aya.get().bismillah_uthmani
+            if text is None:
+                raise ValueError(
+                    f"Sura {sura_idx} has no standalone Bismillah segment "
+                    "(sura 1's Bismillah is aya 1 itself; sura 9 has none)."
+                )
+        else:
+            raise ValueError(
+                f"segment_type={segment_type} has no fixed word list; "
+                "quran text (segment_type=0) must be resolved via Aya."
+            )
+        return text.split(" ")
 
     def get_uthmani_from_result(self, r: PhonmesSearhResult) -> str:
         """Extract the Uthmani text corresponding to a search result.
 
-        Traverses ayas from the start to the end span and collects the relevant
-        Uthmani words, joining them with the Uthmani space character.
+        Handles four cases:
+            1. The match is entirely inside one non-Quran segment
+               (Istiaatha-only or Bismillah-only).
+            2. The match starts in Istiaatha and continues into Bismillah
+               and/or the Quran text of the same sura.
+            3. The match starts in Bismillah and continues into the Quran
+               text of the same sura.
+            4. The match starts in Quran text (the original, unchanged
+               behavior): traverses ayas from start to end span and collects
+               the relevant Uthmani words.
 
         Args:
             r: A PhonmesSearhResult object.
 
         Returns:
             Uthmani text snippet representing the matched portion.
+
+        Raises:
+            NotImplementedError: If the match starts in Quran text and ends
+                inside the following sura's Istiaatha/Bismillah segment.
+                Matches crossing a sura boundary into the next sura's
+                Istiaatha/Bismillah aren't resolvable by the current aya-walk
+                loop, which assumes `r.end`'s (sura, aya) always identifies a
+                real aya to slice `uthmani_words` from.
         """
-        out_uth_words = []
-        aya = Aya(r.start.sura_idx, r.start.aya_idx)
-        start_word_idx = r.start.uthmani_word_idx
+        if r.start.segment_type == SEGMENT_QURAN and r.end.segment_type != SEGMENT_QURAN:
+            raise NotImplementedError(
+                "Matches starting in Quran text and ending in the following "
+                "sura's Istiaatha/Bismillah are not yet supported by "
+                "get_uthmani_from_result()."
+            )
+
+        out_uth_words: list[str] = []
+
+        # Case 1: match fully contained in one non-Quran segment
+        same_fixed_span = (
+            r.start.sura_idx == r.end.sura_idx
+            and r.start.segment_type == r.end.segment_type
+            and r.start.segment_type != SEGMENT_QURAN
+        )
+        if same_fixed_span:
+            words = self._get_segment_uthmani_words(
+                r.start.sura_idx, r.start.segment_type
+            )
+            out_uth_words = words[r.start.uthmani_word_idx : r.end.uthmani_word_idx + 1]
+            return alph.uthmani.space.join(out_uth_words)
+
+        # Case 2: starts in Istiaatha
+        if r.start.segment_type == SEGMENT_ISTIAATHA:
+            istiaatha_words = self._get_segment_uthmani_words(
+                r.start.sura_idx, SEGMENT_ISTIAATHA
+            )
+            out_uth_words.extend(istiaatha_words[r.start.uthmani_word_idx :])
+
+            try:
+                bismillah_words = self._get_segment_uthmani_words(
+                    r.start.sura_idx, SEGMENT_BISMILLAH
+                )
+            except ValueError:
+                bismillah_words = None
+
+            if bismillah_words is not None:
+                if r.end.segment_type == SEGMENT_BISMILLAH:
+                    out_uth_words.extend(
+                        bismillah_words[: r.end.uthmani_word_idx + 1]
+                    )
+                    return alph.uthmani.space.join(out_uth_words)
+                out_uth_words.extend(bismillah_words)
+
+            start_word_idx = 0
+            aya = Aya(r.start.sura_idx, 1)
+
+        # Case 3: starts in Bismillah
+        elif r.start.segment_type == SEGMENT_BISMILLAH:
+            bismillah_words = self._get_segment_uthmani_words(
+                r.start.sura_idx, SEGMENT_BISMILLAH
+            )
+            out_uth_words.extend(bismillah_words[r.start.uthmani_word_idx :])
+            start_word_idx = 0
+            aya = Aya(r.start.sura_idx, 1)
+
+        # Case 4: starts in Quran text (original behavior)
+        else:
+            start_word_idx = r.start.uthmani_word_idx
+            aya = Aya(r.start.sura_idx, r.start.aya_idx)
+
         while True:
             if (
                 aya.get().sura_idx == r.end.sura_idx
@@ -409,4 +722,3 @@ class PhoneticSearch:
                 aya = aya.step(1)
 
         return alph.uthmani.space.join(out_uth_words)
-
