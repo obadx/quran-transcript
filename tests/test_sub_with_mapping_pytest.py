@@ -1,30 +1,28 @@
-import py
+import json
+
 import pytest
-import sys
-import os
 
-
-from quran_transcript import MoshafAttributes, quran_phonetizer, Aya
+from quran_transcript import Aya, MoshafAttributes, quran_phonetizer
 from quran_transcript.phonetics.conv_base_operation import (
-    MappingPos,
-    sub_with_mapping,
-    merge_mappings,
-    get_mappings,
     MappingListType,
+    MappingPos,
+    get_mappings,
+    merge_mappings,
+    sub_with_mapping,
 )
 from quran_transcript.phonetics.search import (
-    get_uth_word_boundaries_in_ph,
     clean_uthmani_spaces,
+    get_uth_word_boundaries_in_ph,
 )
-
 from quran_transcript.phonetics.tajweed_rulses import (
-    NormalMaddRule,
-    Qalqalah,
-    LeenMaddRule,
     AaredMaddRule,
     LazemMaddRule,
+    LeenMaddRule,
     MottaselMaddRule,
+    NormalMaddRule,
+    Qalqalah,
 )
+
 # Import the sub_with_mapping function from the existing test file
 
 
@@ -1126,6 +1124,129 @@ class TestMergeMappings:
                 MappingPos(pos=(21, 21), tajweed_rules=None, deleted=True),
             ],
         ),
+        (
+            "حمٓ عٓسٓقٓ",
+            "حَاا مِۦۦۦۦۦۦم عَيييييںںںسِۦۦۦۦۦۦںںںقَااااااف",
+            [
+                MappingPos(
+                    pos=(0, 5),
+                    tajweed_rules=[NormalMaddRule(tag="alif")],
+                    deleted=False,
+                ),
+                MappingPos(
+                    pos=(5, 14),
+                    tajweed_rules=[LazemMaddRule(tag="yaa")],
+                    deleted=False,
+                ),
+                MappingPos(pos=(14, 14), tajweed_rules=None, deleted=True),
+                MappingPos(pos=(14, 15), tajweed_rules=None, deleted=False),
+                MappingPos(
+                    pos=(15, 25),
+                    tajweed_rules=[LeenMaddRule(golden_len=6, tag="yaa")],
+                    deleted=False,
+                ),
+                MappingPos(pos=(25, 25), tajweed_rules=None, deleted=True),
+                MappingPos(
+                    pos=(25, 36),
+                    tajweed_rules=[LazemMaddRule(tag="yaa")],
+                    deleted=False,
+                ),
+                MappingPos(pos=(36, 36), tajweed_rules=None, deleted=True),
+                MappingPos(
+                    pos=(36, 45),
+                    tajweed_rules=[LazemMaddRule(tag="alif")],
+                    deleted=False,
+                ),
+                MappingPos(pos=(45, 45), tajweed_rules=None, deleted=True),
+            ],
+        ),
+        (
+            "بِسْمِ ٱللَّهِ ٱلرَّحْمَٰنِ ٱلرَّحِيمِ حمٓ عٓسٓقٓ",
+            "بِسمِ للَااهِ ررَحمَاانِ ررَحِۦۦمِ حَاا مِۦۦۦۦۦۦم عَيييييںںںسِۦۦۦۦۦۦںںںقَااااااف",
+            [
+                MappingPos(pos=(0, 1), tajweed_rules=None, deleted=False),
+                MappingPos(pos=(1, 2), tajweed_rules=None, deleted=False),
+                MappingPos(pos=(2, 3), tajweed_rules=None, deleted=False),
+                MappingPos(pos=(3, 3), tajweed_rules=None, deleted=True),
+                MappingPos(pos=(3, 4), tajweed_rules=None, deleted=False),
+                MappingPos(pos=(4, 5), tajweed_rules=None, deleted=False),
+                MappingPos(pos=(5, 6), tajweed_rules=None, deleted=False),
+                MappingPos(pos=(6, 6), tajweed_rules=None, deleted=True),
+                MappingPos(pos=(6, 6), tajweed_rules=None, deleted=True),
+                MappingPos(pos=(6, 7), tajweed_rules=None, deleted=False),
+                MappingPos(pos=(7, 8), tajweed_rules=None, deleted=False),
+                MappingPos(
+                    pos=(8, 11),
+                    tajweed_rules=[NormalMaddRule(tag="alif")],
+                    deleted=False,
+                ),
+                MappingPos(pos=(11, 12), tajweed_rules=None, deleted=False),
+                MappingPos(pos=(12, 13), tajweed_rules=None, deleted=False),
+                MappingPos(pos=(13, 14), tajweed_rules=None, deleted=False),
+                MappingPos(pos=(14, 14), tajweed_rules=None, deleted=True),
+                MappingPos(pos=(14, 14), tajweed_rules=None, deleted=True),
+                MappingPos(pos=(14, 15), tajweed_rules=None, deleted=False),
+                MappingPos(pos=(15, 16), tajweed_rules=None, deleted=False),
+                MappingPos(pos=(16, 17), tajweed_rules=None, deleted=False),
+                MappingPos(pos=(17, 18), tajweed_rules=None, deleted=False),
+                MappingPos(pos=(18, 18), tajweed_rules=None, deleted=True),
+                MappingPos(pos=(18, 19), tajweed_rules=None, deleted=False),
+                MappingPos(pos=(19, 20), tajweed_rules=None, deleted=False),
+                MappingPos(
+                    pos=(20, 22),
+                    tajweed_rules=[NormalMaddRule(tag="alif")],
+                    deleted=False,
+                ),
+                MappingPos(pos=(22, 23), tajweed_rules=None, deleted=False),
+                MappingPos(pos=(23, 24), tajweed_rules=None, deleted=False),
+                MappingPos(pos=(24, 25), tajweed_rules=None, deleted=False),
+                MappingPos(pos=(25, 25), tajweed_rules=None, deleted=True),
+                MappingPos(pos=(25, 25), tajweed_rules=None, deleted=True),
+                MappingPos(pos=(25, 26), tajweed_rules=None, deleted=False),
+                MappingPos(pos=(26, 27), tajweed_rules=None, deleted=False),
+                MappingPos(pos=(27, 28), tajweed_rules=None, deleted=False),
+                MappingPos(pos=(28, 29), tajweed_rules=None, deleted=False),
+                MappingPos(pos=(29, 30), tajweed_rules=None, deleted=False),
+                MappingPos(
+                    pos=(30, 32),
+                    tajweed_rules=[NormalMaddRule(tag="yaa")],
+                    deleted=False,
+                ),
+                MappingPos(pos=(32, 33), tajweed_rules=None, deleted=False),
+                MappingPos(pos=(33, 34), tajweed_rules=None, deleted=False),
+                MappingPos(pos=(34, 35), tajweed_rules=None, deleted=False),
+                MappingPos(
+                    pos=(35, 40),
+                    tajweed_rules=[NormalMaddRule(tag="alif")],
+                    deleted=False,
+                ),
+                MappingPos(
+                    pos=(40, 49),
+                    tajweed_rules=[LazemMaddRule(tag="yaa")],
+                    deleted=False,
+                ),
+                MappingPos(pos=(49, 49), tajweed_rules=None, deleted=True),
+                MappingPos(pos=(49, 50), tajweed_rules=None, deleted=False),
+                MappingPos(
+                    pos=(50, 60),
+                    tajweed_rules=[LeenMaddRule(tag="yaa", golden_len=6)],
+                    deleted=False,
+                ),
+                MappingPos(pos=(60, 60), tajweed_rules=None, deleted=True),
+                MappingPos(
+                    pos=(60, 71),
+                    tajweed_rules=[LazemMaddRule(tag="yaa")],
+                    deleted=False,
+                ),
+                MappingPos(pos=(71, 71), tajweed_rules=None, deleted=True),
+                MappingPos(
+                    pos=(71, 80),
+                    tajweed_rules=[LazemMaddRule(tag="alif")],
+                    deleted=False,
+                ),
+                MappingPos(pos=(80, 80), tajweed_rules=None, deleted=True),
+            ],
+        ),
     ],
 )
 def test_phonetizer_with_mappings(
@@ -1165,6 +1286,14 @@ def test_sub_with_mapping_stress_test():
         madd_mottasel_waqf=4,
         madd_aared_len=4,
     )
+
+    uth_text = [aya.get().uthmani for aya in start_aya.get_ayat_after()]
+    # Looping over all the Ayat and most of possible starts and puases
+    # drevied from quran-muaalem-annotated-v3 `uthamni` column
+    with open(
+        "./quran-script/muallem_ds_uthmani_ayat.json", "r", encoding="utf-8"
+    ) as f:
+        uth_text += json.load(f)
 
     for aya in start_aya.get_ayat_after():
         uthmani_text = aya.get().uthmani
