@@ -1,7 +1,5 @@
-import os
-import sys
+import json
 
-import py
 import pytest
 
 from quran_transcript import Aya, MoshafAttributes, quran_phonetizer
@@ -1288,6 +1286,14 @@ def test_sub_with_mapping_stress_test():
         madd_mottasel_waqf=4,
         madd_aared_len=4,
     )
+
+    uth_text = [aya.get().uthmani for aya in start_aya.get_ayat_after()]
+    # Looping over all the Ayat and most of possible starts and puases
+    # drevied from quran-muaalem-annotated-v3 `uthamni` column
+    with open(
+        "./quran-script/muallem_ds_uthmani_ayat.json", "r", encoding="utf-8"
+    ) as f:
+        uth_text += json.load(f)
 
     for aya in start_aya.get_ayat_after():
         uthmani_text = aya.get().uthmani
