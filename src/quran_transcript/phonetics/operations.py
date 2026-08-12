@@ -1,28 +1,27 @@
-from dataclasses import dataclass, field
 import re
+from dataclasses import dataclass, field
 
-
+from ..alphabet import phonetics as ph
+from ..alphabet import uthmani as uth
 from .conv_base_operation import (
     ConversionOperation,
-    sub_with_mapping,
     MappingListType,
     MappingPos,
     get_mappings,
+    sub_with_mapping,
 )
 from .moshaf_attributes import MoshafAttributes
-from ..alphabet import uthmani as uth
-from ..alphabet import phonetics as ph
 from .tajweed_rulses import (
-    TajweedRule,
-    Qalqalah,
-    NormalMaddRule,
+    AaredMaddRule,
+    IdghamKamel,
+    LazemMaddRule,
+    LeenMaddRule,
     MonfaselMaddRule,
     MottaselMaddPauseRule,
     MottaselMaddRule,
-    LazemMaddRule,
-    AaredMaddRule,
-    LeenMaddRule,
-    IdghamKamel,
+    NormalMaddRule,
+    Qalqalah,
+    TajweedRule,
 )
 
 
@@ -65,7 +64,6 @@ class DisassembleHrofMoqatta(ConversionOperation):
         rep: str,
         mappings: MappingListType | None,
     ) -> MappingListType:
-        #
         if mappings is None:
             mappings = get_mappings(old_text, old_text)
 
@@ -81,13 +79,16 @@ class DisassembleHrofMoqatta(ConversionOperation):
         re_outs = [re_o for re_o in re.finditer(uth_word, old_text)]
         for re_idx, re_out in enumerate(re_outs):
             disc_map = self._get_single_word_mapping(uth_word=uth_word, rep=rep)
-            ptr = 0
-            # adding offset in case of multiple disconted letter (rare case but for genrality)
+            # Adding offset in case of multiple disconted letter (rare case but for genrality)
+            # Actually it happed in: `حمٓ عٓسٓقٓ`
             start_offset = re_out.span()[0] + re_idx * (len(rep) - len(uth_word))
             start_idx = re_out.span()[0]
-            end_idx = re_out.span()[1]
+            start_idx = self._get_mapping_idx(start_idx, mappings)
+            # python execlusive indexing
+            end_idx = start_idx + len(uth_word)
             last_pos = 0
-            # Adding mapping offsets
+            # Adding mapping offsets (shifting our uthmani word mapping by offset)
+            ptr = 0
             for idx in range(start_idx, end_idx):
                 # Avoiding copyiing object by refrence
                 mappings[idx].pos = (
@@ -103,9 +104,10 @@ class DisassembleHrofMoqatta(ConversionOperation):
                 if (re_idx + 1) == len(re_outs)
                 else re_outs[idx + 1].span()[0]
             )
-            # Shifting the rest of position to the right
+            # Shifting the rest of position (other than our word) to the right
             offset = None
             for idx in range(end_idx, end):
+                # First Time Only
                 if offset is None:
                     offset = last_pos - mappings[idx].pos[0]
                 mappings[idx].pos = (
@@ -114,6 +116,20 @@ class DisassembleHrofMoqatta(ConversionOperation):
                 )
 
         return mappings
+
+    def _get_mapping_idx(self, idx: int, mappings: MappingListType) -> int:
+        """gets the idx of the mappings corresponds to a pos"""
+        last_m_idx = None
+        for m_idx in range(len(mappings)):
+            # we might have [MappingPos(pos=(0, 6), tajweed_rules=None, deleted=False), MappingPos(pos=(6, 6), tajweed_rules=None, deleted=True)]
+            # so we want to return the last index for our case here `1` instead of `0`
+            if idx >= mappings[m_idx].pos[0] and idx <= mappings[m_idx].pos[1]:
+                last_m_idx = m_idx
+
+        if last_m_idx is None:
+            raise ValueError("Can not find mapping index corresponds to input idx")
+        else:
+            return last_m_idx
 
     def _get_single_word_mapping(self, uth_word: str, rep: str) -> MappingListType:
         chars_with_madd = re.findall(f"[^{uth.madd}]{uth.madd}?", uth_word)
