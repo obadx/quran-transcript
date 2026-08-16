@@ -898,8 +898,8 @@ class Madd(ConversionOperation):
         # المد الطبيعي
         for k, madd_patt in self.madd_map.items():
             text, mappings = sub_with_mapping(
-                f"{madd_patt.pattern}(?![{madd_patt.madd}{uth.ras_haaa}{uth.shadda}{uth.harakat_group}])",
-                r"\1" + 2 * madd_patt.target,
+                f"{madd_patt.pattern}([^{madd_patt.madd}{uth.ras_haaa}{uth.shadda}{uth.harakat_group}]|$)",
+                r"\1" + 2 * madd_patt.target + r"\2",
                 text,
                 mappings,
                 tajweed_rule=NormalMaddRule(tag=madd_patt.name),
