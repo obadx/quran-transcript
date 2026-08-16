@@ -372,8 +372,8 @@ class RemoveKasheeda(ConversionOperation):
 class RemoveHmzatWaslMiddle(ConversionOperation):
     arabic_name: str = "حذف همزة الوصل وصلا"
     regs: tuple[str, str] = (
-        f"(?!^){uth.hamzat_wasl}",
-        r"",
+        f"([^^]){uth.hamzat_wasl}",
+        r"\1",
     )
 
 
@@ -525,7 +525,7 @@ class AddAlifIsmAllah(ConversionOperation):
         ]
     )
     regs: tuple[str, str] = (
-        f"({uth.lam}{uth.kasra}?{uth.lam}{uth.shadda}{uth.fatha})({uth.haa}(?:.|$)(?![{uth.baa}{uth.waw}]))",
+        f"({uth.lam}{uth.kasra}?{uth.lam}{uth.shadda}{uth.fatha})({uth.haa}(?:$|.[^{uth.baa}{uth.waw}]))",
         f"\\1{uth.alif}\\2",
     )
 
@@ -794,7 +794,7 @@ class Madd(ConversionOperation):
         # المد المنفصل
         # ها ويا التنبيه
         text, mappings = sub_with_mapping(
-            f"((?:^|{uth.space}|(?:(?:^|{uth.space})[{uth.faa}{uth.waw}{uth.hamza}]{uth.fatha}))[{uth.yaa}{uth.haa}]{uth.fatha}){uth.alif}{uth.madd}({uth.hamza}.(?!{uth.space}))",
+            f"((?:^|{uth.space}|(?:(?:^|{uth.space})[{uth.faa}{uth.waw}{uth.hamza}]{uth.fatha}))[{uth.yaa}{uth.haa}]{uth.fatha}){uth.alif}{uth.madd}({uth.hamza}.[^{uth.space}])",
             r"\1" + ph.alif * moshaf.madd_monfasel_len + r"\2",
             text,
             mappings,
@@ -898,8 +898,8 @@ class Madd(ConversionOperation):
         # المد الطبيعي
         for k, madd_patt in self.madd_map.items():
             text, mappings = sub_with_mapping(
-                f"{madd_patt.pattern}(?![{madd_patt.madd}{uth.ras_haaa}{uth.shadda}{uth.harakat_group}])",
-                r"\1" + 2 * madd_patt.target,
+                f"{madd_patt.pattern}([^{madd_patt.madd}{uth.ras_haaa}{uth.shadda}{uth.harakat_group}]|$)",
+                r"\1" + 2 * madd_patt.target + r"\2",
                 text,
                 mappings,
                 tajweed_rule=NormalMaddRule(tag=madd_patt.name),
