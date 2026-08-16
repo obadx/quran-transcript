@@ -1,44 +1,45 @@
-import pytest
 import re
 from dataclasses import asdict
 from typing import Literal
 
+import pytest
+
+from quran_transcript import Aya
+from quran_transcript import alphabet as alph
 from quran_transcript.phonetics.moshaf_attributes import MoshafAttributes
 from quran_transcript.phonetics.operations import (
-    DisassembleHrofMoqatta,
-    SpecialCases,
+    AddAlifIsmAllah,
     BeginWithHamzatWasl,
+    CleanEnd,
     ConvertAlifMaksora,
-    NormalizeHmazat,
+    DisassembleHrofMoqatta,
+    EnlargeSmallLetters,
+    Ghonna,
+    IltiqaaAlsaknan,
+    Imala,
     IthbatYaaYohie,
-    RemoveKasheeda,
+    Madd,
+    MaddAlewad,
+    NormalizeHmazat,
+    NormalizeTaa,
+    PrepareGhonnaIdghamIqlab,
+    Qalqla,
     RemoveHmzatWaslMiddle,
+    RemoveKasheeda,
     RemoveSkoonMostadeer,
     SkoonMostateel,
-    MaddAlewad,
-    WawAlsalah,
-    EnlargeSmallLetters,
-    CleanEnd,
-    NormalizeTaa,
-    AddAlifIsmAllah,
-    PrepareGhonnaIdghamIqlab,
-    IltiqaaAlsaknan,
-    Ghonna,
+    SpecialCases,
     Tasheel,
-    Imala,
-    Madd,
-    Qalqla,
+    WawAlsalah,
 )
 from quran_transcript.phonetics.phonetizer import quran_phonetizer
 from quran_transcript.phonetics.sifa import (
-    process_sifat,
     SifaOutput,
-    lam_tafkheem_tarqeeq_finder,
     alif_tafkheem_tarqeeq_finder,
+    lam_tafkheem_tarqeeq_finder,
+    process_sifat,
     raa_tafkheem_tarqeeq_finder,
 )
-from quran_transcript import Aya
-from quran_transcript import alphabet as alph
 
 
 @pytest.mark.parametrize(
@@ -1991,6 +1992,17 @@ def test_alif_ism_Allah(in_text: str, target_text: str, moshaf: MoshafAttributes
                 madd_aared_len=4,
             ),
         ),
+        (
+            "ذَالِكَ بِمَا عَصَو وَّكَانُو يَعْتَدُون",
+            "ذَالِكَ بِمَا عَصَوَّكَانُو يَعْتَدُون",
+            MoshafAttributes(
+                rewaya="hafs",
+                madd_monfasel_len=4,
+                madd_mottasel_len=4,
+                madd_mottasel_waqf=4,
+                madd_aared_len=4,
+            ),
+        ),
     ],
 )
 def test_Prepare_ghonna_tanween_idgham(
@@ -3435,6 +3447,40 @@ def test_get_thrird_letter_in_verb_haraka(
                 madd_mottasel_len=4,
                 madd_mottasel_waqf=4,
                 madd_aared_len=6,
+            ),
+        ),
+        # حذف الحرف الأول من الحرفان المدغمان المبدوء بياء أو واو
+        (
+            "ذَٰلِكَ بِمَا عَصَوا۟ وَّكَانُوا۟ يَعْتَدُونَ",
+            "ذَاالِكَ بِمَاا عَصَووَكَاانُۥۥ يَعتَدُۥۥۥۥن",
+            MoshafAttributes(
+                rewaya="hafs",
+                madd_monfasel_len=4,
+                madd_mottasel_len=4,
+                madd_mottasel_waqf=4,
+                madd_aared_len=4,
+            ),
+        ),
+        (
+            "فَإِنْ ءَامَنُوا۟ بِمِثْلِ مَآ ءَامَنتُم بِهِۦ فَقَدِ ٱهْتَدَوا۟ وَّإِن",
+            "فَءِن ءَاامَنُۥۥ بِمِثلِ مَاااا ءَاامَںںںتُ۾۾۾بِهِۦۦ فَقَدِ هتَدَووَءِن",
+            MoshafAttributes(
+                rewaya="hafs",
+                madd_monfasel_len=4,
+                madd_mottasel_len=4,
+                madd_mottasel_waqf=4,
+                madd_aared_len=4,
+            ),
+        ),
+        (
+            "لَا تَحْسَبَنَّ ٱلَّذِينَ يَفْرَحُونَ بِمَآ أَتَوا۟ وَّيُحِبُّونَ أَن يُحْمَدُوا۟",
+            "لَاا تَحسَبَننننَ للَذِۦۦنَ يَفرَحُۥۥنَ بِمَاااا ءَتَووَيُحِببُۥۥنَ ءَيييُحمَدُۥۥ",
+            MoshafAttributes(
+                rewaya="hafs",
+                madd_monfasel_len=4,
+                madd_mottasel_len=4,
+                madd_mottasel_waqf=4,
+                madd_aared_len=4,
             ),
         ),
     ],

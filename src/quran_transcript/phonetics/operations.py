@@ -614,8 +614,8 @@ class PrepareGhonnaIdghamIqlab(ConversionOperation):
             ),
             # حذف الحرف الأول من الحفران المدغمان
             (
-                f"([{uth.fatha}{uth.dama}]{uth.yaa}|[{uth.fatha}{uth.kasra}]{uth.waw}|[{uth.pure_letters_without_yaa_and_waw_group}]){uth.space}?([{uth.pure_letters_group}]{uth.shadda})",
-                r"\2",
+                f"(?:([{uth.fatha}{uth.dama}]){uth.yaa}|([{uth.fatha}{uth.kasra}]){uth.waw}|[{uth.pure_letters_without_yaa_and_waw_group}]){uth.space}?([{uth.pure_letters_group}]{uth.shadda})",
+                r"\1\2\3",
                 # IdghamKamel(),
             ),
         ]
