@@ -3519,6 +3519,40 @@ def test_get_thrird_letter_in_verb_haraka(
                 madd_aared_len=4,
             ),
         ),
+        # فادرارأتم
+        (
+            "وَإِذْ قَتَلْتُمْ نَفْسًۭا فَٱدَّٰرَْٰٔتُمْ فِيهَا",
+            "وَءِذ قَتَلتُم نَفسَںںںفَددَاارَءتُم فِۦۦهَاا",
+            MoshafAttributes(
+                rewaya="hafs",
+                madd_monfasel_len=4,
+                madd_mottasel_len=4,
+                madd_mottasel_waqf=4,
+                madd_aared_len=4,
+            ),
+        ),
+        (
+            "وَإِذْ قَتَلْتُمْ نَفْسًۭا فَٱدَّٰرَْٰٔتُمْ",
+            "وَءِذ قَتَلتُم نَفسَںںںفَددَاارَءتُم",
+            MoshafAttributes(
+                rewaya="hafs",
+                madd_monfasel_len=4,
+                madd_mottasel_len=4,
+                madd_mottasel_waqf=4,
+                madd_aared_len=4,
+            ),
+        ),
+        (
+            "فَٱدَّٰرَْٰٔتُمْ",
+            "فَددَاارَءتُم",
+            MoshafAttributes(
+                rewaya="hafs",
+                madd_monfasel_len=4,
+                madd_mottasel_len=4,
+                madd_mottasel_waqf=4,
+                madd_aared_len=4,
+            ),
+        ),
     ],
 )
 def test_quran_phonetizer(in_text: str, target_text: str, moshaf: MoshafAttributes):

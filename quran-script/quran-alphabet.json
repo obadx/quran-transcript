@@ -309,6 +309,13 @@
         },
         "target_pattern": null,
         "pos": "middle"
+      },
+      {
+        "pattern": "فَٱدَّٰرَْٰٔتُمْ",
+        "attr_name": null,
+        "opts": null,
+        "target_pattern": "فَٱدَّٰرَْٔتُمْ",
+        "pos": "middle"
       }
     ],
     "tanween_fath_mothhar": "ً",
