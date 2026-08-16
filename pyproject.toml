@@ -60,6 +60,9 @@ testpaths = [
     "tests/test_phonemes_search_pytest.py",
     "tests/test_explain_error_pytest.py",
 ]
+markers = [
+    "stress: stress tests that run over the whole Quran and are slow",
+]
 
 [tool.setuptools.package-data]
 quran_transcript = ["quran-script/*"]

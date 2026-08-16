@@ -1277,6 +1277,7 @@ def test_phonetizer_with_mappings(
         print("-" * 40)
 
 
+@pytest.mark.stress
 def test_sub_with_mapping_stress_test():
     start_aya = Aya()
     moshaf = MoshafAttributes(

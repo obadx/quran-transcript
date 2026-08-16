@@ -572,3 +572,27 @@ This symlink may not work on Windows by default. To resolve this, either:
    mklink /D quran-script ..\..\quran-script
    ```
 
+---
+
+### 🧪 Running Tests
+
+The test suite includes **stress tests** (marked with `@pytest.mark.stress`) that iterate over the whole Quran and are slow.
+
+Run the **full** test suite (includes stress tests):
+
+```bash
+uv run pytest
+```
+
+Run a **quick** test pass (skips stress tests):
+
+```bash
+uv run pytest --skip-stress
+```
+
+Run **only** the stress tests:
+
+```bash
+uv run pytest -m stress
+```
+

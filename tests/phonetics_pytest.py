@@ -208,6 +208,7 @@ def test_convert_alif_maksora(in_text: str, target_text: str, moshaf: MoshafAttr
     assert out_text == target_text
 
 
+@pytest.mark.stress
 def test_convert_alif_maksora_stress_test():
     start_aya = Aya()
     op = ConvertAlifMaksora()
@@ -251,6 +252,7 @@ def test_normalize_hamazat(in_text: str, target_text: str, moshaf: MoshafAttribu
     assert out_text == target_text
 
 
+@pytest.mark.stress
 def test_normalize_hamazat_stress_test():
     start_aya = Aya()
     op = NormalizeHmazat()
@@ -443,6 +445,7 @@ def test_skoon_mostateel(in_text: str, target_text: str, moshaf: MoshafAttribute
     assert out_text == target_text
 
 
+@pytest.mark.stress
 def test_skoon_mostateel_stree_test():
     start_aya = Aya()
     op = SkoonMostateel()
@@ -763,6 +766,7 @@ def test_clean_end(in_text: str, target_text: str, moshaf: MoshafAttributes):
     assert out_text == target_text
 
 
+@pytest.mark.stress
 def test_clean_end_stree_test():
     start_aya = Aya()
     op = CleanEnd()
@@ -3442,6 +3446,7 @@ def test_quran_phonetizer(in_text: str, target_text: str, moshaf: MoshafAttribut
     assert out_text == target_text
 
 
+@pytest.mark.stress
 def test_quran_phonetizer_strees_test():
     start_aya = Aya()
     moshaf = MoshafAttributes(
