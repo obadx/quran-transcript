@@ -389,7 +389,9 @@ class RemoveSkoonMostadeer(ConversionOperation):
 @dataclass
 class SkoonMostateel(ConversionOperation):
     arabic_name: str = "ضبط السكون المستطيل"
-    regs: list[tuple[str, str, TajweedRule] | tuple[str, str]] = field(
+    regs: list[
+        tuple[str, TajweedRule] | tuple[str, str, TajweedRule] | tuple[str, str]
+    ] = field(
         default_factory=lambda: [
             # remove from the middle
             (
@@ -409,7 +411,9 @@ class SkoonMostateel(ConversionOperation):
 @dataclass
 class MaddAlewad(ConversionOperation):
     arabic_name: str = "ضبط مد العوض وسطا ووقفا"
-    regs: list[tuple[str, str, TajweedRule] | tuple[str, str]] = field(
+    regs: list[
+        tuple[str, TajweedRule] | tuple[str, str, TajweedRule] | tuple[str, str]
+    ] = field(
         default_factory=lambda: [
             # remove from the middle
             (
@@ -439,7 +443,9 @@ class EnlargeSmallLetters(ConversionOperation):
     arabic_name: str = (
         "تكبير الألف والياء والاو والنون الصغار مع حذف مد الصلة عند الوقف"
     )
-    regs: list[tuple[str, str, TajweedRule] | tuple[str, str]] = field(
+    regs: list[
+        tuple[str, TajweedRule] | tuple[str, str, TajweedRule] | tuple[str, str]
+    ] = field(
         default_factory=lambda: [
             # small alif
             (
@@ -507,7 +513,9 @@ class NormalizeTaa(ConversionOperation):
         ]
     )
     arabic_name: str = "تحويب التاء المربطة في الوسط لتاء وفي الآخر لهاء"
-    regs: list[tuple[str, str, TajweedRule] | tuple[str, str]] = field(
+    regs: list[
+        tuple[str, TajweedRule] | tuple[str, str, TajweedRule] | tuple[str, str]
+    ] = field(
         default_factory=lambda: [
             (f"{uth.taa_marboota}$", f"{uth.haa}"),
             (f"{uth.taa_marboota}", f"{uth.taa_mabsoota}"),
@@ -542,7 +550,9 @@ class PrepareGhonnaIdghamIqlab(ConversionOperation):
         ]
     )
     arabic_name: str = "فك الإقلاب والعغنة الإدغام"
-    regs: list[tuple[str, str, TajweedRule] | tuple[str, str]] = field(
+    regs: list[
+        tuple[str, TajweedRule] | tuple[str, str, TajweedRule] | tuple[str, str]
+    ] = field(
         default_factory=lambda: [
             # النون المقلبة ميمام
             (
@@ -620,7 +630,9 @@ class IltiqaaAlsaknan(ConversionOperation):
         ]
     )
     arabic_name: str = "التقاء الساكنان وكسر التنوين"
-    regs: list[tuple[str, str] | tuple[str, str, TajweedRule]] = field(
+    regs: list[
+        tuple[str, TajweedRule] | tuple[str, str, TajweedRule] | tuple[str, str]
+    ] = field(
         default_factory=lambda: [
             # كسر التنوين
             (
@@ -926,7 +938,9 @@ class Qalqla(ConversionOperation):
 @dataclass
 class RemoveRasHaaAndShadda(ConversionOperation):
     arabic_name: str = "حذف السكون والشدة م تكرار الحرف المشدد"
-    regs: list[tuple[str, str, TajweedRule] | tuple[str, str]] = field(
+    regs: list[
+        tuple[str, TajweedRule] | tuple[str, str, TajweedRule] | tuple[str, str]
+    ] = field(
         default_factory=lambda: [
             # shadda
             (
