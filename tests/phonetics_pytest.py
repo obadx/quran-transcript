@@ -27,6 +27,7 @@ from quran_transcript.phonetics.operations import (
     RemoveHmzatWaslMiddle,
     RemoveKasheeda,
     RemoveSkoonMostadeer,
+    RemoveTanweenFatahAtEndFromTaaMarboota,
     SkoonMostateel,
     SpecialCases,
     Tasheel,
@@ -465,6 +466,34 @@ def test_skoon_mostateel_stree_test():
             print(aya)
             print(out_text)
             raise ValueError()
+
+
+@pytest.mark.parametrize(
+    "in_text, target_text, moshaf",
+    [
+        # الوقف على التاء المربوطة المنونة بالفتح بالهاء
+        (
+            "وَكُنتُمْ ءَزْوَٰجًۭا ثَلَٰثَةًۭ",
+            "وَكُنتُمْ ءَزْوَٰجًۭا ثَلَٰثَة",
+            MoshafAttributes(
+                rewaya="hafs",
+                madd_monfasel_len=4,
+                madd_mottasel_len=4,
+                madd_mottasel_waqf=4,
+                madd_aared_len=4,
+            ),
+        ),
+    ],
+)
+def test_remove_tanween_fath_at_end_from_taa_marboota(
+    in_text: str, target_text: str, moshaf: MoshafAttributes
+):
+    op = RemoveTanweenFatahAtEndFromTaaMarboota()
+    for b_op in op.ops_before:
+        target_text, _ = b_op.apply(target_text, moshaf, None)
+    out_text, _ = op.apply(in_text, moshaf, None, mode="test")
+    print(out_text)
+    assert out_text == target_text
 
 
 @pytest.mark.parametrize(
@@ -3591,6 +3620,18 @@ def test_get_thrird_letter_in_verb_haraka(
         (
             "لَا ٱنفِصَامَ لَهَا",
             "لَ ںںںفِصَاامَ لَهَاا",
+            MoshafAttributes(
+                rewaya="hafs",
+                madd_monfasel_len=4,
+                madd_mottasel_len=4,
+                madd_mottasel_waqf=4,
+                madd_aared_len=4,
+            ),
+        ),
+        #  الوقت على التاء المربوطة بتنوين الفتح بالهاء
+        (
+            "وَكُنتُمْ أَزْوَٰجًۭا ثَلَـٰثَةًۭ",
+            "وَكُںںںتُم ءَزوَااجَںںںثَلَااثَه",
             MoshafAttributes(
                 rewaya="hafs",
                 madd_monfasel_len=4,

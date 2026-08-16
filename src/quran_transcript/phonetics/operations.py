@@ -409,6 +409,21 @@ class SkoonMostateel(ConversionOperation):
     )
 
 
+@dataclass
+class RemoveTanweenFatahAtEndFromTaaMarboota(ConversionOperation):
+    arabic_name: str = "حذف التنوين بالفتح ببعد هاء التأنيث وقفا"
+    regs: list[
+        tuple[str, TajweedRule] | tuple[str, str, TajweedRule] | tuple[str, str]
+    ] = field(
+        default_factory=lambda: [
+            (
+                f"({uth.taa_marboota})(?:{uth.tanween_fath_modgham}|{uth.tanween_fath_mothhar})$",
+                r"\1",
+            ),
+        ]
+    )
+
+
 # TODO: Add madd Alewad TajweedRule
 @dataclass
 class MaddAlewad(ConversionOperation):
@@ -976,6 +991,7 @@ OPERATION_ORDER = [
     RemoveHmzatWaslMiddle(),
     RemoveSkoonMostadeer(),
     SkoonMostateel(),
+    RemoveTanweenFatahAtEndFromTaaMarboota(),
     MaddAlewad(),
     WawAlsalah(),
     EnlargeSmallLetters(),
