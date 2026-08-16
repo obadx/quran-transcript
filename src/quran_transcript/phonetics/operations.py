@@ -372,8 +372,8 @@ class RemoveKasheeda(ConversionOperation):
 class RemoveHmzatWaslMiddle(ConversionOperation):
     arabic_name: str = "حذف همزة الوصل وصلا"
     regs: tuple[str, str] = (
-        f"(?!^){uth.hamzat_wasl}",
-        r"",
+        f"([^^]){uth.hamzat_wasl}",
+        r"\1",
     )
 
 
