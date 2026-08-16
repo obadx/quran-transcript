@@ -84,7 +84,7 @@
       "كٓهيعٓصٓ": "كَآفْ هَا يَا عَيٓن صَآدْ",
       "طه": "طَا هَا",
       "طسٓمٓ": "طَا سِيٓن مِّيٓمْ",
-      "طسٓ": "طَا سِيٓنْ",
+      "طسٓ": "طَا سِيٓن",
       "حمٓ": "حَا مِيٓمْ",
       "عٓسٓقٓ": "عَيٓن سِيٓن قَآفْ",
       "يسٓ": "يَا سِيٓنْ",
@@ -320,10 +320,17 @@
     "tanween_fath_iqlab": "ًۢ",
     "tanween_dam_iqlab": "ٌۢ",
     "tanween_kasr_iqlab": "ٍۢ",
-    "noon_ikhfaa_group": "صذثكجشقسدطزفةضط",
+    "madd_alif": "َا",
+    "madd_waw": "ُو",
+    "madd_yaa": "ِي",
+    "noon_ikhfaa_group": "صذثكجشقسدطزفتضظ",
+    "noon_idgham_group": "يرملون",
     "harakat_group": "َُِ",
     "hamazat_group": "ءأإؤئٔ",
-    "letters_group": "اىبتةثجحخدذرزسشصضطظعغفقكلمنهويء"
+    "letters_group": "اىبتةثجحخدذرزسشصضطظعغفقكلمنهويء",
+    "pure_letters_group": "بتثجحخدذرزسشصضطظعغفقكلمنهويء",
+    "pure_letters_without_yaa_and_waw_group": "بتثجحخدذرزسشصضطظعغفقكلمنهء",
+    "qlqla_group": "قطبجد"
   },
   "unique_rasm_map": {
     "rasm_map": [

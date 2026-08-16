@@ -1,3 +1,4 @@
+import inspect
 import json
 from dataclasses import dataclass
 from pathlib import Path
@@ -155,7 +156,8 @@ class UthmaniAlphabet:
     qlqla_group: str = ""
 
     def __post_init__(self):
-        self.special_patterns = [SpecialPattern(**p) for p in self.special_patterns]
+        if type(self.special_patterns[0]) is dict:
+            self.special_patterns = [SpecialPattern(**p) for p in self.special_patterns]
 
         self.madd_alif = self.fatha + self.alif
         self.madd_waw = self.dama + self.waw

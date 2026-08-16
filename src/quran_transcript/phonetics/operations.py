@@ -881,7 +881,8 @@ class Madd(ConversionOperation):
 
         for k, madd_patt in self.madd_map.items():
             text, mappings = sub_with_mapping(
-                f"{madd_patt.pattern}{uth.madd}(.(?:{uth.shadda}|{uth.ras_haaa}|[{ph.noon}{ph.meem}{ph.noon_mokhfah}]{{2,3}}))",
+                # we might have the case where in طس the input is طَا سِيٓن and noon has no skoon letter
+                f"{madd_patt.pattern}{uth.madd}([^{uth.hamza}](?:{uth.shadda}|{uth.ras_haaa}|[{ph.noon}{ph.meem}{ph.noon_mokhfah}]{{2,3}}|$))",
                 r"\1" + 6 * madd_patt.target + r"\2",
                 text,
                 mappings,
