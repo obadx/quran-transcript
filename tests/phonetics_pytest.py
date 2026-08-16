@@ -2080,6 +2080,29 @@ def test_Prepare_ghonna_tanween_idgham(
                 madd_aared_len=4,
             ),
         ),
+        # التقاء الساكناين مع النون الساكنة المخفاة
+        (
+            "يَـٰٓأَيُّهَا ٱلَّذِينَ ءَامَنُوا۟ لَا تَقُولُوا۟ رَٰعِنَا وَقُولُوا۟ ٱنظُرْنَا وَٱسْمَعُوا۟",
+            "يَآءَيُّهَ لَّذِينَ ءَامَنُو لَا تَقُولُو رَاعِنَا وَقُولُ نظُرْنَا وَسْمَعُو",
+            MoshafAttributes(
+                rewaya="hafs",
+                madd_monfasel_len=4,
+                madd_mottasel_len=4,
+                madd_mottasel_waqf=4,
+                madd_aared_len=4,
+            ),
+        ),
+        (
+            "لَا ٱنفِصَامَ لَهَا",
+            "لَ نفِصَامَ لَهَا",
+            MoshafAttributes(
+                rewaya="hafs",
+                madd_monfasel_len=4,
+                madd_mottasel_len=4,
+                madd_mottasel_waqf=4,
+                madd_aared_len=4,
+            ),
+        ),
     ],
 )
 def test_iltiqaa_alsaknana(in_text: str, target_text: str, moshaf: MoshafAttributes):
@@ -3545,6 +3568,29 @@ def test_get_thrird_letter_in_verb_haraka(
         (
             "فَٱدَّٰرَْٰٔتُمْ",
             "فَددَاارَءتُم",
+            MoshafAttributes(
+                rewaya="hafs",
+                madd_monfasel_len=4,
+                madd_mottasel_len=4,
+                madd_mottasel_waqf=4,
+                madd_aared_len=4,
+            ),
+        ),
+        # التقاء الساكنان والثاني منهما نون مخفاة
+        (
+            "يَـٰٓأَيُّهَا ٱلَّذِينَ ءَامَنُوا۟ لَا تَقُولُوا۟ رَٰعِنَا وَقُولُوا۟ ٱنظُرْنَا وَٱسْمَعُوا۟",
+            "يَااااءَييُهَ للَذِۦۦنَ ءَاامَنُۥۥ لَاا تَقُۥۥلُۥۥ رَااعِنَاا وَقُۥۥلُ ںںںظُرنَاا وَسمَعُۥۥ",
+            MoshafAttributes(
+                rewaya="hafs",
+                madd_monfasel_len=4,
+                madd_mottasel_len=4,
+                madd_mottasel_waqf=4,
+                madd_aared_len=4,
+            ),
+        ),
+        (
+            "لَا ٱنفِصَامَ لَهَا",
+            "لَ ںںںفِصَاامَ لَهَاا",
             MoshafAttributes(
                 rewaya="hafs",
                 madd_monfasel_len=4,

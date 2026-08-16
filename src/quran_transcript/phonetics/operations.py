@@ -298,7 +298,9 @@ class BeginWithSaken(ConversionOperation):
 @dataclass
 class ConvertAlifMaksora(ConversionOperation):
     arabic_name: str = "تحويل الأف المقصورة إله: حضف أو ألف أو ياء"
-    regs: list[tuple[str, str, TajweedRule] | tuple[str, str]] = field(
+    regs: list[
+        tuple[str, TajweedRule] | tuple[str, str, TajweedRule] | tuple[str, str]
+    ] = field(
         default_factory=lambda: [
             # حذف الأف المقصورة من الاسم المقصور النكرة
             (
@@ -642,17 +644,17 @@ class IltiqaaAlsaknan(ConversionOperation):
             # حذف حرف المد الأول لاتقاء الساعكنان
             # alif
             (
-                f"{uth.madd_alif}({uth.space}.[{uth.ras_haaa}{uth.shadda}])",
+                f"{uth.madd_alif}({uth.space}.[{uth.ras_haaa}{uth.shadda}{uth.pure_letters_without_yaa_and_waw_group}])",
                 f"{uth.fatha}\\1",
             ),
             # waw
             (
-                f"{uth.madd_waw}({uth.space}.[{uth.ras_haaa}{uth.shadda}])",
+                f"{uth.madd_waw}({uth.space}.[{uth.ras_haaa}{uth.shadda}{uth.pure_letters_without_yaa_and_waw_group}])",
                 f"{uth.dama}\\1",
             ),
             # yaa
             (
-                f"{uth.madd_yaa}({uth.space}.[{uth.ras_haaa}{uth.shadda}])",
+                f"{uth.madd_yaa}({uth.space}.[{uth.ras_haaa}{uth.shadda}{uth.pure_letters_without_yaa_and_waw_group}])",
                 f"{uth.kasra}\\1",
             ),
         ]

@@ -220,6 +220,11 @@ if __name__ == "__main__":
                 "idgham_naqis": "نَخْلُقكُم",
             },
         ),
+        # special case where khinjaria alif is for rasm not phonetic
+        SpecialPattern(
+            pattern="فَٱدَّٰرَْٰٔتُمْ",
+            target_pattern="فَٱدَّٰرَْٔتُمْ",
+        ),
     ]
     madd = Aya(68, 1).get().uthmani[1]
     for k in hrof_moqtta_disassemble:
