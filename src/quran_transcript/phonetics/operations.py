@@ -550,7 +550,9 @@ class AddAlifIsmAllah(ConversionOperation):
         ]
     )
     regs: tuple[str, str] = (
-        f"({uth.lam}{uth.kasra}?{uth.lam}{uth.shadda}{uth.fatha})({uth.haa}(?:$|.[^{uth.baa}{uth.waw}]))",
+        # لِّلَّهِ
+        # with shadd at both lam
+        f"({uth.lam}(?:{uth.kasra}|{uth.shadda}{uth.kasra})?{uth.lam}{uth.shadda}{uth.fatha})({uth.haa}(?:$|.[^{uth.baa}{uth.waw}]))",
         f"\\1{uth.alif}\\2",
     )
 

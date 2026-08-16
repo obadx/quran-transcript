@@ -1682,6 +1682,17 @@ def test_special_cases(in_text: str, target_text: str, moshaf: MoshafAttributes)
                 madd_aared_len=4,
             ),
         ),
+        (
+            "يَوْمَ لَا تَمْلِكُ نَفْسٌۭ لِّنَفْسٍۢ شَيْءًۭ وَلْءَمْرُ يَوْمَءِذٍۢ لِّلَّه",
+            "يَوْمَ لَا تَمْلِكُ نَفْسٌۭ لِّنَفْسٍۢ شَيْءًۭ وَلْءَمْرُ يَوْمَءِذٍۢ لِّلَّاه",
+            MoshafAttributes(
+                rewaya="hafs",
+                madd_monfasel_len=4,
+                madd_mottasel_len=4,
+                madd_mottasel_waqf=4,
+                madd_aared_len=4,
+            ),
+        ),
     ],
 )
 def test_alif_ism_Allah(in_text: str, target_text: str, moshaf: MoshafAttributes):
@@ -3632,6 +3643,18 @@ def test_get_thrird_letter_in_verb_haraka(
         (
             "وَكُنتُمْ أَزْوَٰجًۭا ثَلَـٰثَةًۭ",
             "وَكُںںںتُم ءَزوَااجَںںںثَلَااثَه",
+            MoshafAttributes(
+                rewaya="hafs",
+                madd_monfasel_len=4,
+                madd_mottasel_len=4,
+                madd_mottasel_waqf=4,
+                madd_aared_len=4,
+            ),
+        ),
+        # الوقف  على اسم الله مجرورا
+        (
+            "يَوْمَ لَا تَمْلِكُ نَفْسٌۭ لِّنَفْسٍۢ شَيْـًۭٔا وَٱلْأَمْرُ يَوْمَئِذٍۢ لِّلَّهِ",
+            "يَومَ لَاا تَملِكُ نَفسُللِنَفسِںںںشَيءَوووَلءَمرُ يَومَءِذِللِللَااااه",
             MoshafAttributes(
                 rewaya="hafs",
                 madd_monfasel_len=4,
