@@ -1,44 +1,46 @@
-import pytest
 import re
 from dataclasses import asdict
 from typing import Literal
 
+import pytest
+
+from quran_transcript import Aya
+from quran_transcript import alphabet as alph
 from quran_transcript.phonetics.moshaf_attributes import MoshafAttributes
 from quran_transcript.phonetics.operations import (
-    DisassembleHrofMoqatta,
-    SpecialCases,
-    BeginWithHamzatWasl,
-    ConvertAlifMaksora,
-    NormalizeHmazat,
-    IthbatYaaYohie,
-    RemoveKasheeda,
-    RemoveHmzatWaslMiddle,
-    RemoveSkoonMostadeer,
-    SkoonMostateel,
-    MaddAlewad,
-    WawAlsalah,
-    EnlargeSmallLetters,
-    CleanEnd,
-    NormalizeTaa,
     AddAlifIsmAllah,
-    PrepareGhonnaIdghamIqlab,
-    IltiqaaAlsaknan,
+    BeginWithHamzatWasl,
+    CleanEnd,
+    ConvertAlifMaksora,
+    DisassembleHrofMoqatta,
+    EnlargeSmallLetters,
     Ghonna,
-    Tasheel,
+    IltiqaaAlsaknan,
     Imala,
+    IthbatYaaYohie,
     Madd,
+    MaddAlewad,
+    NormalizeHmazat,
+    NormalizeTaa,
+    PrepareGhonnaIdghamIqlab,
     Qalqla,
+    RemoveHmzatWaslMiddle,
+    RemoveKasheeda,
+    RemoveSkoonMostadeer,
+    RemoveTanweenFatahAtEndFromTaaMarboota,
+    SkoonMostateel,
+    SpecialCases,
+    Tasheel,
+    WawAlsalah,
 )
 from quran_transcript.phonetics.phonetizer import quran_phonetizer
 from quran_transcript.phonetics.sifa import (
-    process_sifat,
     SifaOutput,
-    lam_tafkheem_tarqeeq_finder,
     alif_tafkheem_tarqeeq_finder,
+    lam_tafkheem_tarqeeq_finder,
+    process_sifat,
     raa_tafkheem_tarqeeq_finder,
 )
-from quran_transcript import Aya
-from quran_transcript import alphabet as alph
 
 
 @pytest.mark.parametrize(
@@ -464,6 +466,34 @@ def test_skoon_mostateel_stree_test():
             print(aya)
             print(out_text)
             raise ValueError()
+
+
+@pytest.mark.parametrize(
+    "in_text, target_text, moshaf",
+    [
+        # الوقف على التاء المربوطة المنونة بالفتح بالهاء
+        (
+            "وَكُنتُمْ ءَزْوَٰجًۭا ثَلَٰثَةًۭ",
+            "وَكُنتُمْ ءَزْوَٰجًۭا ثَلَٰثَة",
+            MoshafAttributes(
+                rewaya="hafs",
+                madd_monfasel_len=4,
+                madd_mottasel_len=4,
+                madd_mottasel_waqf=4,
+                madd_aared_len=4,
+            ),
+        ),
+    ],
+)
+def test_remove_tanween_fath_at_end_from_taa_marboota(
+    in_text: str, target_text: str, moshaf: MoshafAttributes
+):
+    op = RemoveTanweenFatahAtEndFromTaaMarboota()
+    for b_op in op.ops_before:
+        target_text, _ = b_op.apply(target_text, moshaf, None)
+    out_text, _ = op.apply(in_text, moshaf, None, mode="test")
+    print(out_text)
+    assert out_text == target_text
 
 
 @pytest.mark.parametrize(
@@ -1652,6 +1682,17 @@ def test_special_cases(in_text: str, target_text: str, moshaf: MoshafAttributes)
                 madd_aared_len=4,
             ),
         ),
+        (
+            "يَوْمَ لَا تَمْلِكُ نَفْسٌۭ لِّنَفْسٍۢ شَيْءًۭ وَلْءَمْرُ يَوْمَءِذٍۢ لِّلَّه",
+            "يَوْمَ لَا تَمْلِكُ نَفْسٌۭ لِّنَفْسٍۢ شَيْءًۭ وَلْءَمْرُ يَوْمَءِذٍۢ لِّلَّاه",
+            MoshafAttributes(
+                rewaya="hafs",
+                madd_monfasel_len=4,
+                madd_mottasel_len=4,
+                madd_mottasel_waqf=4,
+                madd_aared_len=4,
+            ),
+        ),
     ],
 )
 def test_alif_ism_Allah(in_text: str, target_text: str, moshaf: MoshafAttributes):
@@ -1991,6 +2032,17 @@ def test_alif_ism_Allah(in_text: str, target_text: str, moshaf: MoshafAttributes
                 madd_aared_len=4,
             ),
         ),
+        (
+            "ذَالِكَ بِمَا عَصَو وَّكَانُو يَعْتَدُون",
+            "ذَالِكَ بِمَا عَصَوَّكَانُو يَعْتَدُون",
+            MoshafAttributes(
+                rewaya="hafs",
+                madd_monfasel_len=4,
+                madd_mottasel_len=4,
+                madd_mottasel_waqf=4,
+                madd_aared_len=4,
+            ),
+        ),
     ],
 )
 def test_Prepare_ghonna_tanween_idgham(
@@ -2060,6 +2112,29 @@ def test_Prepare_ghonna_tanween_idgham(
         (
             "إِذْ نَادَىٰهُ رَبُّهُۥ بِٱلْوَادِ ٱلْمُقَدَّسِ طُوًى ٱذْهَبْ إِلَىٰ فِرْعَوْنَ إِنَّهُۥ طَغَىٰ",
             "إِذْ نَادَىٰهُ رَبُّهُۥ بِٱلْوَادِ ٱلْمُقَدَّسِ طُوَنِ ٱذْهَبْ إِلَىٰ فِرْعَوْنَ إِنَّهُۥ طَغَىٰ",
+            MoshafAttributes(
+                rewaya="hafs",
+                madd_monfasel_len=4,
+                madd_mottasel_len=4,
+                madd_mottasel_waqf=4,
+                madd_aared_len=4,
+            ),
+        ),
+        # التقاء الساكناين مع النون الساكنة المخفاة
+        (
+            "يَـٰٓأَيُّهَا ٱلَّذِينَ ءَامَنُوا۟ لَا تَقُولُوا۟ رَٰعِنَا وَقُولُوا۟ ٱنظُرْنَا وَٱسْمَعُوا۟",
+            "يَآءَيُّهَ لَّذِينَ ءَامَنُو لَا تَقُولُو رَاعِنَا وَقُولُ نظُرْنَا وَسْمَعُو",
+            MoshafAttributes(
+                rewaya="hafs",
+                madd_monfasel_len=4,
+                madd_mottasel_len=4,
+                madd_mottasel_waqf=4,
+                madd_aared_len=4,
+            ),
+        ),
+        (
+            "لَا ٱنفِصَامَ لَهَا",
+            "لَ نفِصَامَ لَهَا",
             MoshafAttributes(
                 rewaya="hafs",
                 madd_monfasel_len=4,
@@ -3435,6 +3510,157 @@ def test_get_thrird_letter_in_verb_haraka(
                 madd_mottasel_len=4,
                 madd_mottasel_waqf=4,
                 madd_aared_len=6,
+            ),
+        ),
+        # حذف الحرف الأول من الحرفان المدغمان المبدوء بياء أو واو
+        (
+            "ذَٰلِكَ بِمَا عَصَوا۟ وَّكَانُوا۟ يَعْتَدُونَ",
+            "ذَاالِكَ بِمَاا عَصَووَكَاانُۥۥ يَعتَدُۥۥۥۥن",
+            MoshafAttributes(
+                rewaya="hafs",
+                madd_monfasel_len=4,
+                madd_mottasel_len=4,
+                madd_mottasel_waqf=4,
+                madd_aared_len=4,
+            ),
+        ),
+        (
+            "فَإِنْ ءَامَنُوا۟ بِمِثْلِ مَآ ءَامَنتُم بِهِۦ فَقَدِ ٱهْتَدَوا۟ وَّإِن",
+            "فَءِن ءَاامَنُۥۥ بِمِثلِ مَاااا ءَاامَںںںتُ۾۾۾بِهِۦۦ فَقَدِ هتَدَووَءِن",
+            MoshafAttributes(
+                rewaya="hafs",
+                madd_monfasel_len=4,
+                madd_mottasel_len=4,
+                madd_mottasel_waqf=4,
+                madd_aared_len=4,
+            ),
+        ),
+        (
+            "لَا تَحْسَبَنَّ ٱلَّذِينَ يَفْرَحُونَ بِمَآ أَتَوا۟ وَّيُحِبُّونَ أَن يُحْمَدُوا۟",
+            "لَاا تَحسَبَننننَ للَذِۦۦنَ يَفرَحُۥۥنَ بِمَاااا ءَتَووَيُحِببُۥۥنَ ءَيييُحمَدُۥۥ",
+            MoshafAttributes(
+                rewaya="hafs",
+                madd_monfasel_len=4,
+                madd_mottasel_len=4,
+                madd_mottasel_waqf=4,
+                madd_aared_len=4,
+            ),
+        ),
+        (
+            # طس تلك
+            "طسٓ تِلْكَ",
+            "طَاا سِۦۦۦۦۦۦںںںتِلك",
+            MoshafAttributes(
+                rewaya="hafs",
+                madd_monfasel_len=4,
+                madd_mottasel_len=4,
+                madd_mottasel_waqf=4,
+                madd_aared_len=4,
+            ),
+        ),
+        (
+            # طس تلك
+            "طسٓ",
+            "طَاا سِۦۦۦۦۦۦن",
+            MoshafAttributes(
+                rewaya="hafs",
+                madd_monfasel_len=4,
+                madd_mottasel_len=4,
+                madd_mottasel_waqf=4,
+                madd_aared_len=4,
+            ),
+        ),
+        (
+            # طسم
+            "طسٓمٓ",
+            "طَاا سِۦۦۦۦۦۦممممِۦۦۦۦۦۦم",
+            MoshafAttributes(
+                rewaya="hafs",
+                madd_monfasel_len=4,
+                madd_mottasel_len=4,
+                madd_mottasel_waqf=4,
+                madd_aared_len=4,
+            ),
+        ),
+        # فادرارأتم
+        (
+            "وَإِذْ قَتَلْتُمْ نَفْسًۭا فَٱدَّٰرَْٰٔتُمْ فِيهَا",
+            "وَءِذ قَتَلتُم نَفسَںںںفَددَاارَءتُم فِۦۦهَاا",
+            MoshafAttributes(
+                rewaya="hafs",
+                madd_monfasel_len=4,
+                madd_mottasel_len=4,
+                madd_mottasel_waqf=4,
+                madd_aared_len=4,
+            ),
+        ),
+        (
+            "وَإِذْ قَتَلْتُمْ نَفْسًۭا فَٱدَّٰرَْٰٔتُمْ",
+            "وَءِذ قَتَلتُم نَفسَںںںفَددَاارَءتُم",
+            MoshafAttributes(
+                rewaya="hafs",
+                madd_monfasel_len=4,
+                madd_mottasel_len=4,
+                madd_mottasel_waqf=4,
+                madd_aared_len=4,
+            ),
+        ),
+        (
+            "فَٱدَّٰرَْٰٔتُمْ",
+            "فَددَاارَءتُم",
+            MoshafAttributes(
+                rewaya="hafs",
+                madd_monfasel_len=4,
+                madd_mottasel_len=4,
+                madd_mottasel_waqf=4,
+                madd_aared_len=4,
+            ),
+        ),
+        # التقاء الساكنان والثاني منهما نون مخفاة
+        (
+            "يَـٰٓأَيُّهَا ٱلَّذِينَ ءَامَنُوا۟ لَا تَقُولُوا۟ رَٰعِنَا وَقُولُوا۟ ٱنظُرْنَا وَٱسْمَعُوا۟",
+            "يَااااءَييُهَ للَذِۦۦنَ ءَاامَنُۥۥ لَاا تَقُۥۥلُۥۥ رَااعِنَاا وَقُۥۥلُ ںںںظُرنَاا وَسمَعُۥۥ",
+            MoshafAttributes(
+                rewaya="hafs",
+                madd_monfasel_len=4,
+                madd_mottasel_len=4,
+                madd_mottasel_waqf=4,
+                madd_aared_len=4,
+            ),
+        ),
+        (
+            "لَا ٱنفِصَامَ لَهَا",
+            "لَ ںںںفِصَاامَ لَهَاا",
+            MoshafAttributes(
+                rewaya="hafs",
+                madd_monfasel_len=4,
+                madd_mottasel_len=4,
+                madd_mottasel_waqf=4,
+                madd_aared_len=4,
+            ),
+        ),
+        #  الوقت على التاء المربوطة بتنوين الفتح بالهاء
+        (
+            "وَكُنتُمْ أَزْوَٰجًۭا ثَلَـٰثَةًۭ",
+            "وَكُںںںتُم ءَزوَااجَںںںثَلَااثَه",
+            MoshafAttributes(
+                rewaya="hafs",
+                madd_monfasel_len=4,
+                madd_mottasel_len=4,
+                madd_mottasel_waqf=4,
+                madd_aared_len=4,
+            ),
+        ),
+        # الوقف  على اسم الله مجرورا
+        (
+            "يَوْمَ لَا تَمْلِكُ نَفْسٌۭ لِّنَفْسٍۢ شَيْـًۭٔا وَٱلْأَمْرُ يَوْمَئِذٍۢ لِّلَّهِ",
+            "يَومَ لَاا تَملِكُ نَفسُللِنَفسِںںںشَيءَوووَلءَمرُ يَومَءِذِللِللَااااه",
+            MoshafAttributes(
+                rewaya="hafs",
+                madd_monfasel_len=4,
+                madd_mottasel_len=4,
+                madd_mottasel_waqf=4,
+                madd_aared_len=4,
             ),
         ),
     ],
@@ -5282,6 +5508,21 @@ def test_process_sifat(
                 between_anfal_and_tawba="sakt",
             ),
         ),
+        (
+            "وَٱلْأَمْرُ يَوْمَئِذٍۢ لِّلَّهِ",
+            [
+                "moraqaq",
+                "moraqaq",
+                "moraqaq",
+            ],
+            MoshafAttributes(
+                rewaya="hafs",
+                madd_monfasel_len=4,
+                madd_mottasel_len=4,
+                madd_mottasel_waqf=4,
+                madd_aared_len=4,
+            ),
+        ),
     ],
 )
 def test_lam_tafkheem_tarqeeq_finder(
@@ -5399,9 +5640,22 @@ def test_lam_tafkheem_tarqeeq_finder(
                 tasheel_or_madd="tasheel",
             ),
         ),
+        (
+            "وَٱلْأَمْرُ يَوْمَئِذٍۢ لِّلَّهِ",
+            [
+                "moraqaq",
+            ],
+            MoshafAttributes(
+                rewaya="hafs",
+                madd_monfasel_len=4,
+                madd_mottasel_len=4,
+                madd_mottasel_waqf=4,
+                madd_aared_len=4,
+            ),
+        ),
     ],
 )
-def test_lam_tafkheem_tarqeeq_finder(
+def test_alif_tafkheem_tarqeeq_finder(
     uth_text: str,
     ex_outs: list[Literal["mofakham", "moraqaq"]],
     moshaf: MoshafAttributes,

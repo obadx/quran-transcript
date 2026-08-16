@@ -1,11 +1,11 @@
-from pathlib import Path
 import json
-from dataclasses import asdict
 import re
+from dataclasses import asdict
+from pathlib import Path
 
-from quran_transcript.alphabet import UthmaniAlphabet, SpecialPattern
-from quran_transcript import alphabet as alph
 from quran_transcript import Aya
+from quran_transcript import alphabet as alph
+from quran_transcript.alphabet import BeginHamzatWasl, SpecialPattern, UthmaniAlphabet
 
 
 def get_uthmani_alpabet() -> list[str]:
@@ -29,7 +29,7 @@ if __name__ == "__main__":
         "كٓهيعٓصٓ": "كَا~فْ هَا يَا عَي~ن صَا~دْ",
         "طه": "طَا هَا",
         "طسٓمٓ": "طَا سِي~ن مِّي~مْ",
-        "طسٓ": "طَا سِي~نْ",
+        "طسٓ": "طَا سِي~ن",
         "حمٓ": "حَا مِي~مْ",
         "عٓسٓقٓ": "عَي~ن سِي~ن قَا~فْ",
         "يسٓ": "يَا سِي~نْ",
@@ -220,10 +220,18 @@ if __name__ == "__main__":
                 "idgham_naqis": "نَخْلُقكُم",
             },
         ),
+        # special case where khinjaria alif is for rasm not phonetic
+        SpecialPattern(
+            pattern="فَٱدَّٰرَْٰٔتُمْ",
+            target_pattern="فَٱدَّٰرَْٔتُمْ",
+        ),
     ]
     madd = Aya(68, 1).get().uthmani[1]
     for k in hrof_moqtta_disassemble:
         hrof_moqtta_disassemble[k] = re.sub("~", madd, hrof_moqtta_disassemble[k])
+
+    with open("./quran-script/begin_with_hamzat_wasl.json", "r", encoding="utf8") as f:
+        begin_hamzat_wasl = BeginHamzatWasl(**json.load(f))
 
     uthmani_alphabet = UthmaniAlphabet(
         space=uth_alph[0],
@@ -290,6 +298,7 @@ if __name__ == "__main__":
         tanween_idhaam_dterminer=uth_alph[61],
         hrof_moqtaa_disassemble=hrof_moqtta_disassemble,
         special_patterns=special_patterns,
+        begin_hamzat_wasl=begin_hamzat_wasl,
     )
 
     # assert set(uth_alph) == set(asdict(uthmani_alphabet).values()), (
@@ -299,5 +308,6 @@ if __name__ == "__main__":
     with open(alphabet_path, "r", encoding="utf-8") as f:
         alphabet = json.load(f)
     alphabet["uthmani"] = asdict(uthmani_alphabet)
+    del alphabet["uthmani"]["begin_hamzat_wasl"]
     with open(alphabet_path, "w+", encoding="utf-8") as f:
-        alphabet = json.dump(alphabet, f, indent=2, ensure_ascii=False)
+        json.dump(alphabet, f, indent=2, ensure_ascii=False)

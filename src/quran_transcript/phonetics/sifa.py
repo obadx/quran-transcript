@@ -1,32 +1,34 @@
-from typing import Literal
-from pydantic import BaseModel
 import re
 from dataclasses import dataclass
+from typing import Literal
 
+from pydantic import BaseModel
+
+from ..alphabet import phonetic_groups as phg
 from ..alphabet import phonetics as ph
 from ..alphabet import uthmani as uth
-from ..alphabet import phonetic_groups as phg
 from .moshaf_attributes import MoshafAttributes
 from .operations import (
-    DisassembleHrofMoqatta,
-    SpecialCases,
-    BeginWithHamzatWasl,
-    ConvertAlifMaksora,
-    NormalizeHmazat,
-    IthbatYaaYohie,
-    RemoveKasheeda,
-    RemoveHmzatWaslMiddle,
-    RemoveSkoonMostadeer,
-    SkoonMostateel,
-    MaddAlewad,
-    WawAlsalah,
-    EnlargeSmallLetters,
-    CleanEnd,
-    NormalizeTaa,
     AddAlifIsmAllah,
-    PrepareGhonnaIdghamIqlab,
-    IltiqaaAlsaknan,
+    BeginWithHamzatWasl,
+    CleanEnd,
+    ConvertAlifMaksora,
     DeleteShaddaAtBeginning,
+    DisassembleHrofMoqatta,
+    EnlargeSmallLetters,
+    IltiqaaAlsaknan,
+    IthbatYaaYohie,
+    MaddAlewad,
+    NormalizeHmazat,
+    NormalizeTaa,
+    PrepareGhonnaIdghamIqlab,
+    RemoveHmzatWaslMiddle,
+    RemoveKasheeda,
+    RemoveSkoonMostadeer,
+    RemoveTanweenFatahAtEndFromTaaMarboota,
+    SkoonMostateel,
+    SpecialCases,
+    WawAlsalah,
 )
 
 
@@ -145,7 +147,7 @@ def lam_tafkheem_tarqeeq_finder(
 def alif_tafkheem_tarqeeq_finder(
     phonetic_script_with_space: str,
 ) -> list[Literal["mofakham", "moraqaq"] | None]:
-    """findes lam in script and returns tafkheem or tarqeeq for
+    """findes alif in script and returns tafkheem or tarqeeq for
     every madd alif
 
     This specially created to handel alif after lam اسم الله
@@ -183,6 +185,7 @@ RAA_OPERATIONS = [
     RemoveHmzatWaslMiddle(),
     RemoveSkoonMostadeer(),
     SkoonMostateel(),
+    RemoveTanweenFatahAtEndFromTaaMarboota(),
     MaddAlewad(),
     WawAlsalah(),
     EnlargeSmallLetters(),

@@ -1,11 +1,10 @@
-import re
 from dataclasses import dataclass
 
-from .conv_base_operation import MappingPos, sub_with_mapping, MappingListType
-from .operations import OPERATION_ORDER
-from .moshaf_attributes import MoshafAttributes
-from .sifa import process_sifat, SifaOutput
 from .. import alphabet as alph
+from .conv_base_operation import MappingListType, MappingPos, sub_with_mapping
+from .moshaf_attributes import MoshafAttributes
+from .operations import OPERATION_ORDER
+from .sifa import SifaOutput, process_sifat
 
 
 @dataclass
