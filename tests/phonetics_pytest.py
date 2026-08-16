@@ -5508,6 +5508,21 @@ def test_process_sifat(
                 between_anfal_and_tawba="sakt",
             ),
         ),
+        (
+            "وَٱلْأَمْرُ يَوْمَئِذٍۢ لِّلَّهِ",
+            [
+                "moraqaq",
+                "moraqaq",
+                "moraqaq",
+            ],
+            MoshafAttributes(
+                rewaya="hafs",
+                madd_monfasel_len=4,
+                madd_mottasel_len=4,
+                madd_mottasel_waqf=4,
+                madd_aared_len=4,
+            ),
+        ),
     ],
 )
 def test_lam_tafkheem_tarqeeq_finder(
@@ -5625,9 +5640,22 @@ def test_lam_tafkheem_tarqeeq_finder(
                 tasheel_or_madd="tasheel",
             ),
         ),
+        (
+            "وَٱلْأَمْرُ يَوْمَئِذٍۢ لِّلَّهِ",
+            [
+                "moraqaq",
+            ],
+            MoshafAttributes(
+                rewaya="hafs",
+                madd_monfasel_len=4,
+                madd_mottasel_len=4,
+                madd_mottasel_waqf=4,
+                madd_aared_len=4,
+            ),
+        ),
     ],
 )
-def test_lam_tafkheem_tarqeeq_finder(
+def test_alif_tafkheem_tarqeeq_finder(
     uth_text: str,
     ex_outs: list[Literal["mofakham", "moraqaq"]],
     moshaf: MoshafAttributes,
