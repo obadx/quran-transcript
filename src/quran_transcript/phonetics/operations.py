@@ -794,7 +794,7 @@ class Madd(ConversionOperation):
         # المد المنفصل
         # ها ويا التنبيه
         text, mappings = sub_with_mapping(
-            f"((?:^|{uth.space}|(?:(?:^|{uth.space})[{uth.faa}{uth.waw}{uth.hamza}]{uth.fatha}))[{uth.yaa}{uth.haa}]{uth.fatha}){uth.alif}{uth.madd}({uth.hamza}.(?!{uth.space}))",
+            f"((?:^|{uth.space}|(?:(?:^|{uth.space})[{uth.faa}{uth.waw}{uth.hamza}]{uth.fatha}))[{uth.yaa}{uth.haa}]{uth.fatha}){uth.alif}{uth.madd}({uth.hamza}.[^{uth.space}])",
             r"\1" + ph.alif * moshaf.madd_monfasel_len + r"\2",
             text,
             mappings,
