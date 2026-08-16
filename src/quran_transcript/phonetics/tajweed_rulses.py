@@ -1,7 +1,6 @@
-from abc import abstractmethod, ABC
+from abc import ABC, abstractmethod
+from dataclasses import dataclass, field, replace
 from typing import Literal, Optional
-from dataclasses import dataclass, replace, field
-
 
 from .. import alphabet as alph
 
@@ -207,6 +206,7 @@ class GhonnahMetadata:
     name: LangName
     tag: str
     offset: int = 0
+    golden_len: int = 4
 
 
 @dataclass
@@ -216,51 +216,68 @@ class Ghonnah(TajweedRule):
     correctness_type: Literal["match", "count"] = "count"
     offset: int = 0
 
+    # TODO:
+    # * [ ] Add support for Izhar
+
     def __post_init__(self):
         self.available_tags = {
+            "noon_izhar",
             "noon",
             "noon_yaa",
             "noon_waw",
             "noon_mokhfah",
+            "meem_izhar",
             "meem",
             "meem_mokhfah",
         }
         super().__post_init__()
-        self._ph_to_metadata = {
-            alph.phonetics.noon: GhonnahMetadata(
-                name=field(
-                    default_factory=lambda: LangName(
-                        ar="النون المشددة أو المدغمة", en="Moshadad or Modgham Noon"
-                    )
-                ),
-                tag="noon",
-                offset=0,
-            ),
-            alph.phonetics.yaa: GhonnahMetadata(
-                name=field(default_factory=lambda: LangName(ar="", en="")),
-                tag="noon_yaa",
-                offset=1,
-            ),
-            alph.phonetics.waw: GhonnahMetadata(
-                name=field(default_factory=lambda: LangName(ar="", en="")),
-                tag="noon_waw",
-                offset=1,
-            ),
-            alph.phonetics.noon_mokhfah: GhonnahMetadata(
-                name=field(default_factory=lambda: LangName(ar="", en="")),
-                tag="noon_mokhfah",
-                offset=1,
-            ),
-            alph.phonetics.meem: GhonnahMetadata(
-                name=field(default_factory=lambda: LangName(ar="", en="")),
-                tag="meem",
-                offset=0,
-            ),
-            alph.phonetics.meem_mokhfah: GhonnahMetadata(
-                name=field(default_factory=lambda: LangName(ar="", en="")),
-                tag="meem_mokhfah",
-                offset=0,
-            ),
+        self._ph_to_metadata: dict[str, list[GhonnahMetadata]] = {
+            alph.phonetics.noon: [
+                GhonnahMetadata(
+                    name=field(
+                        default_factory=lambda: LangName(
+                            ar="النون المشددة أو المدغمة", en="Moshadad or Modgham Noon"
+                        )
+                    ),
+                    tag="noon",
+                    offset=0,
+                )
+            ],
+            alph.phonetics.yaa: [
+                GhonnahMetadata(
+                    name=field(default_factory=lambda: LangName(ar="", en="")),
+                    tag="noon_yaa",
+                    offset=1,
+                )
+            ],
+            alph.phonetics.waw: [
+                GhonnahMetadata(
+                    name=field(default_factory=lambda: LangName(ar="", en="")),
+                    tag="noon_waw",
+                    offset=1,
+                )
+            ],
+            alph.phonetics.noon_mokhfah: [
+                GhonnahMetadata(
+                    name=field(default_factory=lambda: LangName(ar="", en="")),
+                    tag="noon_mokhfah",
+                    offset=1,
+                )
+            ],
+            alph.phonetics.meem: [
+                GhonnahMetadata(
+                    name=field(default_factory=lambda: LangName(ar="", en="")),
+                    tag="meem",
+                    offset=0,
+                )
+            ],
+            alph.phonetics.meem_mokhfah: [
+                GhonnahMetadata(
+                    name=field(default_factory=lambda: LangName(ar="", en="")),
+                    tag="meem_mokhfah",
+                    offset=0,
+                )
+            ],
         }
 
     def count(self, ref_text, pred_text) -> int:
@@ -298,11 +315,13 @@ class MoshaddadOrModghamNoonRule(MaddRule):
 
 
 # TODO:
+# * [ ] Create temp class for noon or Tanween
+# * [ ] remove this temp class after إخفاء الميم
+# * [ ] More simpler to insrt the rule in its place before reduction
+
+# TODO:
 
 """
 * Ghonna
-* Madd
-* Qalaqlah
 * Idgham
-* Tashdeed
 """

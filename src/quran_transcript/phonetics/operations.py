@@ -405,6 +405,7 @@ class SkoonMostateel(ConversionOperation):
     )
 
 
+# TODO: Add madd Alewad TajweedRule
 @dataclass
 class MaddAlewad(ConversionOperation):
     arabic_name: str = "ضبط مد العوض وسطا ووقفا"
