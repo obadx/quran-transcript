@@ -7,6 +7,7 @@ from .conv_base_operation import (
     ConversionOperation,
     MappingListType,
     MappingPos,
+    add_tajweed_rule_to_mappings,
     get_mappings,
     sub_with_mapping,
 )
@@ -919,12 +920,19 @@ class Madd(ConversionOperation):
             )
 
         # مد اللين
+        # adding Tajweed rule with function as when the madd len is 2 the text remains the same length so no rule added
+        for chr, tag in zip([uth.waw, uth.yaa], ["waw", "yaa"]):
+            mappings = add_tajweed_rule_to_mappings(
+                mappings,
+                text,
+                f"{uth.fatha}({chr}){uth.ras_haaa}?[^{uth.shadda}]{uth.ras_haaa}?$",
+                LeenMaddRule(golden_len=moshaf.madd_alleen_len, tag=tag),
+            )
         text, mappings = sub_with_mapping(
-            f"({uth.fatha})([{uth.yaa}{uth.waw}]){uth.ras_haaa}?([^{uth.shadda}]{uth.ras_haaa}?$)",
+            f"({uth.fatha})([{uth.yaa}{uth.waw}])({uth.ras_haaa}?[^{uth.shadda}]{uth.ras_haaa}?$)",
             r"\1" + (moshaf.madd_alleen_len - 1) * r"\2" + r"\3",
             text,
             mappings,
-            LeenMaddRule(golden_len=moshaf.madd_alleen_len),
         )
 
         # المد الطبيعي

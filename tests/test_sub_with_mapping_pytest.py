@@ -637,9 +637,16 @@ class TestMergeMappings:
 
 
 @pytest.mark.parametrize(
-    "uth_text, ph_text, exp_mappings",
+    "moshaf, uth_text, ph_text, exp_mappings",
     [
         (
+            MoshafAttributes(
+                rewaya="hafs",
+                madd_monfasel_len=4,
+                madd_mottasel_len=4,
+                madd_mottasel_waqf=4,
+                madd_aared_len=4,
+            ),
             "الٓر تِلْكَ ءَايَـٰتُ ٱلْكِتَـٰبِ ٱلْمُبِينِ",
             "ءَلِف لَاااااام رَاا تِلكَ ءَاايَااتُ لكِتَاابِ لمُبِۦۦۦۦن",
             [
@@ -733,6 +740,13 @@ class TestMergeMappings:
             ],
         ),
         (
+            MoshafAttributes(
+                rewaya="hafs",
+                madd_monfasel_len=4,
+                madd_mottasel_len=4,
+                madd_mottasel_waqf=4,
+                madd_aared_len=4,
+            ),
             "بِسْمِ ٱللَّهِ ٱلرَّحْمَـٰنِ ٱلرَّحِيمِ",
             "بِسمِ للَااهِ ررَحمَاانِ ررَحِۦۦۦۦم",
             [
@@ -786,6 +800,13 @@ class TestMergeMappings:
             ],
         ),
         (
+            MoshafAttributes(
+                rewaya="hafs",
+                madd_monfasel_len=4,
+                madd_mottasel_len=4,
+                madd_mottasel_waqf=4,
+                madd_aared_len=4,
+            ),
             "إِنَّ ٱلَّذِينَ كَفَرُوا۟ سَوَآءٌ عَلَيْهِمْ ءَأَنذَرْتَهُمْ أَمْ لَمْ تُنذِرْهُمْ لَا يُؤْمِنُونَ",
             "ءِننننَ للَذِۦۦنَ كَفَرُۥۥ سَوَااااءُن عَلَيهِم ءَءَںںںذَرتَهُم ءَم لَم تُںںںذِرهُم لَاا يُءمِنُۥۥۥۥن",
             [
@@ -923,6 +944,13 @@ class TestMergeMappings:
             ],
         ),
         (
+            MoshafAttributes(
+                rewaya="hafs",
+                madd_monfasel_len=4,
+                madd_mottasel_len=4,
+                madd_mottasel_waqf=4,
+                madd_aared_len=4,
+            ),
             "مِّن مَّا",
             "مِممممَاا",
             [
@@ -938,6 +966,13 @@ class TestMergeMappings:
             ],
         ),
         (
+            MoshafAttributes(
+                rewaya="hafs",
+                madd_monfasel_len=4,
+                madd_mottasel_len=4,
+                madd_mottasel_waqf=4,
+                madd_aared_len=4,
+            ),
             "لَكُم مَّا",
             "لَكُممممَاا",
             [
@@ -954,6 +989,13 @@ class TestMergeMappings:
             ],
         ),
         (
+            MoshafAttributes(
+                rewaya="hafs",
+                madd_monfasel_len=4,
+                madd_mottasel_len=4,
+                madd_mottasel_waqf=4,
+                madd_aared_len=4,
+            ),
             "الٓمٓ",
             "ءَلِف لَااااااممممِۦۦۦۦۦۦم",
             [
@@ -972,6 +1014,13 @@ class TestMergeMappings:
             ],
         ),
         (
+            MoshafAttributes(
+                rewaya="hafs",
+                madd_monfasel_len=4,
+                madd_mottasel_len=4,
+                madd_mottasel_waqf=4,
+                madd_aared_len=4,
+            ),
             "غِشَـٰوَةٌۭ وَلَهُمْ",
             "غِشَااوَتُوووَلَهُم",
             [
@@ -1003,6 +1052,13 @@ class TestMergeMappings:
             ],
         ),
         (
+            MoshafAttributes(
+                rewaya="hafs",
+                madd_monfasel_len=4,
+                madd_mottasel_len=4,
+                madd_mottasel_waqf=4,
+                madd_aared_len=4,
+            ),
             "قَلِيلًۭا مِّمَّا",
             "قَلِۦۦلَممممِممممَاا",
             [
@@ -1041,6 +1097,13 @@ class TestMergeMappings:
             ],
         ),
         (
+            MoshafAttributes(
+                rewaya="hafs",
+                madd_monfasel_len=4,
+                madd_mottasel_len=4,
+                madd_mottasel_waqf=4,
+                madd_aared_len=4,
+            ),
             "لَمْ يَلِدْ وَلَمْ يُولَدْ",
             "لَم يَلِدڇ وَلَم يُۥۥلَدڇ",
             [
@@ -1083,6 +1146,13 @@ class TestMergeMappings:
             ],
         ),
         (
+            MoshafAttributes(
+                rewaya="hafs",
+                madd_monfasel_len=4,
+                madd_mottasel_len=4,
+                madd_mottasel_waqf=4,
+                madd_aared_len=4,
+            ),
             "قَرِيبٌ",
             "قَرِۦۦۦۦبڇ",
             [
@@ -1096,6 +1166,13 @@ class TestMergeMappings:
             ],
         ),
         (
+            MoshafAttributes(
+                rewaya="hafs",
+                madd_monfasel_len=4,
+                madd_mottasel_len=4,
+                madd_mottasel_waqf=4,
+                madd_aared_len=4,
+            ),
             "لِإِيلَـٰفِ قُرَيْشٍ",
             "لِءِۦۦلَاافِ قُرَيييش",
             [
@@ -1125,6 +1202,13 @@ class TestMergeMappings:
             ],
         ),
         (
+            MoshafAttributes(
+                rewaya="hafs",
+                madd_monfasel_len=4,
+                madd_mottasel_len=4,
+                madd_mottasel_waqf=4,
+                madd_aared_len=4,
+            ),
             "حمٓ عٓسٓقٓ",
             "حَاا مِۦۦۦۦۦۦم عَيييييںںںسِۦۦۦۦۦۦںںںقَااااااف",
             [
@@ -1161,6 +1245,13 @@ class TestMergeMappings:
             ],
         ),
         (
+            MoshafAttributes(
+                rewaya="hafs",
+                madd_monfasel_len=4,
+                madd_mottasel_len=4,
+                madd_mottasel_waqf=4,
+                madd_aared_len=4,
+            ),
             "بِسْمِ ٱللَّهِ ٱلرَّحْمَٰنِ ٱلرَّحِيمِ حمٓ عٓسٓقٓ",
             "بِسمِ للَااهِ ررَحمَاانِ ررَحِۦۦمِ حَاا مِۦۦۦۦۦۦم عَيييييںںںسِۦۦۦۦۦۦںںںقَااااااف",
             [
@@ -1247,18 +1338,138 @@ class TestMergeMappings:
                 MappingPos(pos=(80, 80), tajweed_rules=None, deleted=True),
             ],
         ),
+        # مد اللين وقفا
+        (
+            MoshafAttributes(
+                rewaya="hafs",
+                madd_monfasel_len=4,
+                madd_mottasel_len=4,
+                madd_mottasel_waqf=4,
+                madd_aared_len=4,
+                madd_alleen_len=2,
+            ),
+            "ٱلسَّوْءِ",
+            "ءَسسَوء",
+            [
+                MappingPos(pos=(0, 2), tajweed_rules=None, deleted=False),
+                MappingPos(pos=(2, 2), tajweed_rules=None, deleted=True),
+                MappingPos(pos=(2, 3), tajweed_rules=None, deleted=False),
+                MappingPos(pos=(3, 4), tajweed_rules=None, deleted=False),
+                MappingPos(pos=(4, 5), tajweed_rules=None, deleted=False),
+                MappingPos(
+                    pos=(5, 6),
+                    tajweed_rules=[
+                        LeenMaddRule(
+                            golden_len=2,
+                            tag="waw",
+                        )
+                    ],
+                    deleted=False,
+                ),
+                MappingPos(pos=(6, 6), tajweed_rules=None, deleted=True),
+                MappingPos(pos=(6, 7), tajweed_rules=None, deleted=False),
+                MappingPos(pos=(7, 7), tajweed_rules=None, deleted=True),
+            ],
+        ),
+        (
+            MoshafAttributes(
+                rewaya="hafs",
+                madd_monfasel_len=4,
+                madd_mottasel_len=4,
+                madd_mottasel_waqf=4,
+                madd_aared_len=4,
+                madd_alleen_len=4,
+            ),
+            "ٱلسَّوْءِ",
+            "ءَسسَوووء",
+            [
+                MappingPos(pos=(0, 2), tajweed_rules=None, deleted=False),
+                MappingPos(pos=(2, 2), tajweed_rules=None, deleted=True),
+                MappingPos(pos=(2, 3), tajweed_rules=None, deleted=False),
+                MappingPos(pos=(3, 4), tajweed_rules=None, deleted=False),
+                MappingPos(pos=(4, 5), tajweed_rules=None, deleted=False),
+                MappingPos(
+                    pos=(5, 8),
+                    tajweed_rules=[
+                        LeenMaddRule(
+                            golden_len=4,
+                            tag="waw",
+                        )
+                    ],
+                    deleted=False,
+                ),
+                MappingPos(pos=(8, 8), tajweed_rules=None, deleted=True),
+                MappingPos(pos=(8, 9), tajweed_rules=None, deleted=False),
+                MappingPos(pos=(9, 9), tajweed_rules=None, deleted=True),
+            ],
+        ),
+        (
+            MoshafAttributes(
+                rewaya="hafs",
+                madd_monfasel_len=4,
+                madd_mottasel_len=4,
+                madd_mottasel_waqf=4,
+                madd_aared_len=6,
+                madd_alleen_len=6,
+            ),
+            "ٱلسَّوْءِ",
+            "ءَسسَوووووء",
+            [
+                MappingPos(pos=(0, 2), tajweed_rules=None, deleted=False),
+                MappingPos(pos=(2, 2), tajweed_rules=None, deleted=True),
+                MappingPos(pos=(2, 3), tajweed_rules=None, deleted=False),
+                MappingPos(pos=(3, 4), tajweed_rules=None, deleted=False),
+                MappingPos(pos=(4, 5), tajweed_rules=None, deleted=False),
+                MappingPos(
+                    pos=(5, 10),
+                    tajweed_rules=[
+                        LeenMaddRule(
+                            golden_len=6,
+                            tag="waw",
+                        )
+                    ],
+                    deleted=False,
+                ),
+                MappingPos(pos=(10, 10), tajweed_rules=None, deleted=True),
+                MappingPos(pos=(10, 11), tajweed_rules=None, deleted=False),
+                MappingPos(pos=(11, 11), tajweed_rules=None, deleted=True),
+            ],
+        ),
+        (
+            MoshafAttributes(
+                rewaya="hafs",
+                madd_monfasel_len=4,
+                madd_mottasel_len=4,
+                madd_mottasel_waqf=4,
+                madd_aared_len=6,
+                madd_alleen_len=2,
+            ),
+            "قُرَيْشٍ",
+            "قُرَيش",
+            [
+                MappingPos(pos=(0, 1), tajweed_rules=None, deleted=False),
+                MappingPos(pos=(1, 2), tajweed_rules=None, deleted=False),
+                MappingPos(pos=(2, 3), tajweed_rules=None, deleted=False),
+                MappingPos(pos=(3, 4), tajweed_rules=None, deleted=False),
+                MappingPos(
+                    pos=(4, 5),
+                    tajweed_rules=[
+                        LeenMaddRule(
+                            golden_len=2,
+                            tag="yaa",
+                        )
+                    ],
+                ),
+                MappingPos(pos=(5, 5), tajweed_rules=None, deleted=True),
+                MappingPos(pos=(5, 6), tajweed_rules=None, deleted=False),
+                MappingPos(pos=(6, 6), tajweed_rules=None, deleted=True),
+            ],
+        ),
     ],
 )
 def test_phonetizer_with_mappings(
-    uth_text: str, ph_text, exp_mappings: MappingListType
+    moshaf: MoshafAttributes, uth_text: str, ph_text, exp_mappings: MappingListType
 ):
-    moshaf = MoshafAttributes(
-        rewaya="hafs",
-        madd_monfasel_len=4,
-        madd_mottasel_len=4,
-        madd_mottasel_waqf=4,
-        madd_aared_len=4,
-    )
     ph_out = quran_phonetizer(uth_text, moshaf)
     print(uth_text)
     print(ph_out.phonemes)

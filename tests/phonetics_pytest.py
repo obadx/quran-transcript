@@ -2647,7 +2647,7 @@ def test_imala(in_text: str, target_text: str, moshaf: MoshafAttributes):
         # المد اللازم
         (
             "ءَآلْـَٔـٰنَ وَقَدْ عَصَيْتَ",
-            "ءَاااااالْءَاانَ وَقَدْ عَصَيييت",
+            "ءَاااااالْءَاانَ وَقَدْ عَصَيييْت",
             MoshafAttributes(
                 rewaya="hafs",
                 madd_monfasel_len=4,
@@ -2764,7 +2764,7 @@ def test_imala(in_text: str, target_text: str, moshaf: MoshafAttributes):
         # مد اللين
         (
             "مِّنْ خَوْفٍۭ",
-            "مِنْ خَوووووف",
+            "مِنْ خَوووووْف",
             MoshafAttributes(
                 rewaya="hafs",
                 madd_monfasel_len=4,

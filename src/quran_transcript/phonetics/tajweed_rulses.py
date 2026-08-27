@@ -84,6 +84,7 @@ class MaddRule(TajweedRule):
             alph.phonetics.waw_madd: "waw",
             alph.phonetics.yaa_madd: "yaa",
         }
+        assert self.tag in self.available_tags
 
     def count(self, ref_text, pred_text) -> int:
         # The case where we have Tashkeel after madd (Error from the model)
@@ -172,6 +173,7 @@ class LeenMaddRule(MaddRule):
             alph.phonetics.waw: "waw",
             alph.phonetics.yaa: "yaa",
         }
+        assert self.tag in self.available_tags
 
     def count(self, ref_text, pred_text) -> int:
         # The case where we have Tashkeel after madd (Error from the model)
