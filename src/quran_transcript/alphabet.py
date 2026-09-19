@@ -27,6 +27,15 @@ class SpecialPattern:
     opts: dict[str, str] | None = None
     target_pattern: str | None = None
     pos: Literal["start", "middle", "end"] = "middle"
+    sura_idx: int = 0
+    """
+    Args:
+    sura_idx (int): the sura index from 1 to 114. If zero then there is no sura set.
+        Used when a specific rule is tied to a specific sura.
+        This is used particularly if the user pronounced ONLY `ضَعْفًا` so we cannot infer whether this
+        is from surah Alroom so we have two ways with damma or fatha; or from surah AlAnfal so we only
+        pronounce it with fatha.
+    """
 
 
 @dataclass

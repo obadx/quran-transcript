@@ -1614,6 +1614,65 @@ def test_special_cases(in_text: str, target_text: str, moshaf: MoshafAttributes)
 
 
 @pytest.mark.parametrize(
+    "in_text, target_text, moshaf, sura_idx",
+    [
+        # There have to be no chage happen as we did not specify the sura_id -> fath
+        (
+            "ضَعْفًا",
+            "ضَعْفًا",
+            MoshafAttributes(
+                rewaya="hafs",
+                madd_monfasel_len=4,
+                madd_mottasel_len=4,
+                madd_mottasel_waqf=4,
+                madd_aared_len=4,
+                harakat_daaf="dam",
+            ),
+            0,
+        ),
+        (
+            "ضَعْفًا",
+            "ضُعْفًا",
+            MoshafAttributes(
+                rewaya="hafs",
+                madd_monfasel_len=4,
+                madd_mottasel_len=4,
+                madd_mottasel_waqf=4,
+                madd_aared_len=4,
+                harakat_daaf="dam",
+            ),
+            30,
+        ),
+        (
+            "ضَعْفٍۢ",
+            "ضُعْفٍۢ",
+            MoshafAttributes(
+                rewaya="hafs",
+                madd_monfasel_len=4,
+                madd_mottasel_len=4,
+                madd_mottasel_waqf=4,
+                madd_aared_len=4,
+                harakat_daaf="dam",
+            ),
+            0,
+        ),
+    ],
+)
+def test_special_cases_harakat_daaf_only_single_word(
+    in_text: str,
+    target_text: str,
+    moshaf: MoshafAttributes,
+    sura_idx,
+):
+    op = SpecialCases()
+    for b_op in op.ops_before:
+        target_text, _ = b_op.apply(target_text, moshaf, None, sura_idx=sura_idx)
+    out_text, _ = op.apply(in_text, moshaf, None, sura_idx=sura_idx, mode="test")
+    print(out_text)
+    assert out_text == target_text
+
+
+@pytest.mark.parametrize(
     "in_text, target_text, moshaf",
     [
         (
@@ -3667,6 +3726,63 @@ def test_get_thrird_letter_in_verb_haraka(
 )
 def test_quran_phonetizer(in_text: str, target_text: str, moshaf: MoshafAttributes):
     out_text = quran_phonetizer(in_text, moshaf).phonemes
+    print(f"Target Text:\n'{target_text}'")
+    print(f"Out Text:\n'{out_text}'")
+    assert out_text == target_text
+
+
+@pytest.mark.parametrize(
+    "in_text, target_text, moshaf, sura_idx",
+    [
+        # There have to be no chage happen as we did not specify the sura_id -> fath
+        (
+            "ضَعْفًا",
+            "ضَعفَاا",
+            MoshafAttributes(
+                rewaya="hafs",
+                madd_monfasel_len=4,
+                madd_mottasel_len=4,
+                madd_mottasel_waqf=4,
+                madd_aared_len=4,
+                harakat_daaf="dam",
+            ),
+            0,
+        ),
+        (
+            "ضَعْفًا",
+            "ضُعفَاا",
+            MoshafAttributes(
+                rewaya="hafs",
+                madd_monfasel_len=4,
+                madd_mottasel_len=4,
+                madd_mottasel_waqf=4,
+                madd_aared_len=4,
+                harakat_daaf="dam",
+            ),
+            30,
+        ),
+        (
+            "ضَعْفٍۢ",
+            "ضُعف",
+            MoshafAttributes(
+                rewaya="hafs",
+                madd_monfasel_len=4,
+                madd_mottasel_len=4,
+                madd_mottasel_waqf=4,
+                madd_aared_len=4,
+                harakat_daaf="dam",
+            ),
+            0,
+        ),
+    ],
+)
+def test_quran_phonetizer_with_sura_idx(
+    in_text: str,
+    target_text: str,
+    moshaf: MoshafAttributes,
+    sura_idx,
+):
+    out_text = quran_phonetizer(in_text, moshaf, sura_idx=sura_idx).phonemes
     print(f"Target Text:\n'{target_text}'")
     print(f"Out Text:\n'{out_text}'")
     assert out_text == target_text
