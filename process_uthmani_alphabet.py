@@ -19,6 +19,7 @@ def get_uthmani_alpabet() -> list[str]:
 if __name__ == "__main__":
     alphabet_path = "./quran-script/quran-alphabet.json"
     uth_alph = get_uthmani_alpabet()
+    daaf = "ضَعْف"
 
     hrof_moqtta_disassemble = {
         "الٓمٓ ٱللَّهُ": "أَلِفْ لَا~م مِّي~مَ ٱللَّهُ",
@@ -193,15 +194,27 @@ if __name__ == "__main__":
                 ),
             },
         ),
+        # وردت  ضَعْف في القرآن ف 4 مواضع: في الإنفل وثلاث في الروم فهنا نستثني موضع الأنفال
+        # NOTE: if on starts with workضَعْفا we will inforce using suraah Alrom analogy
+        # NOTE: Tanzil mixed up alph.uthmani.tanween_idhaam_dterminer with alph.uthmani.meem_iqlab so for surah Alroom
+        # Tanweed with Idgham with written witn tanween_kasr + meem_iqlab
         SpecialPattern(
-            pattern=f"(?<!\\b{alph.uthmani.ras_haaa}{alph.uthmani.space})"
-            + "ضَعْف"
-            + r"\b",
+            pattern=f"(?:([^{alph.uthmani.ras_haaa}].){daaf})|(?:{daaf}({alph.uthmani.tanween_kasr}{alph.uthmani.meem_iqlab}))",
+            attr_name="harakat_daaf",
+            opts={
+                "fath": r"\1" + "ضَعْف" + r"\2",
+                "dam": r"\1" + "ضُعْف" + r"\2",
+            },
+        ),
+        SpecialPattern(
+            pattern="ضَعْف",
             attr_name="harakat_daaf",
             opts={
                 "fath": "ضَعْف",
                 "dam": "ضُعْف",
             },
+            pos="start",
+            sura_idx=30,
         ),
         SpecialPattern(
             pattern="سَلَـٰسِلَا۟",

@@ -16,9 +16,20 @@ class QuranPhoneticScriptOutput:
 
 
 def quran_phonetizer(
-    uhtmani_text: str, moshaf: MoshafAttributes, remove_spaces=False
+    uhtmani_text: str,
+    moshaf: MoshafAttributes,
+    remove_spaces=False,
+    sura_idx: int = 0,
 ) -> QuranPhoneticScriptOutput:
-    """الرسم الصوتي للقآن الكريم على طبقتين: طبقة الأحرف وطبقة الصفات"""
+    """الرسم الصوتي للقآن الكريم على طبقتين: طبقة الأحرف وطبقة الصفات
+    Args:
+        sura_idx (int): the sura index from 1 to 114. If zero then there is no sura set.
+            Used when a specific rule is tied to a specific sura.
+            This is used particularly if the user pronounced ONLY `ضَعْفًا` so we cannot infer whether this
+            is from surah Alroom so we have two ways with damma or fatha; or from surah AlAnfal so we only
+            pronounce it with fatha.
+
+    """
     text = uhtmani_text
 
     # cleaning extra scpace
@@ -26,7 +37,7 @@ def quran_phonetizer(
     text, mappings = sub_with_mapping(r"(\s$|^\s)", r"", text, mappings=mappings)
 
     for op in OPERATION_ORDER:
-        text, mappings = op.apply(text, moshaf, mappings)
+        text, mappings = op.apply(text, moshaf, mappings, sura_idx=sura_idx)
 
     sifat = process_sifat(
         uthmani_script=uhtmani_text,

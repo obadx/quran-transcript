@@ -698,7 +698,17 @@ class ConversionOperation:
         text,
         moshaf: MoshafAttributes,
         mappings: MappingListType | None = None,
+        sura_idx: int = 0,
     ) -> tuple[str, MappingListType]:
+        """
+        Args:
+            sura_idx (int): the sura index from 1 to 114. If zero then there is no sura set.
+                Used when a specific rule is tied to a specific sura.
+                This is used particularly if the user pronounced ONLY `ضَعْفًا` so we cannot infer whether this
+                is from surah Alroom so we have two ways with damma or fatha; or from surah AlAnfal so we only
+                pronounce it with fatha.
+        """
+
         for reg in self.regs:
             if len(reg) == 2:
                 if type(reg[1]) is str:
@@ -728,21 +738,38 @@ class ConversionOperation:
         text: str,
         moshaf: MoshafAttributes,
         mappings: MappingListType | None,
+        sura_idx: int = 0,
         discard_ops: list["ConversionOperation"] = [],
         mode: Literal["inference", "test"] = "inference",
     ) -> tuple[str, MappingListType]:
+        """
+        Args:
+            sura_idx (int): the sura index from 1 to 114. If zero then there is no sura set.
+                Used when a specific rule is tied to a specific sura.
+                This is used particularly if the user pronounced ONLY `ضَعْفًا` so we cannot infer whether this
+                is from surah Alroom so we have two ways with damma or fatha; or from surah AlAnfal so we only
+                pronounce it with fatha.
+        """
+
         if mode == "test":
             discard_ops_names = {o.arabic_name for o in discard_ops}
             for op in self.ops_before:
                 if op.arabic_name not in discard_ops_names:
                     print(f"Applying: {type(op)}")
                     text, mappings = op.apply(
-                        text, moshaf, mappings, mode="test", discard_ops=discard_ops
+                        text,
+                        moshaf,
+                        mappings,
+                        sura_idx=sura_idx,
+                        mode="test",
+                        discard_ops=discard_ops,
                     )
 
         if mode in {"inference", "test"}:
             # TODO: Add real mapping
-            new_text, new_mappings = self.forward(text, moshaf, mappings)
+            new_text, new_mappings = self.forward(
+                text, moshaf, mappings, sura_idx=sura_idx
+            )
             return new_text, new_mappings
         else:
             raise ValueError(f"Invalid Model got: `{mode}`")
