@@ -9,15 +9,12 @@ from ..alphabet import phonetics as ph
 from ..alphabet import uthmani as uth
 from .moshaf_attributes import MoshafAttributes
 from .operations import (
-    AddAlifIsmAllah,
-    BeginWithHamzatWasl,
     CleanEnd,
     ConvertAlifMaksora,
     DeleteShaddaAtBeginning,
     DisassembleHrofMoqatta,
     EnlargeSmallLetters,
     IltiqaaAlsaknan,
-    IthbatYaaYohie,
     MaddAlewad,
     NormalizeHmazat,
     NormalizeTaa,
@@ -126,23 +123,6 @@ def lam_tafkheem_tarqeeq_finder(
             outputs.append("moraqaq")
     return outputs
 
-    # ph_or_lam_list = re.findall(
-    #     "|".join([phoneme_before_laam_Allh_reg, laam_reg]), phonetic_script_with_space
-    # )
-    # print(ph_or_lam_list)
-    #
-    # outputs = []
-    # for phoneme, lam in ph_or_lam_list:
-    #     if phoneme:
-    #         if phoneme == ph.kasra:
-    #             outputs.append("moraqaq")
-    #         else:
-    #             outputs.append("mofakham")
-    #     elif lam:
-    #         outputs.append("moraqaq")
-    #
-    # return outputs
-
 
 def alif_tafkheem_tarqeeq_finder(
     phonetic_script_with_space: str,
@@ -246,7 +226,7 @@ def raa_tafkheem_tarqeeq_finder(
 
     tarqeeq_cases = [
         f"({uth.raa}){uth.shadda}?[{uth.kasra}{uth.imala_sign}]",
-        f"{uth.kasra}({uth.raa})(?:{uth.ras_haaa}|$)(?![{phg.tafkheem}])",
+        f"{uth.kasra}({uth.raa})(?:{uth.ras_haaa}|$)[^{phg.tafkheem}]",
         f"{uth.kasra}[^{phg.tafkheem}]{uth.ras_haaa}({uth.raa})(?:{uth.ras_haaa}|$)",
         f"{uth.kasra}{uth.yaa}({uth.raa})(?:{uth.ras_haaa}|$)",
         f"{uth.fatha}{uth.yaa}{uth.ras_haaa}({uth.raa})(?:{uth.ras_haaa}|$)",
