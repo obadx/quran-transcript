@@ -142,15 +142,10 @@ if __name__ == "__main__":
     space_or_start = "|".join(
         [
             f"{ph.hamza}{ph.fatha}{ph.baa}{ph.kasra}",
-            f"{ph.baa}{ph.kasra}",
-            f"{ph.lam}{ph.kasra}",
-            f"{ph.hamza}{ph.fatha}",
-            f"{ph.taa}{ph.fatha}",
-            f"{ph.faa}{ph.fatha}",
-            f"{ph.waw}{ph.fatha}",
+            f"[{ph.baa}{ph.lam}]{ph.kasra}",
+            f"[{ph.hamza}{ph.taa}{ph.faa}{ph.waw}]{ph.fatha}",
             f"{ph.waw}{ph.fatha}{ph.taa}{ph.fatha}",
-            f"{ph.faa}{ph.fatha}{ph.lam}{ph.kasra}",
-            f"{ph.waw}{ph.fatha}{ph.lam}{ph.kasra}",
+            f"[{ph.faa}{ph.waw}]{ph.fatha}{ph.lam}{ph.kasra}",
             f"{ph.hamza}{ph.fatha}{ph.alif}{{6}}",
             f"{ph.hamza}{ph.fatha}{ph.hamza_mosahala}",
         ]
@@ -160,6 +155,7 @@ if __name__ == "__main__":
             f"[{ph.meem_mokhfah}{ph.meem}]{{3}}{ph.baa}{ph.kasra}",
             f"{ph.waw}{{3}}{ph.fatha}",
             f"{ph.waw}{{3}}{ph.fatha}{ph.lam}{ph.kasra}",
+            f"{ph.waw}{{3}}{ph.fatha}{ph.taa}{ph.fatha}",
             f"{ph.noon_mokhfah}{{3}}[{ph.faa}{ph.taa}]{ph.fatha}",
             f"{ph.noon_mokhfah}{{3}}{ph.faa}{ph.fatha}{ph.lam}{ph.kasra}",
             f"{ph.lam}{{2}}{ph.kasra}",
