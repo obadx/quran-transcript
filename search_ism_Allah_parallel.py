@@ -94,6 +94,41 @@ def search(
     return found_matches
 
 
+def fix_original_found_matches(found: set[str]) -> set[str]:
+    fixed_founds = set()
+    for word in sorted(found):
+        if word[-1] in {ph.fatha, ph.dama, ph.kasra}:
+            word = word + uth.space
+        mat = re.search(f"{ph.meem_mokhfah}{{3}}", word)
+        if mat:
+            fixed_founds.add(word[mat.start() :])
+            continue
+
+        mat = re.search(f"{ph.waw}{{3}}", word)
+        if mat:
+            fixed_founds.add(word[mat.start() :])
+            continue
+
+        mat = re.search(f"{ph.noon_mokhfah}{{3}}", word)
+        if mat:
+            fixed_founds.add(word[mat.start() :])
+            continue
+
+        mat = re.search(f"{ph.noon_mokhfah}{{3}}", word)
+        if mat:
+            fixed_founds.add(word[mat.start() :])
+            continue
+
+        mat = re.search(f"{ph.lam}{{2}}{ph.kasra}{ph.lam}{{2}}", word)
+        if mat:
+            fixed_founds.add(word[mat.start() :])
+            continue
+
+        fixed_founds.add(word)
+
+    return fixed_founds
+
+
 if __name__ == "__main__":
     moshaf = MoshafAttributes(
         rewaya="hafs",
@@ -115,6 +150,7 @@ if __name__ == "__main__":
             f"{ph.waw}{ph.fatha}",
             f"{ph.waw}{ph.fatha}{ph.taa}{ph.fatha}",
             f"{ph.faa}{ph.fatha}{ph.lam}{ph.kasra}",
+            f"{ph.waw}{ph.fatha}{ph.lam}{ph.kasra}",
             f"{ph.hamza}{ph.fatha}{ph.alif}{{6}}",
             f"{ph.hamza}{ph.fatha}{ph.hamza_mosahala}",
         ]
@@ -123,14 +159,31 @@ if __name__ == "__main__":
         [
             f"[{ph.meem_mokhfah}{ph.meem}]{{3}}{ph.baa}{ph.kasra}",
             f"{ph.waw}{{3}}{ph.fatha}",
-            f"{ph.lam}{{2}}{ph.kasra}",
+            f"{ph.waw}{{3}}{ph.fatha}{ph.lam}{ph.kasra}",
             f"{ph.noon_mokhfah}{{3}}[{ph.faa}{ph.taa}]{ph.fatha}",
+            f"{ph.noon_mokhfah}{{3}}{ph.faa}{ph.fatha}{ph.lam}{ph.kasra}",
+            f"{ph.lam}{{2}}{ph.kasra}",
         ]
     )
     simple_pat = f"(?:(?:^|{uth.space})(?:{space_or_start})|{middle}|{uth.space}){ph.lam}{{2}}{ph.fatha}{ph.alif}{{2,6}}{ph.haa}(?:.{uth.space}|$|{ph.dama}{ph.meem}{{3,4}})"
 
-    found_matches = search(simple_pat, moshaf, ignore_trick_to_match=True)
-    print(f"Found `{len(found_matches)}`")
+    print("\nOriginal pattern")
+    found_matches_orig = search(orig_pat, moshaf)
+    found_matches_orig = fix_original_found_matches(found_matches_orig)
+    print(f"Found `{len(found_matches_orig)}`")
     print("-" * 40)
-    for idx, match in enumerate(sorted(found_matches)):
+    for idx, match in enumerate(sorted(found_matches_orig)):
         print(f"{idx}: `{match}`")
+
+    print("\nSimple pattern")
+    found_matches_simple = search(simple_pat, moshaf, ignore_trick_to_match=True)
+    print(f"Found `{len(found_matches_simple)}`")
+    print("-" * 40)
+    for idx, match in enumerate(sorted(found_matches_simple)):
+        print(f"{idx}: `{match}`")
+
+    print("\nDiffs\n")
+    diffs = found_matches_orig - found_matches_simple
+    print(f"Len of diffs: {len(diffs)}")
+    for idx, diff in enumerate(sorted(diffs)):
+        print(f"{idx}: `{diff}`")
