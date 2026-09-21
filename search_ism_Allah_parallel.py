@@ -34,7 +34,10 @@ def load_segments() -> list[str]:
 
 
 def search_chunk(
-    segment_chunk: list[str], pattern_str: str, moshaf: MoshafAttributes
+    segment_chunk: list[str],
+    pattern_str: str,
+    moshaf: MoshafAttributes,
+    ignore_trick_to_match: bool = False,
 ) -> set[str]:
     found_matches = set()
     pattern = re.compile(pattern_str)
@@ -50,27 +53,37 @@ def search_chunk(
             # finding start
             start = mat.start()
             end = mat.end()
-            start_margin = get_margin(start, boundries)
-            if start_margin[1] < end:
-                start = start_margin[1]
-            else:
-                start = start_margin[0]
-            end = get_margin(end, boundries)[1]
+            if not ignore_trick_to_match:
+                start_margin = get_margin(start, boundries)
+                if start_margin[1] < end:
+                    start = start_margin[1]
+                else:
+                    start = start_margin[0]
+                end = get_margin(end, boundries)[1]
 
             found_matches.add(ph_text[start:end])
 
     return found_matches
 
 
-def search(pattern_str: str, moshaf: MoshafAttributes) -> set[str]:
+def search(
+    pattern_str: str,
+    moshaf: MoshafAttributes,
+    num_workers: int | None = os.cpu_count(),
+    ignore_trick_to_match: bool = False,
+) -> set[str]:
     quran_segments = load_segments()
 
-    num_workers = os.cpu_count()
-    chunks = [quran_segments[i::num_workers] for i in range(num_workers)]
+    chunks = [quran_segments[i::num_workers] for i in range(num_workers or 8)]
 
     with ProcessPoolExecutor(max_workers=num_workers) as pool:
         chunk_results = pool.map(
-            partial(search_chunk, pattern_str=pattern_str, moshaf=moshaf),
+            partial(
+                search_chunk,
+                pattern_str=pattern_str,
+                moshaf=moshaf,
+                ignore_trick_to_match=ignore_trick_to_match,
+            ),
             chunks,
         )
 
@@ -114,9 +127,9 @@ if __name__ == "__main__":
             f"{ph.noon_mokhfah}{{3}}[{ph.faa}{ph.taa}]{ph.fatha}",
         ]
     )
-    simple_pat = f"(?:(?:^|{uth.space}){space_or_start}|{middle}|{uth.space}){ph.lam}{{2}}{ph.fatha}{ph.alif}{{2,6}}{ph.haa}(?:.{uth.space}|$|{ph.dama}{ph.meem}{{3,4}})"
+    simple_pat = f"(?:(?:^|{uth.space})(?:{space_or_start})|{middle}|{uth.space}){ph.lam}{{2}}{ph.fatha}{ph.alif}{{2,6}}{ph.haa}(?:.{uth.space}|$|{ph.dama}{ph.meem}{{3,4}})"
 
-    found_matches = search(simple_pat, moshaf)
+    found_matches = search(simple_pat, moshaf, ignore_trick_to_match=True)
     print(f"Found `{len(found_matches)}`")
     print("-" * 40)
     for idx, match in enumerate(sorted(found_matches)):
