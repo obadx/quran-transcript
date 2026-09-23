@@ -40,6 +40,7 @@ if __name__ == "__main__":
     # uth_text = "بِسْمِ ٱللَّهِ ٱلرَّحْمَٰنِ ٱلرَّحِيمِ حمٓ عٓسٓقٓ"
     # uth_text = "ٱلسَّوْءِ"
     uth_text = "قُرَيْشٍ"
+    uth_text = "لِّلْمُتَّقِينَ"
 
     profiler = Profiler()
     profiler.start()
