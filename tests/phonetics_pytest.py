@@ -1,11 +1,18 @@
+import json
+import os
 import re
-from dataclasses import asdict
+from concurrent.futures import ProcessPoolExecutor
+from dataclasses import asdict, dataclass
+from functools import cache, partial
+from math import ceil
 from typing import Literal
 
 import pytest
 
 from quran_transcript import Aya
 from quran_transcript import alphabet as alph
+from quran_transcript.alphabet import phonetics as ph
+from quran_transcript.alphabet import uthmani as uth
 from quran_transcript.phonetics.moshaf_attributes import MoshafAttributes
 from quran_transcript.phonetics.operations import (
     AddAlifIsmAllah,
@@ -33,8 +40,12 @@ from quran_transcript.phonetics.operations import (
     Tasheel,
     WawAlsalah,
 )
-from quran_transcript.phonetics.phonetizer import quran_phonetizer
+from quran_transcript.phonetics.phonetizer import (
+    QuranPhoneticScriptOutput,
+    quran_phonetizer,
+)
 from quran_transcript.phonetics.sifa import (
+    PHONEME_WITH_LAAM_ALLH_REG,
     SifaOutput,
     alif_tafkheem_tarqeeq_finder,
     lam_tafkheem_tarqeeq_finder,
@@ -6309,3 +6320,210 @@ def test_raa_tafkheem_tarqeeq_finder(
     assert len(outputs) == len(ex_outs)
     for o, ex_o in zip(outputs, ex_outs):
         assert o == ex_o
+
+
+@dataclass
+class QuranSegment:
+    uth: str
+    aya: str
+
+
+def load_quran_segments(complete_aya_only: bool = False) -> list[QuranSegment]:
+    quran_segments = []
+    if not complete_aya_only:
+        with open(
+            "./quran-script/muallem_ds_uthmani_ayat.json", "r", encoding="utf-8"
+        ) as f:
+            segments = json.load(f)
+        for seg in segments:
+            quran_segments.append(QuranSegment(uth=seg, aya="None"))
+
+    start_aya = Aya()
+    for aya in start_aya.get_ayat_after():
+        quran_segments.append(
+            QuranSegment(
+                uth=aya.get().uthmani, aya=f"{aya.get().sura_idx}_{aya.get().aya_idx}"
+            )
+        )
+
+    return quran_segments
+
+
+def phonetize_worker(
+    uth_texts: list[str],
+    offset: int,
+    moshaf: MoshafAttributes,
+    **kwargs,
+) -> tuple[int, list[QuranPhoneticScriptOutput]]:
+    ph_outs = []
+    for uth_text in uth_texts:
+        ph_outs.append(quran_phonetizer(uth_text, moshaf, **kwargs))
+    return (offset, ph_outs)
+
+
+def phonetize_parallel(
+    quran_segments: list[QuranSegment],
+    moshaf: MoshafAttributes,
+    num_workers: int = os.cpu_count() or 8,
+    **kwargs,
+) -> list[QuranPhoneticScriptOutput]:
+    num_q_segs = len(quran_segments)
+    num_chunk_segs = ceil(num_q_segs / num_workers)
+
+    uth_texts = [q.uth for q in quran_segments]
+    chunks = [
+        uth_texts[i * num_chunk_segs : (i + 1) * num_chunk_segs]
+        for i in range(num_workers)
+    ]
+    offsets = [i * num_chunk_segs for i in range(num_workers)]
+
+    with ProcessPoolExecutor(max_workers=num_workers) as pool:
+        chunk_results = pool.map(
+            partial(
+                phonetize_worker,
+                moshaf=moshaf,
+                **kwargs,
+            ),
+            chunks,
+            offsets,
+        )
+
+    ph_outs: list[QuranPhoneticScriptOutput] = [None] * num_q_segs
+    for chunk_res in chunk_results:
+        offset = chunk_res[0]
+        for idx in range(len(chunk_res[1])):
+            ph_outs[idx + offset] = chunk_res[1][idx]
+    return ph_outs
+
+
+@pytest.fixture(scope="session")
+def quran_segs_phonetized_with_constat_moshaf() -> tuple[
+    list[QuranSegment], list[QuranPhoneticScriptOutput]
+]:
+    moshaf = MoshafAttributes(
+        rewaya="hafs",
+        madd_monfasel_len=4,
+        madd_mottasel_len=4,
+        madd_mottasel_waqf=4,
+        madd_aared_len=4,
+    )
+    quran_segments = load_quran_segments()
+    ph_outs = phonetize_parallel(quran_segments, moshaf)
+    return (quran_segments, ph_outs)
+
+
+@dataclass
+class SearchOut:
+    counts: int
+    ayat: set[str]
+    idx_to_count: list[int]
+    idx_to_poses: list[list[int]]
+    offset: int = 0
+
+
+def search_chunk(
+    q_segment_chunk: list[QuranSegment],
+    ph_texts: list[str],
+    offset: int,
+    pattern_str: str,
+) -> SearchOut:
+    pattern = re.compile(pattern_str)
+    counts = 0
+    ayat = set()
+    idx_to_count = []
+    idx_to_poses = []
+
+    for idx, (q_seg, ph_text) in enumerate(zip(q_segment_chunk, ph_texts)):
+        idx_to_count.append(0)
+        idx_to_poses.append([])
+
+        for mat in pattern.finditer(ph_text):
+            counts += 1
+            idx_to_count[idx] += 1
+            idx_to_poses[idx].append(mat.start(1))
+            ayat.add(q_seg.aya)
+
+    return SearchOut(
+        counts=counts,
+        ayat=ayat,
+        idx_to_count=idx_to_count,
+        idx_to_poses=idx_to_poses,
+        offset=offset,
+    )
+
+
+def search_pattern(
+    quran_segments: list[QuranSegment],
+    ph_out: list[QuranPhoneticScriptOutput],
+    pattern_str: str,
+    num_workers: int | None = os.cpu_count(),
+) -> SearchOut:
+    num_workers = num_workers or 8
+    num_segs = len(ph_out)
+    num_chunk_segs = ceil(num_segs / num_workers)
+
+    ph_only = [p.phonemes for p in ph_out]
+    ph_chunks = [
+        ph_only[i * num_chunk_segs : (i + 1) * num_chunk_segs]
+        for i in range(num_workers)
+    ]
+    q_chunks = [
+        quran_segments[i * num_chunk_segs : (i + 1) * num_chunk_segs]
+        for i in range(num_workers)
+    ]
+
+    offsets = [i * num_chunk_segs for i in range(num_workers)]
+
+    with ProcessPoolExecutor(max_workers=num_workers) as pool:
+        chunk_results = pool.map(
+            partial(
+                search_chunk,
+                pattern_str=pattern_str,
+            ),
+            q_chunks,
+            ph_chunks,
+            offsets,
+        )
+
+    counts = 0
+    ayat: set[str] = set()
+    idx_to_count = [0] * num_segs
+    idx_to_poses: list[list[int]] = [[]] * num_segs
+    for chunk_res in chunk_results:
+        counts += chunk_res.counts
+        ayat.update(chunk_res.ayat)
+        for idx in range(len(chunk_res.idx_to_count)):
+            idx_to_count[idx + chunk_res.offset] = chunk_res.idx_to_count[idx]
+            idx_to_poses[idx + chunk_res.offset] = chunk_res.idx_to_poses[idx]
+
+    return SearchOut(
+        counts=counts,
+        ayat=ayat,
+        idx_to_count=idx_to_count,
+        idx_to_poses=idx_to_poses,
+    )
+
+
+def test_find_ism_ALLAH_regs_correct(quran_segs_phonetized_with_constat_moshaf):
+    orig_pat = f"(?<!{ph.jeem})(?<!{ph.daal})(?<!{ph.taa}{ph.fatha}{ph.waw}).{uth.space}?({ph.lam}{{2}}){ph.fatha}{ph.alif}{{2,6}}{ph.haa}(?!{ph.dama}{ph.meem}(?!{ph.meem}))"
+    quran_segments, ph_outs = quran_segs_phonetized_with_constat_moshaf
+    orig_res = search_pattern(quran_segments, ph_outs, orig_pat)
+    sim_res = search_pattern(quran_segments, ph_outs, PHONEME_WITH_LAAM_ALLH_REG)
+    for idx, (orig_idx_counts, sim_idx_counts) in enumerate(
+        zip(orig_res.idx_to_count, sim_res.idx_to_count)
+    ):
+        if orig_res.idx_to_poses[idx] != sim_res.idx_to_poses[idx]:
+            print(f"Orig Counts: {orig_idx_counts}, Sim Counts: {sim_idx_counts}")
+            print(f"`{quran_segments[idx]}`")
+            ph_text = quran_phonetizer(quran_segments[idx].uth, moshaf).phonemes
+            print(ph_text)
+            print("Original Founds:")
+            for m in re.finditer(orig_pat, ph_text):
+                print(m)
+            print("Simple Founds:")
+            for m in re.finditer(PHONEME_WITH_LAAM_ALLH_REG, ph_text):
+                print(m)
+            print("-" * 30)
+            raise ValueError(
+                "Patterns trying to find lam for sim of ALLAH. does not match in this case"
+            )
