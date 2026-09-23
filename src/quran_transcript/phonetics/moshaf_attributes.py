@@ -1,6 +1,6 @@
-from dataclasses import dataclass
-from typing import Any, Literal, get_origin, get_args
 import sys
+from dataclasses import dataclass
+from typing import Any, Literal, get_args, get_origin
 
 # Sllving import Self from python 3.10
 if sys.version_info >= (3, 11):
@@ -8,12 +8,8 @@ if sys.version_info >= (3, 11):
 else:
     from typing_extensions import Self
 
-from pydantic import (
-    BaseModel,
-    Field,
-    model_validator,
-)
-from pydantic.fields import PydanticUndefined, FieldInfo
+from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic.fields import FieldInfo, PydanticUndefined
 
 
 @dataclass
@@ -154,7 +150,7 @@ class MoshafAttributes(BaseModel):
         },
         description=' The length of Mad Al Aared "مد العارض للسكون".',
     )
-    madd_alleen_len: Literal[2, 4, 6] = Field(
+    madd_alleen_len: Literal[2, 4, 6] | None = Field(
         default=None,
         json_schema_extra={
             "field_arabic_name": "مقدار مد اللين",

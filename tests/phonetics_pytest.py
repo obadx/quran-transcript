@@ -1,11 +1,17 @@
+import os
 import re
-from dataclasses import asdict
+from concurrent.futures import ProcessPoolExecutor
+from dataclasses import asdict, dataclass
+from functools import partial
+from math import ceil
 from typing import Literal
 
 import pytest
 
 from quran_transcript import Aya
 from quran_transcript import alphabet as alph
+from quran_transcript.alphabet import phonetics as ph
+from quran_transcript.alphabet import uthmani as uth
 from quran_transcript.phonetics.moshaf_attributes import MoshafAttributes
 from quran_transcript.phonetics.operations import (
     AddAlifIsmAllah,
@@ -33,14 +39,19 @@ from quran_transcript.phonetics.operations import (
     Tasheel,
     WawAlsalah,
 )
-from quran_transcript.phonetics.phonetizer import quran_phonetizer
+from quran_transcript.phonetics.phonetizer import (
+    QuranPhoneticScriptOutput,
+    quran_phonetizer,
+)
 from quran_transcript.phonetics.sifa import (
+    PHONEME_WITH_LAAM_ALLH_REG,
     SifaOutput,
     alif_tafkheem_tarqeeq_finder,
     lam_tafkheem_tarqeeq_finder,
     process_sifat,
     raa_tafkheem_tarqeeq_finder,
 )
+from tests.conftest import QuranSegment
 
 
 @pytest.mark.parametrize(
@@ -211,9 +222,8 @@ def test_convert_alif_maksora(in_text: str, target_text: str, moshaf: MoshafAttr
 
 
 @pytest.mark.stress
-def test_convert_alif_maksora_stress_test():
-    start_aya = Aya()
-    op = ConvertAlifMaksora()
+def test_convert_alif_maksora_stress_test(quran_segs_phonetized_with_constat_moshaf):
+    quran_segments = quran_segs_phonetized_with_constat_moshaf[0]
     moshaf = MoshafAttributes(
         rewaya="hafs",
         madd_monfasel_len=4,
@@ -221,12 +231,13 @@ def test_convert_alif_maksora_stress_test():
         madd_mottasel_waqf=4,
         madd_aared_len=4,
     )
+    op = ConvertAlifMaksora()
 
-    for aya in start_aya.get_ayat_after(114):
-        txt = aya.get().uthmani
+    for q_seg in quran_segments:
+        txt = q_seg.uth
         out_text, _ = op.apply(txt, moshaf, None, mode="test")
         if alph.uthmani.alif_maksora in out_text:
-            print(aya)
+            print(q_seg)
             print(out_text)
             raise ValueError()
 
@@ -255,8 +266,8 @@ def test_normalize_hamazat(in_text: str, target_text: str, moshaf: MoshafAttribu
 
 
 @pytest.mark.stress
-def test_normalize_hamazat_stress_test():
-    start_aya = Aya()
+def test_normalize_hamazat_stress_test(quran_segs_phonetized_with_constat_moshaf):
+    quran_segments = quran_segs_phonetized_with_constat_moshaf[0]
     op = NormalizeHmazat()
     moshaf = MoshafAttributes(
         rewaya="hafs",
@@ -267,11 +278,11 @@ def test_normalize_hamazat_stress_test():
     )
 
     hamazat = re.sub(alph.uthmani.hamza, "", alph.uthmani.hamazat_group)
-    for aya in start_aya.get_ayat_after(114):
-        txt = aya.get().uthmani
+    for q_seg in quran_segments:
+        txt = q_seg.uth
         out_text, _ = op.apply(txt, moshaf, None, mode="test")
         if re.search(f"[{hamazat}]", out_text):
-            print(aya)
+            print(q_seg)
             print(out_text)
             raise ValueError()
 
@@ -448,8 +459,8 @@ def test_skoon_mostateel(in_text: str, target_text: str, moshaf: MoshafAttribute
 
 
 @pytest.mark.stress
-def test_skoon_mostateel_stree_test():
-    start_aya = Aya()
+def test_skoon_mostateel_stree_test(quran_segs_phonetized_with_constat_moshaf):
+    quran_segments = quran_segs_phonetized_with_constat_moshaf[0]
     op = SkoonMostateel()
     moshaf = MoshafAttributes(
         rewaya="hafs",
@@ -459,11 +470,11 @@ def test_skoon_mostateel_stree_test():
         madd_aared_len=4,
     )
 
-    for aya in start_aya.get_ayat_after(114):
-        txt = aya.get().uthmani
+    for q_seg in quran_segments:
+        txt = q_seg.uth
         out_text, _ = op.apply(txt, moshaf, None, mode="test")
         if alph.uthmani.skoon_mostateel in out_text:
-            print(aya)
+            print(q_seg)
             print(out_text)
             raise ValueError()
 
@@ -797,8 +808,8 @@ def test_clean_end(in_text: str, target_text: str, moshaf: MoshafAttributes):
 
 
 @pytest.mark.stress
-def test_clean_end_stree_test():
-    start_aya = Aya()
+def test_clean_end_stree_test(quran_segs_phonetized_with_constat_moshaf):
+    quran_segments = quran_segs_phonetized_with_constat_moshaf[0]
     op = CleanEnd()
     moshaf = MoshafAttributes(
         rewaya="hafs",
@@ -809,14 +820,14 @@ def test_clean_end_stree_test():
     )
 
     is_error = False
-    for aya in start_aya.get_ayat_after(114):
-        txt = aya.get().uthmani
+    for q_seg in quran_segments:
+        txt = q_seg.uth
         out_text, _ = op.apply(txt, moshaf, None, mode="test")
         if out_text[-1] not in (
             alph.uthmani.letters_group + alph.uthmani.ras_haaa + alph.uthmani.shadda
         ):
             is_error = True
-            print(aya)
+            print(q_seg)
             print(out_text)
             print("\n" * 2)
     if is_error:
@@ -3789,7 +3800,8 @@ def test_quran_phonetizer_with_sura_idx(
 
 
 @pytest.mark.stress
-def test_quran_phonetizer_strees_test():
+def test_quran_phonetizer_strees_test(quran_segs_phonetized_with_constat_moshaf):
+    quran_segments = quran_segs_phonetized_with_constat_moshaf[0]
     start_aya = Aya()
     moshaf = MoshafAttributes(
         rewaya="hafs",
@@ -3800,14 +3812,14 @@ def test_quran_phonetizer_strees_test():
         noon_tamnna="rawm",
     )
 
-    for aya in start_aya.get_ayat_after(114):
-        txt = aya.get().uthmani
+    for q_seg in quran_segments:
+        txt = q_seg.uth
         out_text = quran_phonetizer(txt, moshaf, remove_spaces=True).phonemes
         alphabet = set(asdict(alph.phonetics).values())
         out_alphabet = set(out_text)
         if not out_alphabet <= alphabet:
             print(f"Diff: '{out_alphabet - alphabet}'")
-            print(aya)
+            print(q_seg)
             print(out_text)
             raise ValueError()
 
@@ -5639,6 +5651,73 @@ def test_process_sifat(
                 madd_aared_len=4,
             ),
         ),
+        # not haveing name of ALLAH
+        (
+            "مَن تَوَلَّاهُ",
+            [
+                "moraqaq",
+            ],
+            MoshafAttributes(
+                rewaya="hafs",
+                madd_monfasel_len=4,
+                madd_mottasel_len=4,
+                madd_mottasel_waqf=4,
+                madd_aared_len=4,
+            ),
+        ),
+        (
+            "جَلَّىٰهَا ",
+            [
+                "moraqaq",
+            ],
+            MoshafAttributes(
+                rewaya="hafs",
+                madd_monfasel_len=4,
+                madd_mottasel_len=4,
+                madd_mottasel_waqf=4,
+                madd_aared_len=4,
+            ),
+        ),
+        (
+            "فَدَلَّىٰهُمَا بِغُرُورٍ",
+            [
+                "moraqaq",
+            ],
+            MoshafAttributes(
+                rewaya="hafs",
+                madd_monfasel_len=4,
+                madd_mottasel_len=4,
+                madd_mottasel_waqf=4,
+                madd_aared_len=4,
+            ),
+        ),
+        (
+            "وَلَّىٰهُمْ",
+            [
+                "moraqaq",
+            ],
+            MoshafAttributes(
+                rewaya="hafs",
+                madd_monfasel_len=4,
+                madd_mottasel_len=4,
+                madd_mottasel_waqf=4,
+                madd_aared_len=4,
+            ),
+        ),
+        (
+            "وَّٱسْتَغْنَى ٱللَّهُ وَٱللَّهُ غَنِىٌّ حَمِيدٌۭ",
+            [
+                "mofakham",
+                "mofakham",
+            ],
+            MoshafAttributes(
+                rewaya="hafs",
+                madd_monfasel_len=4,
+                madd_mottasel_len=4,
+                madd_mottasel_waqf=4,
+                madd_aared_len=4,
+            ),
+        ),
     ],
 )
 def test_lam_tafkheem_tarqeeq_finder(
@@ -6242,3 +6321,121 @@ def test_raa_tafkheem_tarqeeq_finder(
     assert len(outputs) == len(ex_outs)
     for o, ex_o in zip(outputs, ex_outs):
         assert o == ex_o
+
+
+@dataclass
+class SearchOut:
+    counts: int
+    ayat: set[str]
+    idx_to_count: list[int]
+    idx_to_poses: list[list[int]]
+    offset: int = 0
+
+
+def search_chunk(
+    q_segment_chunk: list[QuranSegment],
+    ph_texts: list[str],
+    offset: int,
+    pattern_str: str,
+) -> SearchOut:
+    pattern = re.compile(pattern_str)
+    counts = 0
+    ayat = set()
+    idx_to_count = []
+    idx_to_poses = []
+
+    for idx, (q_seg, ph_text) in enumerate(zip(q_segment_chunk, ph_texts)):
+        idx_to_count.append(0)
+        idx_to_poses.append([])
+
+        for mat in pattern.finditer(ph_text):
+            counts += 1
+            idx_to_count[idx] += 1
+            idx_to_poses[idx].append(mat.start(1))
+            ayat.add(q_seg.aya)
+
+    return SearchOut(
+        counts=counts,
+        ayat=ayat,
+        idx_to_count=idx_to_count,
+        idx_to_poses=idx_to_poses,
+        offset=offset,
+    )
+
+
+def search_pattern(
+    quran_segments: list[QuranSegment],
+    ph_out: list[QuranPhoneticScriptOutput],
+    pattern_str: str,
+    num_workers: int | None = os.cpu_count(),
+) -> SearchOut:
+    num_workers = num_workers or 8
+    num_segs = len(ph_out)
+    num_chunk_segs = ceil(num_segs / num_workers)
+
+    ph_only = [p.phonemes for p in ph_out]
+    ph_chunks = [
+        ph_only[i * num_chunk_segs : (i + 1) * num_chunk_segs]
+        for i in range(num_workers)
+    ]
+    q_chunks = [
+        quran_segments[i * num_chunk_segs : (i + 1) * num_chunk_segs]
+        for i in range(num_workers)
+    ]
+
+    offsets = [i * num_chunk_segs for i in range(num_workers)]
+
+    with ProcessPoolExecutor(max_workers=num_workers) as pool:
+        chunk_results = pool.map(
+            partial(
+                search_chunk,
+                pattern_str=pattern_str,
+            ),
+            q_chunks,
+            ph_chunks,
+            offsets,
+        )
+
+    counts = 0
+    ayat: set[str] = set()
+    idx_to_count = [0] * num_segs
+    idx_to_poses: list[list[int]] = [[]] * num_segs
+    for chunk_res in chunk_results:
+        counts += chunk_res.counts
+        ayat.update(chunk_res.ayat)
+        for idx in range(len(chunk_res.idx_to_count)):
+            idx_to_count[idx + chunk_res.offset] = chunk_res.idx_to_count[idx]
+            idx_to_poses[idx + chunk_res.offset] = chunk_res.idx_to_poses[idx]
+
+    return SearchOut(
+        counts=counts,
+        ayat=ayat,
+        idx_to_count=idx_to_count,
+        idx_to_poses=idx_to_poses,
+    )
+
+
+@pytest.mark.stress
+def test_find_ism_ALLAH_regs_correct(quran_segs_phonetized_with_constat_moshaf):
+    orig_pat = f"(?<!{ph.jeem})(?<!{ph.daal})(?<!{ph.taa}{ph.fatha}{ph.waw}).{uth.space}?({ph.lam}{{2}}){ph.fatha}{ph.alif}{{2,6}}{ph.haa}(?!{ph.dama}{ph.meem}(?!{ph.meem}))"
+    quran_segments, ph_outs = quran_segs_phonetized_with_constat_moshaf
+    orig_res = search_pattern(quran_segments, ph_outs, orig_pat)
+    sim_res = search_pattern(quran_segments, ph_outs, PHONEME_WITH_LAAM_ALLH_REG)
+    for idx, (orig_idx_counts, sim_idx_counts) in enumerate(
+        zip(orig_res.idx_to_count, sim_res.idx_to_count)
+    ):
+        if orig_res.idx_to_poses[idx] != sim_res.idx_to_poses[idx]:
+            print(f"Orig Counts: {orig_idx_counts}, Sim Counts: {sim_idx_counts}")
+            print(f"`{quran_segments[idx]}`")
+            ph_text = quran_phonetizer(quran_segments[idx].uth, moshaf).phonemes
+            print(ph_text)
+            print("Original Founds:")
+            for m in re.finditer(orig_pat, ph_text):
+                print(m)
+            print("Simple Founds:")
+            for m in re.finditer(PHONEME_WITH_LAAM_ALLH_REG, ph_text):
+                print(m)
+            print("-" * 30)
+            raise ValueError(
+                "Patterns trying to find lam for sim of ALLAH. does not match in this case"
+            )

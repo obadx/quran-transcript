@@ -1,14 +1,12 @@
-import re
-from dataclasses import dataclass, field, asdict
-from typing import List, Dict, Tuple, Optional
 import json
+import re
+from dataclasses import asdict, dataclass, field
 
-from quran_transcript import Aya
-from quran_transcript.alphabet import uthmani as uth
-from quran_transcript.alphabet import phonetics as ph
-from quran_transcript.alphabet import phonetic_groups as phg
+from quran_transcript import Aya, MoshafAttributes, quran_phonetizer
 from quran_transcript.alphabet import BeginHamzatWasl
-from quran_transcript import quran_phonetizer, MoshafAttributes
+from quran_transcript.alphabet import phonetic_groups as phg
+from quran_transcript.alphabet import phonetics as ph
+from quran_transcript.alphabet import uthmani as uth
 
 
 @dataclass
@@ -393,27 +391,28 @@ if __name__ == "__main__":
     #     print_sets=True,
     # )
 
-    # print("\n\nاسم الله\n\n")
-    # raa_group = filter_words(
-    #     quran_words,
-    #     regs=f"(?<!{ph.jeem})(?<!{ph.daal})(?<!{ph.taa}{ph.fatha}{ph.waw})(.){uth.space}?{ph.lam}{{2}}{ph.fatha}{ph.alif}{{2,6}}{ph.haa}(?!{ph.dama}{ph.meem}(?!{ph.meem}))",
-    #     tags="all",
-    #     # part_idx=0,
-    #     verbose=False,
-    #     print_sets=True,
-    #     trans_func=quran_phonetizer,
-    #     trans_func_out=lambda x: x.phonemes,
-    #     trans_func_kwargs={
-    #         "moshaf": MoshafAttributes(
-    #             rewaya="hafs",
-    #             madd_monfasel_len=4,
-    #             madd_mottasel_len=4,
-    #             madd_mottasel_waqf=4,
-    #             madd_aared_len=4,
-    #             # tasheel_or_madd='tasheel',
-    #         ),
-    #     },
-    # )
+    print("*" * 40)
+    print("\n\nاسم الله\n\n")
+    raa_group = filter_words(
+        quran_words,
+        regs=f"(?<!{ph.jeem})(?<!{ph.taa}{ph.fatha}{ph.waw})(.){uth.space}?{ph.lam}{{2}}{ph.fatha}{ph.alif}{{2,6}}{ph.haa}(?!{ph.dama}{ph.meem}(?!{ph.meem}))",
+        tags="all",
+        # part_idx=0,
+        verbose=False,
+        print_sets=True,
+        trans_func=quran_phonetizer,
+        trans_func_out=lambda x: x.phonemes,
+        trans_func_kwargs={
+            "moshaf": MoshafAttributes(
+                rewaya="hafs",
+                madd_monfasel_len=4,
+                madd_mottasel_len=4,
+                madd_mottasel_waqf=4,
+                madd_aared_len=4,
+                # tasheel_or_madd='tasheel',
+            ),
+        },
+    )
 
     # print("\n\nحرف الراء\n\n")
     # raa_group = filter_words(
@@ -481,27 +480,27 @@ if __name__ == "__main__":
     #     },
     # )
 
-    print("\n\nالمبدوء بساكن\n\n")
-    raa_group = filter_words(
-        quran_words,
-        regs=f"^.[^{uth.harakat_group}]",
-        tags="all",
-        # part_idx=0,
-        verbose=False,
-        print_sets=True,
-        trans_func=quran_phonetizer,
-        trans_func_out=lambda x: x.phonemes,
-        trans_func_kwargs={
-            "moshaf": MoshafAttributes(
-                rewaya="hafs",
-                madd_monfasel_len=4,
-                madd_mottasel_len=4,
-                madd_mottasel_waqf=4,
-                madd_aared_len=4,
-                # tasheel_or_madd='tasheel',
-            ),
-        },
-    )
+    # print("\n\nالمبدوء بساكن\n\n")
+    # raa_group = filter_words(
+    #     quran_words,
+    #     regs=f"^.[^{uth.harakat_group}]",
+    #     tags="all",
+    #     # part_idx=0,
+    #     verbose=False,
+    #     print_sets=True,
+    #     trans_func=quran_phonetizer,
+    #     trans_func_out=lambda x: x.phonemes,
+    #     trans_func_kwargs={
+    #         "moshaf": MoshafAttributes(
+    #             rewaya="hafs",
+    #             madd_monfasel_len=4,
+    #             madd_mottasel_len=4,
+    #             madd_mottasel_waqf=4,
+    #             madd_aared_len=4,
+    #             # tasheel_or_madd='tasheel',
+    #         ),
+    #     },
+    # )
 
     # print("\n\nالمبدوء بساكن\n\n")
     # raa_group = filter_words(

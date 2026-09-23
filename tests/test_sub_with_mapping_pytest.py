@@ -11,7 +11,6 @@ from quran_transcript.phonetics.conv_base_operation import (
     sub_with_mapping,
 )
 from quran_transcript.phonetics.search import (
-    clean_uthmani_spaces,
     get_uth_word_boundaries_in_ph,
 )
 from quran_transcript.phonetics.tajweed_rulses import (
@@ -1489,30 +1488,8 @@ def test_phonetizer_with_mappings(
 
 
 @pytest.mark.stress
-def test_sub_with_mapping_stress_test():
-    start_aya = Aya()
-    moshaf = MoshafAttributes(
-        rewaya="hafs",
-        madd_monfasel_len=4,
-        madd_mottasel_len=4,
-        madd_mottasel_waqf=4,
-        madd_aared_len=4,
-    )
-
-    uth_text = [aya.get().uthmani for aya in start_aya.get_ayat_after()]
-    # Looping over all the Ayat and most of possible starts and puases
-    # drevied from quran-muaalem-annotated-v3 `uthamni` column
-    with open(
-        "./quran-script/muallem_ds_uthmani_ayat.json", "r", encoding="utf-8"
-    ) as f:
-        uth_text += json.load(f)
-
-    for aya in start_aya.get_ayat_after():
-        uthmani_text = aya.get().uthmani
-        print(f"UTH:\n{uthmani_text}")
-        ph_out = quran_phonetizer(uthmani_text, moshaf, remove_spaces=True)
-        # Ensuring that space is not assigned to any mapping
-        get_uth_word_boundaries_in_ph(uthmani_text, ph_out.mappings)
+def test_sub_with_mapping_stress_test(quran_segs_phonetized_with_constat_moshaf):
+    quran_segments, ph_outs = quran_segs_phonetized_with_constat_moshaf
 
 
 if __name__ == "__main__":

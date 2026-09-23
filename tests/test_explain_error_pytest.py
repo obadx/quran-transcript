@@ -1,6 +1,6 @@
 import pytest
 
-from quran_transcript import MoshafAttributes, quran_phonetizer, explain_error
+from quran_transcript import MoshafAttributes, explain_error, quran_phonetizer
 
 
 @pytest.fixture(scope="module")
