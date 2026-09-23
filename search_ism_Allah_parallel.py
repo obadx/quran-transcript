@@ -56,6 +56,7 @@ class SearchOut:
     counts: int
     ayat: set[str]
     idx_to_count: list[int]
+    idx_to_poses: list[list[int]]
     offset: int = 0
 
 
@@ -72,6 +73,7 @@ def search_chunk(
     counts = 0
     ayat = set()
     idx_to_count = []
+    idx_to_poses = []
 
     for idx, q_seg in enumerate(segment_chunk):
         ph_text = quran_phonetizer(q_seg.uth, moshaf).phonemes
@@ -79,6 +81,7 @@ def search_chunk(
         boundries.add(0)
         boundries.add(len(ph_text))
         idx_to_count.append(0)
+        idx_to_poses.append([])
 
         for mat in pattern.finditer(ph_text):
             # finding start
@@ -95,6 +98,7 @@ def search_chunk(
             found_matches.add(ph_text[start:end])
             counts += 1
             idx_to_count[idx] += 1
+            idx_to_poses[idx].append(mat.start(1))
             ayat.add(q_seg.aya)
 
     return SearchOut(
@@ -102,6 +106,7 @@ def search_chunk(
         counts=counts,
         ayat=ayat,
         idx_to_count=idx_to_count,
+        idx_to_poses=idx_to_poses,
         offset=offset,
     )
 
@@ -140,18 +145,21 @@ def search(
     found_matches: set[str] = set()
     ayat: set[str] = set()
     idx_to_count = [0] * num_q_segs
+    idx_to_poses: list[list[int]] = [[]] * num_q_segs
     for chunk_res in chunk_results:
         found_matches.update(chunk_res.maches)
         counts += chunk_res.counts
         ayat.update(chunk_res.ayat)
         for idx in range(len(chunk_res.idx_to_count)):
             idx_to_count[idx + chunk_res.offset] = chunk_res.idx_to_count[idx]
+            idx_to_poses[idx + chunk_res.offset] = chunk_res.idx_to_poses[idx]
 
     return SearchOut(
         maches=found_matches,
         counts=counts,
         ayat=ayat,
         idx_to_count=idx_to_count,
+        idx_to_poses=idx_to_poses,
     )
 
 
@@ -198,7 +206,7 @@ if __name__ == "__main__":
         madd_mottasel_waqf=4,
         madd_aared_len=4,
     )
-    orig_pat = f"(?<!{ph.jeem})(?<!{ph.daal})(?<!{ph.taa}{ph.fatha}{ph.waw})(.{uth.space}?{ph.lam}{{2}}){ph.fatha}{ph.alif}{{2,6}}{ph.haa}(?!{ph.dama}{ph.meem}(?!{ph.meem}))"
+    orig_pat = f"(?<!{ph.jeem})(?<!{ph.daal})(?<!{ph.taa}{ph.fatha}{ph.waw}).{uth.space}?({ph.lam}{{2}}){ph.fatha}{ph.alif}{{2,6}}{ph.haa}(?!{ph.dama}{ph.meem}(?!{ph.meem}))"
 
     space_or_start = "|".join(
         [
@@ -222,7 +230,9 @@ if __name__ == "__main__":
             f"{ph.lam}{{2}}{ph.kasra}",
         ]
     )
-    simple_pat = f"(?:(?:^|{uth.space})(?:{space_or_start})|{middle}|{uth.space}){ph.lam}{{2}}{ph.fatha}{ph.alif}{{2,6}}{ph.haa}(?:[{phg.harakat}](?={uth.space})|$|{ph.dama}{ph.meem}{{3,4}})"
+    # NOTE: we are using here positive lookahead becuase python regs does not support aratic harakat as work bounddary but
+    # rust spports it. so for rust we will simple replace `(?={uth.sapace})` with `\b`
+    simple_pat = f"(?:(?:^|{uth.space})(?:{space_or_start})|{middle}|{uth.space})({ph.lam}{{2}}){ph.fatha}{ph.alif}{{2,6}}{ph.haa}(?:[{phg.harakat}](?={uth.space})|$|{ph.dama}{ph.meem}{{3,4}})"
 
     complete_aya_only = False
     num_workers = os.cpu_count()
@@ -261,12 +271,14 @@ if __name__ == "__main__":
     for idx, diff in enumerate(sorted(diffs)):
         print(f"{idx}: `{diff}`")
 
-    print("\nPer Segments Counts Diffs\n")
+    print("\nPer-segments Counts Diffs\n")
+    not_found = True
     quran_segments = load_segments(complete_aya_only=complete_aya_only)
     for idx, (orig_idx_counts, sim_idx_counts) in enumerate(
         zip(orig_res.idx_to_count, sim_res.idx_to_count)
     ):
-        if orig_idx_counts != sim_idx_counts:
+        if orig_res.idx_to_poses[idx] != sim_res.idx_to_poses[idx]:
+            not_found = False
             print(f"Orig Counts: {orig_idx_counts}, Sim Counts: {sim_idx_counts}")
             print(f"`{quran_segments[idx]}`")
             ph_text = quran_phonetizer(quran_segments[idx].uth, moshaf).phonemes
@@ -278,3 +290,4 @@ if __name__ == "__main__":
             for m in re.finditer(simple_pat, ph_text):
                 print(m)
             print("-" * 30)
+    print("Exaclly matching each other not diffs found")
