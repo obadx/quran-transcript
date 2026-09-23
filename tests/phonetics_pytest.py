@@ -5639,6 +5639,73 @@ def test_process_sifat(
                 madd_aared_len=4,
             ),
         ),
+        # not haveing name of ALLAH
+        (
+            "مَن تَوَلَّاهُ",
+            [
+                "moraqaq",
+            ],
+            MoshafAttributes(
+                rewaya="hafs",
+                madd_monfasel_len=4,
+                madd_mottasel_len=4,
+                madd_mottasel_waqf=4,
+                madd_aared_len=4,
+            ),
+        ),
+        (
+            "جَلَّىٰهَا ",
+            [
+                "moraqaq",
+            ],
+            MoshafAttributes(
+                rewaya="hafs",
+                madd_monfasel_len=4,
+                madd_mottasel_len=4,
+                madd_mottasel_waqf=4,
+                madd_aared_len=4,
+            ),
+        ),
+        (
+            "فَدَلَّىٰهُمَا بِغُرُورٍ",
+            [
+                "moraqaq",
+            ],
+            MoshafAttributes(
+                rewaya="hafs",
+                madd_monfasel_len=4,
+                madd_mottasel_len=4,
+                madd_mottasel_waqf=4,
+                madd_aared_len=4,
+            ),
+        ),
+        (
+            "وَلَّىٰهُمْ",
+            [
+                "moraqaq",
+            ],
+            MoshafAttributes(
+                rewaya="hafs",
+                madd_monfasel_len=4,
+                madd_mottasel_len=4,
+                madd_mottasel_waqf=4,
+                madd_aared_len=4,
+            ),
+        ),
+        (
+            "وَّٱسْتَغْنَى ٱللَّهُ وَٱللَّهُ غَنِىٌّ حَمِيدٌۭ",
+            [
+                "mofakham",
+                "mofakham",
+            ],
+            MoshafAttributes(
+                rewaya="hafs",
+                madd_monfasel_len=4,
+                madd_mottasel_len=4,
+                madd_mottasel_waqf=4,
+                madd_aared_len=4,
+            ),
+        ),
     ],
 )
 def test_lam_tafkheem_tarqeeq_finder(
