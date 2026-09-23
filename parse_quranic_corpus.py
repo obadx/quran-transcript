@@ -391,10 +391,11 @@ if __name__ == "__main__":
     #     print_sets=True,
     # )
 
+    print("*" * 40)
     print("\n\nاسم الله\n\n")
     raa_group = filter_words(
         quran_words,
-        regs=f"(?<!{ph.jeem})(?<!{ph.daal})(?<!{ph.taa}{ph.fatha}{ph.waw})(.){uth.space}?{ph.lam}{{2}}{ph.fatha}{ph.alif}{{2,6}}{ph.haa}(?!{ph.dama}{ph.meem}(?!{ph.meem}))",
+        regs=f"(?<!{ph.jeem})(?<!{ph.taa}{ph.fatha}{ph.waw})(.){uth.space}?{ph.lam}{{2}}{ph.fatha}{ph.alif}{{2,6}}{ph.haa}(?!{ph.dama}{ph.meem}(?!{ph.meem}))",
         tags="all",
         # part_idx=0,
         verbose=False,
