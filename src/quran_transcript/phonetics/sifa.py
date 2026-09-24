@@ -264,7 +264,7 @@ def raa_tafkheem_tarqeeq_finder(
 
     tarqeeq_cases = [
         f"({uth.raa}){uth.shadda}?[{uth.kasra}{uth.imala_sign}]",
-        f"{uth.kasra}({uth.raa})(?:{uth.ras_haaa}|$)[^{phg.tafkheem}]",
+        f"{uth.kasra}({uth.raa})(?:{uth.ras_haaa}[^{phg.tafkheem}]|{uth.ras_haaa}$|$)",
         f"{uth.kasra}[^{phg.tafkheem}]{uth.ras_haaa}({uth.raa})(?:{uth.ras_haaa}|$)",
         f"{uth.kasra}{uth.yaa}({uth.raa})(?:{uth.ras_haaa}|$)",
         f"{uth.fatha}{uth.yaa}{uth.ras_haaa}({uth.raa})(?:{uth.ras_haaa}|$)",
