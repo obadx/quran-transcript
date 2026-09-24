@@ -6307,6 +6307,28 @@ def test_alif_tafkheem_tarqeeq_finder(
                 madd_aared_len=4,
             ),
         ),
+        (
+            "وَمَا هُوَ بِقَوْلِ شَاعِرٍۢ",
+            ["moraqaq"],
+            MoshafAttributes(
+                rewaya="hafs",
+                madd_monfasel_len=4,
+                madd_mottasel_len=4,
+                madd_mottasel_waqf=4,
+                madd_aared_len=4,
+            ),
+        ),
+        (
+            "فَٱصْبِرْ",
+            ["moraqaq"],
+            MoshafAttributes(
+                rewaya="hafs",
+                madd_monfasel_len=4,
+                madd_mottasel_len=4,
+                madd_mottasel_waqf=4,
+                madd_aared_len=4,
+            ),
+        ),
     ],
 )
 def test_raa_tafkheem_tarqeeq_finder(
