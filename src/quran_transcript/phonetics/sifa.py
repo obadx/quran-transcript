@@ -1,32 +1,31 @@
-from typing import Literal
-from pydantic import BaseModel
 import re
 from dataclasses import dataclass
+from typing import Literal
 
+from pydantic import BaseModel
+
+from ..alphabet import phonetic_groups as phg
 from ..alphabet import phonetics as ph
 from ..alphabet import uthmani as uth
-from ..alphabet import phonetic_groups as phg
 from .moshaf_attributes import MoshafAttributes
 from .operations import (
-    DisassembleHrofMoqatta,
-    SpecialCases,
-    BeginWithHamzatWasl,
-    ConvertAlifMaksora,
-    NormalizeHmazat,
-    IthbatYaaYohie,
-    RemoveKasheeda,
-    RemoveHmzatWaslMiddle,
-    RemoveSkoonMostadeer,
-    SkoonMostateel,
-    MaddAlewad,
-    WawAlsalah,
-    EnlargeSmallLetters,
     CleanEnd,
-    NormalizeTaa,
-    AddAlifIsmAllah,
-    PrepareGhonnaIdghamIqlab,
-    IltiqaaAlsaknan,
+    ConvertAlifMaksora,
     DeleteShaddaAtBeginning,
+    DisassembleHrofMoqatta,
+    EnlargeSmallLetters,
+    IltiqaaAlsaknan,
+    MaddAlewad,
+    NormalizeHmazat,
+    NormalizeTaa,
+    PrepareGhonnaIdghamIqlab,
+    RemoveHmzatWaslMiddle,
+    RemoveKasheeda,
+    RemoveSkoonMostadeer,
+    RemoveTanweenFatahAtEndFromTaaMarboota,
+    SkoonMostateel,
+    SpecialCases,
+    WawAlsalah,
 )
 
 
@@ -65,9 +64,9 @@ def parse_tafkheem_sifa(
     # ghonna for noon
     if p_group[0] == ph.noon_mokhfah:
         if idx == 0:
-            raise ValueError(f"Noon Mokhfaa comes in the middle not at the start")
+            raise ValueError("Noon Mokhfaa comes in the middle not at the start")
         elif idx == len(phonemes) - 1:
-            raise ValueError(f"Noon Mokhfaa comes in the middle not at the end")
+            raise ValueError("Noon Mokhfaa comes in the middle not at the end")
         elif phonemes[idx + 1][0] in phg.tafkheem:
             return "mofakham"
         else:
@@ -93,6 +92,34 @@ def parse_tafkheem_sifa(
     return "mofakham" if phonemes[idx][0] in phg.tafkheem else "moraqaq"
 
 
+ISM_ALLAH_REG_SPACE_OR_START = "|".join(
+    [
+        f"{ph.hamza}{ph.fatha}{ph.baa}{ph.kasra}",
+        f"[{ph.baa}{ph.lam}]{ph.kasra}",
+        f"[{ph.hamza}{ph.taa}{ph.faa}{ph.waw}]{ph.fatha}",
+        f"{ph.waw}{ph.fatha}{ph.taa}{ph.fatha}",
+        f"[{ph.faa}{ph.waw}]{ph.fatha}{ph.lam}{ph.kasra}",
+        f"{ph.hamza}{ph.fatha}{ph.alif}{{6}}",
+        f"{ph.hamza}{ph.fatha}{ph.hamza_mosahala}",
+    ]
+)
+ISM_ALLAH_REG_MIDDLE = "|".join(
+    [
+        f"[{ph.meem_mokhfah}{ph.meem}]{{3}}{ph.baa}{ph.kasra}",
+        f"{ph.waw}{{3}}{ph.fatha}",
+        f"{ph.waw}{{3}}{ph.fatha}{ph.lam}{ph.kasra}",
+        f"{ph.waw}{{3}}{ph.fatha}{ph.taa}{ph.fatha}",
+        f"{ph.noon_mokhfah}{{3}}[{ph.faa}{ph.taa}]{ph.fatha}",
+        f"{ph.noon_mokhfah}{{3}}{ph.faa}{ph.fatha}{ph.lam}{ph.kasra}",
+        f"{ph.lam}{{2}}{ph.kasra}",
+    ]
+)
+
+# NOTE: we are using here positive lookahead becuase python regs does not support aratic harakat as work bounddary but
+# rust spports it. so for rust we will simple replace `(?={uth.sapace})` with `\b`
+PHONEME_WITH_LAAM_ALLH_REG = f"(?:(?:^|{uth.space})(?:{ISM_ALLAH_REG_SPACE_OR_START})|{ISM_ALLAH_REG_MIDDLE}|{uth.space})({ph.lam}{{2}}){ph.fatha}{ph.alif}{{2,6}}{ph.haa}(?:[{phg.harakat}](?={uth.space})|$|{ph.dama}{ph.meem}{{3,4}})"
+
+
 def lam_tafkheem_tarqeeq_finder(
     phonetic_script_with_space: str,
 ) -> list[Literal["mofakham", "moraqaq"]]:
@@ -101,7 +128,7 @@ def lam_tafkheem_tarqeeq_finder(
 
     This specially created to handel lam of the name of Allah
     """
-    phoneme_with_laam_Allh_reg = f"(?<!{ph.jeem})(?<!{ph.daal})(?<!{ph.taa}{ph.fatha}{ph.waw})(.{uth.space}?{ph.lam}{{2}}){ph.fatha}{ph.alif}{{2,6}}{ph.haa}(?!{ph.dama}{ph.meem}(?!{ph.meem}))"
+    # phoneme_with_laam_Allh_reg = f"(?<!{ph.jeem})(?<!{ph.daal})(?<!{ph.taa}{ph.fatha}{ph.waw})(.{uth.space}?{ph.lam}{{2}}){ph.fatha}{ph.alif}{{2,6}}{ph.haa}(?!{ph.dama}{ph.meem}(?!{ph.meem}))"
     laam_reg = f"({ph.lam}+)[{phg.residuals}]?"
 
     lam_poses = []
@@ -109,11 +136,16 @@ def lam_tafkheem_tarqeeq_finder(
         lam_poses.append(match.start(1))
 
     pos_to_phoneme_before_lam_Allah = {}
-    for match in re.finditer(phoneme_with_laam_Allh_reg, phonetic_script_with_space):
-        pos = match.end(1) - 2
-        pos_to_phoneme_before_lam_Allah[pos] = match.group(1)[0]
+    for match in re.finditer(PHONEME_WITH_LAAM_ALLH_REG, phonetic_script_with_space):
+        pos = match.start(1)
+        for haraka_pos in range(pos - 1, -1, -1):
+            if phonetic_script_with_space[haraka_pos] in phg.harakat:
+                pos_to_phoneme_before_lam_Allah[pos] = phonetic_script_with_space[
+                    haraka_pos
+                ]
+                break
 
-    outputs = []
+    outputs: list[Literal["mofakham", "moraqaq"]] = []
     for lam_pos in lam_poses:
         if lam_pos in pos_to_phoneme_before_lam_Allah:
             if pos_to_phoneme_before_lam_Allah[lam_pos] == ph.kasra:
@@ -124,33 +156,16 @@ def lam_tafkheem_tarqeeq_finder(
             outputs.append("moraqaq")
     return outputs
 
-    # ph_or_lam_list = re.findall(
-    #     "|".join([phoneme_before_laam_Allh_reg, laam_reg]), phonetic_script_with_space
-    # )
-    # print(ph_or_lam_list)
-    #
-    # outputs = []
-    # for phoneme, lam in ph_or_lam_list:
-    #     if phoneme:
-    #         if phoneme == ph.kasra:
-    #             outputs.append("moraqaq")
-    #         else:
-    #             outputs.append("mofakham")
-    #     elif lam:
-    #         outputs.append("moraqaq")
-    #
-    # return outputs
-
 
 def alif_tafkheem_tarqeeq_finder(
     phonetic_script_with_space: str,
 ) -> list[Literal["mofakham", "moraqaq"] | None]:
-    """findes lam in script and returns tafkheem or tarqeeq for
+    """findes alif in script and returns tafkheem or tarqeeq for
     every madd alif
 
     This specially created to handel alif after lam اسم الله
     """
-    phoneme_with_laam_Allh_reg = f"(?<!{ph.jeem})(?<!{ph.daal})(?<!{ph.taa}{ph.fatha}{ph.waw})(.){uth.space}?{ph.lam}{{2}}{ph.fatha}({ph.alif}{{2,6}}){ph.haa}(?!{ph.dama}{ph.meem}(?!{ph.meem}))"
+    # phoneme_with_laam_Allh_reg = f"(?<!{ph.jeem})(?<!{ph.daal})(?<!{ph.taa}{ph.fatha}{ph.waw})(.){uth.space}?{ph.lam}{{2}}{ph.fatha}({ph.alif}{{2,6}}){ph.haa}(?!{ph.dama}{ph.meem}(?!{ph.meem}))"
     alif_reg = f"{ph.fatha}({ph.alif}{{2,6}})"
 
     alif_poses = []
@@ -158,9 +173,14 @@ def alif_tafkheem_tarqeeq_finder(
         alif_poses.append(match.start(1))
 
     pos_to_phoneme_before_lam_Allah = {}
-    for match in re.finditer(phoneme_with_laam_Allh_reg, phonetic_script_with_space):
-        pos = match.start(2)
-        pos_to_phoneme_before_lam_Allah[pos] = match.group(1)
+    for match in re.finditer(PHONEME_WITH_LAAM_ALLH_REG, phonetic_script_with_space):
+        pos = match.start(1)
+        for haraka_pos in range(pos - 1, -1, -1):
+            if phonetic_script_with_space[haraka_pos] in phg.harakat:
+                pos_to_phoneme_before_lam_Allah[pos + 3] = phonetic_script_with_space[
+                    haraka_pos
+                ]
+                break
 
     outputs = []
     for alif_pos in alif_poses:
@@ -183,6 +203,7 @@ RAA_OPERATIONS = [
     RemoveHmzatWaslMiddle(),
     RemoveSkoonMostadeer(),
     SkoonMostateel(),
+    RemoveTanweenFatahAtEndFromTaaMarboota(),
     MaddAlewad(),
     WawAlsalah(),
     EnlargeSmallLetters(),
@@ -243,7 +264,7 @@ def raa_tafkheem_tarqeeq_finder(
 
     tarqeeq_cases = [
         f"({uth.raa}){uth.shadda}?[{uth.kasra}{uth.imala_sign}]",
-        f"{uth.kasra}({uth.raa})(?:{uth.ras_haaa}|$)(?![{phg.tafkheem}])",
+        f"{uth.kasra}({uth.raa})(?:{uth.ras_haaa}[^{phg.tafkheem}]|{uth.ras_haaa}$|$)",
         f"{uth.kasra}[^{phg.tafkheem}]{uth.ras_haaa}({uth.raa})(?:{uth.ras_haaa}|$)",
         f"{uth.kasra}{uth.yaa}({uth.raa})(?:{uth.ras_haaa}|$)",
         f"{uth.fatha}{uth.yaa}{uth.ras_haaa}({uth.raa})(?:{uth.ras_haaa}|$)",

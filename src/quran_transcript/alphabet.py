@@ -1,5 +1,6 @@
-from dataclasses import dataclass
+import inspect
 import json
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Literal
 
@@ -26,6 +27,15 @@ class SpecialPattern:
     opts: dict[str, str] | None = None
     target_pattern: str | None = None
     pos: Literal["start", "middle", "end"] = "middle"
+    sura_idx: int = 0
+    """
+    Args:
+    sura_idx (int): the sura index from 1 to 114. If zero then there is no sura set.
+        Used when a specific rule is tied to a specific sura.
+        This is used particularly if the user pronounced ONLY `ضَعْفًا` so we cannot infer whether this
+        is from surah Alroom so we have two ways with damma or fatha; or from surah AlAnfal so we only
+        pronounce it with fatha.
+    """
 
 
 @dataclass
@@ -155,7 +165,8 @@ class UthmaniAlphabet:
     qlqla_group: str = ""
 
     def __post_init__(self):
-        self.special_patterns = [SpecialPattern(**p) for p in self.special_patterns]
+        if type(self.special_patterns[0]) is dict:
+            self.special_patterns = [SpecialPattern(**p) for p in self.special_patterns]
 
         self.madd_alif = self.fatha + self.alif
         self.madd_waw = self.dama + self.waw

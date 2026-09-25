@@ -1,28 +1,28 @@
-from dataclasses import dataclass, field
 import re
+from dataclasses import dataclass, field
 
-
+from ..alphabet import phonetics as ph
+from ..alphabet import uthmani as uth
 from .conv_base_operation import (
     ConversionOperation,
-    sub_with_mapping,
     MappingListType,
     MappingPos,
+    add_tajweed_rule_to_mappings,
     get_mappings,
+    sub_with_mapping,
 )
 from .moshaf_attributes import MoshafAttributes
-from ..alphabet import uthmani as uth
-from ..alphabet import phonetics as ph
 from .tajweed_rulses import (
-    TajweedRule,
-    Qalqalah,
-    NormalMaddRule,
+    AaredMaddRule,
+    IdghamKamel,
+    LazemMaddRule,
+    LeenMaddRule,
     MonfaselMaddRule,
     MottaselMaddPauseRule,
     MottaselMaddRule,
-    LazemMaddRule,
-    AaredMaddRule,
-    LeenMaddRule,
-    IdghamKamel,
+    NormalMaddRule,
+    Qalqalah,
+    TajweedRule,
 )
 
 
@@ -36,6 +36,7 @@ class DisassembleHrofMoqatta(ConversionOperation):
         text: str,
         moshaf: MoshafAttributes,
         mappings: MappingListType | None = None,
+        sura_idx: int = 0,
     ) -> tuple[str, MappingListType]:
         for word, rep in uth.hrof_moqtaa_disassemble.items():
             new_text = re.sub(
@@ -65,7 +66,6 @@ class DisassembleHrofMoqatta(ConversionOperation):
         rep: str,
         mappings: MappingListType | None,
     ) -> MappingListType:
-        #
         if mappings is None:
             mappings = get_mappings(old_text, old_text)
 
@@ -81,13 +81,16 @@ class DisassembleHrofMoqatta(ConversionOperation):
         re_outs = [re_o for re_o in re.finditer(uth_word, old_text)]
         for re_idx, re_out in enumerate(re_outs):
             disc_map = self._get_single_word_mapping(uth_word=uth_word, rep=rep)
-            ptr = 0
-            # adding offset in case of multiple disconted letter (rare case but for genrality)
+            # Adding offset in case of multiple disconted letter (rare case but for genrality)
+            # Actually it happed in: `حمٓ عٓسٓقٓ`
             start_offset = re_out.span()[0] + re_idx * (len(rep) - len(uth_word))
             start_idx = re_out.span()[0]
-            end_idx = re_out.span()[1]
+            start_idx = self._get_mapping_idx(start_idx, mappings)
+            # python execlusive indexing
+            end_idx = start_idx + len(uth_word)
             last_pos = 0
-            # Adding mapping offsets
+            # Adding mapping offsets (shifting our uthmani word mapping by offset)
+            ptr = 0
             for idx in range(start_idx, end_idx):
                 # Avoiding copyiing object by refrence
                 mappings[idx].pos = (
@@ -103,9 +106,10 @@ class DisassembleHrofMoqatta(ConversionOperation):
                 if (re_idx + 1) == len(re_outs)
                 else re_outs[idx + 1].span()[0]
             )
-            # Shifting the rest of position to the right
+            # Shifting the rest of position (other than our word) to the right
             offset = None
             for idx in range(end_idx, end):
+                # First Time Only
                 if offset is None:
                     offset = last_pos - mappings[idx].pos[0]
                 mappings[idx].pos = (
@@ -114,6 +118,20 @@ class DisassembleHrofMoqatta(ConversionOperation):
                 )
 
         return mappings
+
+    def _get_mapping_idx(self, idx: int, mappings: MappingListType) -> int:
+        """gets the idx of the mappings corresponds to a pos"""
+        last_m_idx = None
+        for m_idx in range(len(mappings)):
+            # we might have [MappingPos(pos=(0, 6), tajweed_rules=None, deleted=False), MappingPos(pos=(6, 6), tajweed_rules=None, deleted=True)]
+            # so we want to return the last index for our case here `1` instead of `0`
+            if idx >= mappings[m_idx].pos[0] and idx <= mappings[m_idx].pos[1]:
+                last_m_idx = m_idx
+
+        if last_m_idx is None:
+            raise ValueError("Can not find mapping index corresponds to input idx")
+        else:
+            return last_m_idx
 
     def _get_single_word_mapping(self, uth_word: str, rep: str) -> MappingListType:
         chars_with_madd = re.findall(f"[^{uth.madd}]{uth.madd}?", uth_word)
@@ -156,24 +174,26 @@ class SpecialCases(ConversionOperation):
         text: str,
         moshaf: MoshafAttributes,
         mappings: MappingListType | None = None,
+        sura_idx: int = 0,
     ) -> tuple[str, MappingListType]:
         for case in uth.special_patterns:
-            pattern = case.pattern
-            if case.pos == "start":
-                pattern = r"^" + pattern
-            elif case.pos == "end":
-                pattern = pattern + r"$"
+            if case.sura_idx in {0, sura_idx}:
+                pattern = case.pattern
+                if case.pos == "start":
+                    pattern = r"^" + pattern
+                elif case.pos == "end":
+                    pattern = pattern + r"$"
 
-            if case.attr_name is not None:
-                moshaf_attr = getattr(moshaf, case.attr_name)
-                if moshaf_attr in case.opts:
-                    rep_pattern = case.opts[moshaf_attr]
-                else:
-                    rep_pattern = case.pattern
-            elif case.target_pattern is not None:
-                rep_pattern = case.target_pattern
+                if case.attr_name is not None:
+                    moshaf_attr = getattr(moshaf, case.attr_name)
+                    if moshaf_attr in case.opts:
+                        rep_pattern = case.opts[moshaf_attr]
+                    else:
+                        rep_pattern = case.pattern
+                elif case.target_pattern is not None:
+                    rep_pattern = case.target_pattern
 
-            text, mappings = sub_with_mapping(pattern, rep_pattern, text, mappings)
+                text, mappings = sub_with_mapping(pattern, rep_pattern, text, mappings)
 
         # No change
         if mappings is None:
@@ -221,6 +241,7 @@ class BeginWithHamzatWasl(ConversionOperation):
         text: str,
         moshaf: MoshafAttributes,
         mappings: MappingListType | None = None,
+        sura_idx: int = 0,
     ) -> tuple[str, MappingListType]:
         new_text = text
         if re.search(f"^{uth.hamzat_wasl}", text):
@@ -282,7 +303,9 @@ class BeginWithSaken(ConversionOperation):
 @dataclass
 class ConvertAlifMaksora(ConversionOperation):
     arabic_name: str = "تحويل الأف المقصورة إله: حضف أو ألف أو ياء"
-    regs: list[tuple[str, str, TajweedRule] | tuple[str, str]] = field(
+    regs: list[
+        tuple[str, TajweedRule] | tuple[str, str, TajweedRule] | tuple[str, str]
+    ] = field(
         default_factory=lambda: [
             # حذف الأف المقصورة من الاسم المقصور النكرة
             (
@@ -356,8 +379,8 @@ class RemoveKasheeda(ConversionOperation):
 class RemoveHmzatWaslMiddle(ConversionOperation):
     arabic_name: str = "حذف همزة الوصل وصلا"
     regs: tuple[str, str] = (
-        f"(?!^){uth.hamzat_wasl}",
-        r"",
+        f"([^^]){uth.hamzat_wasl}",
+        r"\1",
     )
 
 
@@ -373,7 +396,9 @@ class RemoveSkoonMostadeer(ConversionOperation):
 @dataclass
 class SkoonMostateel(ConversionOperation):
     arabic_name: str = "ضبط السكون المستطيل"
-    regs: list[tuple[str, str, TajweedRule] | tuple[str, str]] = field(
+    regs: list[
+        tuple[str, TajweedRule] | tuple[str, str, TajweedRule] | tuple[str, str]
+    ] = field(
         default_factory=lambda: [
             # remove from the middle
             (
@@ -390,9 +415,27 @@ class SkoonMostateel(ConversionOperation):
 
 
 @dataclass
+class RemoveTanweenFatahAtEndFromTaaMarboota(ConversionOperation):
+    arabic_name: str = "حذف التنوين بالفتح بعد هاء التأنيث وقفا"
+    regs: list[
+        tuple[str, TajweedRule] | tuple[str, str, TajweedRule] | tuple[str, str]
+    ] = field(
+        default_factory=lambda: [
+            (
+                f"({uth.taa_marboota})(?:{uth.tanween_fath_modgham}|{uth.tanween_fath_mothhar})$",
+                r"\1",
+            ),
+        ]
+    )
+
+
+# TODO: Add madd Alewad TajweedRule
+@dataclass
 class MaddAlewad(ConversionOperation):
     arabic_name: str = "ضبط مد العوض وسطا ووقفا"
-    regs: list[tuple[str, str, TajweedRule] | tuple[str, str]] = field(
+    regs: list[
+        tuple[str, TajweedRule] | tuple[str, str, TajweedRule] | tuple[str, str]
+    ] = field(
         default_factory=lambda: [
             # remove from the middle
             (
@@ -422,7 +465,9 @@ class EnlargeSmallLetters(ConversionOperation):
     arabic_name: str = (
         "تكبير الألف والياء والاو والنون الصغار مع حذف مد الصلة عند الوقف"
     )
-    regs: list[tuple[str, str, TajweedRule] | tuple[str, str]] = field(
+    regs: list[
+        tuple[str, TajweedRule] | tuple[str, str, TajweedRule] | tuple[str, str]
+    ] = field(
         default_factory=lambda: [
             # small alif
             (
@@ -490,7 +535,9 @@ class NormalizeTaa(ConversionOperation):
         ]
     )
     arabic_name: str = "تحويب التاء المربطة في الوسط لتاء وفي الآخر لهاء"
-    regs: list[tuple[str, str, TajweedRule] | tuple[str, str]] = field(
+    regs: list[
+        tuple[str, TajweedRule] | tuple[str, str, TajweedRule] | tuple[str, str]
+    ] = field(
         default_factory=lambda: [
             (f"{uth.taa_marboota}$", f"{uth.haa}"),
             (f"{uth.taa_marboota}", f"{uth.taa_mabsoota}"),
@@ -508,7 +555,9 @@ class AddAlifIsmAllah(ConversionOperation):
         ]
     )
     regs: tuple[str, str] = (
-        f"({uth.lam}{uth.kasra}?{uth.lam}{uth.shadda}{uth.fatha})({uth.haa}(?:.|$)(?![{uth.baa}{uth.waw}]))",
+        # لِّلَّهِ
+        # with shadd at both lam
+        f"({uth.lam}(?:{uth.kasra}|{uth.shadda}{uth.kasra})?{uth.lam}{uth.shadda}{uth.fatha})({uth.haa}(?:$|.[^{uth.baa}{uth.waw}]))",
         f"\\1{uth.alif}\\2",
     )
 
@@ -525,7 +574,9 @@ class PrepareGhonnaIdghamIqlab(ConversionOperation):
         ]
     )
     arabic_name: str = "فك الإقلاب والعغنة الإدغام"
-    regs: list[tuple[str, str, TajweedRule] | tuple[str, str]] = field(
+    regs: list[
+        tuple[str, TajweedRule] | tuple[str, str, TajweedRule] | tuple[str, str]
+    ] = field(
         default_factory=lambda: [
             # النون المقلبة ميمام
             (
@@ -587,8 +638,8 @@ class PrepareGhonnaIdghamIqlab(ConversionOperation):
             ),
             # حذف الحرف الأول من الحفران المدغمان
             (
-                f"([{uth.fatha}{uth.dama}]{uth.yaa}|[{uth.fatha}{uth.kasra}]{uth.waw}|[{uth.pure_letters_without_yaa_and_waw_group}]){uth.space}?([{uth.pure_letters_group}]{uth.shadda})",
-                r"\2",
+                f"(?:([{uth.fatha}{uth.dama}]){uth.yaa}|([{uth.fatha}{uth.kasra}]){uth.waw}|[{uth.pure_letters_without_yaa_and_waw_group}]){uth.space}?([{uth.pure_letters_group}]{uth.shadda})",
+                r"\1\2\3",
                 # IdghamKamel(),
             ),
         ]
@@ -603,7 +654,9 @@ class IltiqaaAlsaknan(ConversionOperation):
         ]
     )
     arabic_name: str = "التقاء الساكنان وكسر التنوين"
-    regs: list[tuple[str, str] | tuple[str, str, TajweedRule]] = field(
+    regs: list[
+        tuple[str, TajweedRule] | tuple[str, str, TajweedRule] | tuple[str, str]
+    ] = field(
         default_factory=lambda: [
             # كسر التنوين
             (
@@ -613,17 +666,17 @@ class IltiqaaAlsaknan(ConversionOperation):
             # حذف حرف المد الأول لاتقاء الساعكنان
             # alif
             (
-                f"{uth.madd_alif}({uth.space}.[{uth.ras_haaa}{uth.shadda}])",
+                f"{uth.madd_alif}({uth.space}.[{uth.ras_haaa}{uth.shadda}{uth.pure_letters_without_yaa_and_waw_group}])",
                 f"{uth.fatha}\\1",
             ),
             # waw
             (
-                f"{uth.madd_waw}({uth.space}.[{uth.ras_haaa}{uth.shadda}])",
+                f"{uth.madd_waw}({uth.space}.[{uth.ras_haaa}{uth.shadda}{uth.pure_letters_without_yaa_and_waw_group}])",
                 f"{uth.dama}\\1",
             ),
             # yaa
             (
-                f"{uth.madd_yaa}({uth.space}.[{uth.ras_haaa}{uth.shadda}])",
+                f"{uth.madd_yaa}({uth.space}.[{uth.ras_haaa}{uth.shadda}{uth.pure_letters_without_yaa_and_waw_group}])",
                 f"{uth.kasra}\\1",
             ),
         ]
@@ -648,6 +701,7 @@ class Ghonna(ConversionOperation):
         text: str,
         moshaf: MoshafAttributes,
         mappings: MappingListType | None = None,
+        sura_idx: int = 0,
     ) -> tuple[str, MappingListType]:
         # الميم المخفار
         if moshaf.meem_mokhfah == "meem":
@@ -773,11 +827,12 @@ class Madd(ConversionOperation):
         text: str,
         moshaf: MoshafAttributes,
         mappings: MappingListType | None = None,
+        sura_idx: int = 0,
     ) -> tuple[str, MappingListType]:
         # المد المنفصل
         # ها ويا التنبيه
         text, mappings = sub_with_mapping(
-            f"((?:^|{uth.space}|(?:(?:^|{uth.space})[{uth.faa}{uth.waw}{uth.hamza}]{uth.fatha}))[{uth.yaa}{uth.haa}]{uth.fatha}){uth.alif}{uth.madd}({uth.hamza}.(?!{uth.space}))",
+            f"((?:^|{uth.space}|(?:(?:^|{uth.space})[{uth.faa}{uth.waw}{uth.hamza}]{uth.fatha}))[{uth.yaa}{uth.haa}]{uth.fatha}){uth.alif}{uth.madd}({uth.hamza}.[^{uth.space}])",
             r"\1" + ph.alif * moshaf.madd_monfasel_len + r"\2",
             text,
             mappings,
@@ -852,7 +907,8 @@ class Madd(ConversionOperation):
 
         for k, madd_patt in self.madd_map.items():
             text, mappings = sub_with_mapping(
-                f"{madd_patt.pattern}{uth.madd}(.(?:{uth.shadda}|{uth.ras_haaa}|[{ph.noon}{ph.meem}{ph.noon_mokhfah}]{{2,3}}))",
+                # we might have the case where in طس the input is طَا سِيٓن and noon has no skoon letter
+                f"{madd_patt.pattern}{uth.madd}([^{uth.hamza}](?:{uth.shadda}|{uth.ras_haaa}|[{ph.noon}{ph.meem}{ph.noon_mokhfah}]{{2,3}}|$))",
                 r"\1" + 6 * madd_patt.target + r"\2",
                 text,
                 mappings,
@@ -870,19 +926,26 @@ class Madd(ConversionOperation):
             )
 
         # مد اللين
+        # adding Tajweed rule with function as when the madd len is 2 the text remains the same length so no rule added
+        for chr, tag in zip([uth.waw, uth.yaa], ["waw", "yaa"]):
+            mappings = add_tajweed_rule_to_mappings(
+                mappings,
+                text,
+                f"{uth.fatha}({chr}){uth.ras_haaa}?[^{uth.shadda}]{uth.ras_haaa}?$",
+                LeenMaddRule(golden_len=moshaf.madd_alleen_len, tag=tag),
+            )
         text, mappings = sub_with_mapping(
-            f"({uth.fatha})([{uth.yaa}{uth.waw}]){uth.ras_haaa}?([^{uth.shadda}]{uth.ras_haaa}?$)",
+            f"({uth.fatha})([{uth.yaa}{uth.waw}])({uth.ras_haaa}?[^{uth.shadda}]{uth.ras_haaa}?$)",
             r"\1" + (moshaf.madd_alleen_len - 1) * r"\2" + r"\3",
             text,
             mappings,
-            LeenMaddRule(golden_len=moshaf.madd_alleen_len),
         )
 
         # المد الطبيعي
         for k, madd_patt in self.madd_map.items():
             text, mappings = sub_with_mapping(
-                f"{madd_patt.pattern}(?![{madd_patt.madd}{uth.ras_haaa}{uth.shadda}{uth.harakat_group}])",
-                r"\1" + 2 * madd_patt.target,
+                f"{madd_patt.pattern}([^{madd_patt.madd}{uth.ras_haaa}{uth.shadda}{uth.harakat_group}]|$)",
+                r"\1" + 2 * madd_patt.target + r"\2",
                 text,
                 mappings,
                 tajweed_rule=NormalMaddRule(tag=madd_patt.name),
@@ -909,7 +972,9 @@ class Qalqla(ConversionOperation):
 @dataclass
 class RemoveRasHaaAndShadda(ConversionOperation):
     arabic_name: str = "حذف السكون والشدة م تكرار الحرف المشدد"
-    regs: list[tuple[str, str, TajweedRule] | tuple[str, str]] = field(
+    regs: list[
+        tuple[str, TajweedRule] | tuple[str, str, TajweedRule] | tuple[str, str]
+    ] = field(
         default_factory=lambda: [
             # shadda
             (
@@ -942,6 +1007,7 @@ OPERATION_ORDER = [
     RemoveHmzatWaslMiddle(),
     RemoveSkoonMostadeer(),
     SkoonMostateel(),
+    RemoveTanweenFatahAtEndFromTaaMarboota(),
     MaddAlewad(),
     WawAlsalah(),
     EnlargeSmallLetters(),

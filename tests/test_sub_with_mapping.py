@@ -1,7 +1,7 @@
-from quran_transcript.phonetics.phonetizer import quran_phonetizer
-from quran_transcript import Aya, MoshafAttributes
 from pyinstrument import Profiler
 
+from quran_transcript import Aya, MoshafAttributes
+from quran_transcript.phonetics.phonetizer import quran_phonetizer
 
 if __name__ == "__main__":
     moshaf = MoshafAttributes(
@@ -10,12 +10,14 @@ if __name__ == "__main__":
         madd_mottasel_len=4,
         madd_mottasel_waqf=4,
         madd_aared_len=4,
+        madd_alleen_len=2,
+        madd_yaa_alayn_alharfy=2,
     )
     aya = Aya()
     aya = Aya(1, 1)
     aya = Aya(12, 1)
     # aya = Aya(2, 1)
-    # aya = Aya(19, 1)
+    aya = Aya(19, 1)
     # aya = Aya(75, 27)
     # aya = Aya(2, 6)
     # aya = Aya(2, 7)
@@ -34,6 +36,11 @@ if __name__ == "__main__":
     # uth_text = "أَمَّن يُجِيبُ"
     # uth_text = "قَرِيبٌ"
     # uth_text = "ٱلْحَقُّ"
+    # uth_text = "حمٓ عٓسٓقٓ"
+    # uth_text = "بِسْمِ ٱللَّهِ ٱلرَّحْمَٰنِ ٱلرَّحِيمِ حمٓ عٓسٓقٓ"
+    # uth_text = "ٱلسَّوْءِ"
+    uth_text = "قُرَيْشٍ"
+    uth_text = "لِّلْمُتَّقِينَ"
 
     profiler = Profiler()
     profiler.start()

@@ -17,6 +17,14 @@
 [colab-url]: https://colab.research.google.com/drive/1d9-mVu2eiPOPS9z5sS2V4TQ579xIUBi-?usp=sharing
 
 # `quran-transcript` package
+## 🆕 ما الجديد في الإصدار 0.6.2 (What's New in Version 0.6.2)
+
+- التعارض يقع تحديداً في كلمة `ضَعْفًا` حيث توجد في سورتي الروم والأنفال (The conflict is specifically about `ضَعْفًا`, which occurs in both Surah Ar-Rum and Al-Anfal). في الروم يجوز الضم أو الفتح، أما في الأنفال فبالفتح فقط (In Ar-Rum both damma and fatha; in Al-Anfal only fatha).
+- إذا كان المدخل هو `ضَعْفًا` فقط دون سياق، لا يمكن استنتاج أي الموضعين (If the input is only `ضَعْفًا` with no context, we cannot infer which reading to apply).
+- السلوك الافتراضي: استخدام الأصل بالفتح (Default behavior: use the original with Fath) إلا إذا توفر سياق كافٍ من كلمات سابقة أو حدد المستخدم `sura_idx` (unless there is enough context from preceding words, or the surah is tied via `sura_idx`).
+- إضافة معامل `sura_idx` إلى دالة `quran_phonetizer` لاستخدام القاعدة الصحيحة عندما ترتبط قاعدة بسورة محددة (Added a `sura_idx` argument to `quran_phonetizer` to apply the correct rule when a rule is tied to a specific surah).
+
+
 ## 🆕 ما الجديد في الإصدار 0.5.1 (What's New in Version 0.5.1)
 
 ### 🎯 تحليل أخطاء التلاوة (Recitation Error Analysis)
@@ -571,4 +579,28 @@ This symlink may not work on Windows by default. To resolve this, either:
    rmdir quran-script
    mklink /D quran-script ..\..\quran-script
    ```
+
+---
+
+### 🧪 Running Tests
+
+The test suite includes **stress tests** (marked with `@pytest.mark.stress`) that iterate over the whole Quran and are slow.
+
+Run the **full** test suite (includes stress tests):
+
+```bash
+uv run pytest
+```
+
+Run a **quick** test pass (skips stress tests):
+
+```bash
+uv run pytest --skip-stress
+```
+
+Run **only** the stress tests:
+
+```bash
+uv run pytest -m stress
+```
 

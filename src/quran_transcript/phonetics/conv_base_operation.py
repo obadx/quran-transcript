@@ -1,11 +1,12 @@
-from dataclasses import dataclass, field
 import re
+from dataclasses import dataclass, field
 from typing import Literal, TypeAlias
+
 from Levenshtein import opcodes
 
+from .. import alphabet as alph
 from .moshaf_attributes import MoshafAttributes
 from .tajweed_rulses import TajweedRule
-from .. import alphabet as alph
 
 
 @dataclass
@@ -406,21 +407,6 @@ def get_mappings(
     # TODO: remove this
     assert all(m is not None for m in new_mappings)
 
-    # Special Case where we want to assgin the tag for Leen Madd
-    for m_idx in range(len(new_mappings)):
-        if new_mappings[m_idx].tajweed_rules:
-            for taj_idx in range(len(new_mappings[m_idx].tajweed_rules)):
-                if (
-                    new_mappings[m_idx].tajweed_rules[taj_idx].name.en == "Leen Madd"
-                    and new_mappings[m_idx].tajweed_rules[taj_idx].tag is None
-                ):
-                    tag = (
-                        new_mappings[m_idx]
-                        .tajweed_rules[taj_idx]
-                        ._madd_to_tag[new_text[new_mappings[m_idx].pos[0]]]
-                    )
-                    new_mappings[m_idx].tajweed_rules[taj_idx].tag = tag
-
     # Special case where we have Idgham tanween
     # Special sympol `tanweed_idgham_detrminer` has no meaning moving it to the tanween
     for re_out in re.finditer(f"{alph.uthmani.tanween_idhaam_dterminer}[^$]", text):
@@ -521,6 +507,40 @@ def get_mappings(
             raise ValueError()
 
     return new_mappings
+
+
+def add_tajweed_rule_to_mappings(
+    mappings: MappingListType, text: str, pattern: str, tajweed_rule: TajweedRule
+) -> MappingListType:
+    """Add a TajweedRule to an existing mapping without changing the mapping itself
+
+    Add a TajweedRule to an existing mapping without changing the mapping
+    itself but by searching througt text and add the mapping to the  first re_group
+
+    Note: the group have to point to a single character ONLY not group of character
+    """
+    m_start_idx = 0
+    for re_out in re.finditer(pattern, text):
+        assert len(re_out.groups()) == 1, (
+            f"We must have only one group of matching got: `{len(re_out.groups())}`"
+        )
+        end = re_out.end(1)
+        start = re_out.start(1)
+        assert end - start == 1, (
+            f"Lenght of group 1 of re has to be 1 got `{end - start}`"
+        )
+        for m_idx in range(m_start_idx, len(mappings)):
+            # mappings[m_idx].pos[0] != mappings[m_idx].pos[1] means that
+            # the character is deleted so no need to add Tajweed rule to it
+            if (
+                start >= mappings[m_idx].pos[0]
+                and start < mappings[m_idx].pos[1]
+                and mappings[m_idx].pos[0] != mappings[m_idx].pos[1]
+            ):
+                m_start_idx = m_idx
+                mappings[m_idx].add_tajweed_rule(tajweed_rule)
+                break
+    return mappings
 
 
 def sub_with_mapping(
@@ -624,15 +644,50 @@ def sub_with_mapping(
 @dataclass
 class ConversionOperation:
     regs: (
-        list[tuple[str, str, TajweedRule] | tuple[str, str]]
+        list[tuple[str, TajweedRule] | tuple[str, str, TajweedRule] | tuple[str, str]]
+        | tuple[str, TajweedRule]
         | tuple[str, str, TajweedRule]
         | tuple[str, str]
     )
+    """Regex substitution operations applied by :meth:`forward`.
+
+    `regs` accepts either a single operation tuple or a list of operation
+    tuples. In :meth:`__post_init__` a plain tuple is wrapped in a list, so
+    internally it is always a ``list``. Each entry is one of three forms,
+    executed in order:
+
+    * ``(input_regex, output_regex)`` — Plain substitution. ``input_regex``
+      is the pattern to match in the text and ``output_regex`` is the
+      replacement string (may use backreferences like ``r"\\1"``). No
+      Tajweed rule is attached. Applied via :func:`sub_with_mapping`.
+
+      Example (from ``BeginWithSaken``):
+      ``(f"(^.){uth.ras_haaa}", f"\\1{uth.kasra}")``
+
+    * ``(input_regex, output_regex, tajweed_rule)`` — Substitution that also
+      associates ``tajweed_rule`` with the characters affected by the match.
+      Applied via :func:`sub_with_mapping`.
+
+      Example (from ``Qalqla``):
+      ``(f"([{uth.qlqla_group}])", f"\\1{ph.qlqla}", Qalqalah())``
+
+    * ``(pattern, tajweed_rule)`` — Rule-only tagging. The text is **not**
+      changed; ``pattern`` is searched in the current text and
+      ``tajweed_rule`` is added to the mappings of the captured character
+      (the pattern must contain exactly one group capturing exactly one
+      character). Applied via :func:`add_tajweed_rule_to_mappings`. Because
+      :meth:`forward` returns immediately after this form, it must be the
+      only entry in ``regs``.
+
+      Example: ``(f"({uth.alif}{uth.madd})", NormalMaddRule())``
+
+    Any other tuple length raises ``ValueError``.
+    """
     arabic_name: str
     ops_before: list["ConversionOperation"] | None = None
 
     def __post_init__(self):
-        if isinstance(self.regs, tuple):
+        if type(self.regs) is tuple:
             self.regs = [self.regs]
 
         if self.ops_before is None:
@@ -643,10 +698,30 @@ class ConversionOperation:
         text,
         moshaf: MoshafAttributes,
         mappings: MappingListType | None = None,
+        sura_idx: int = 0,
     ) -> tuple[str, MappingListType]:
+        """
+        Args:
+            sura_idx (int): the sura index from 1 to 114. If zero then there is no sura set.
+                Used when a specific rule is tied to a specific sura.
+                This is used particularly if the user pronounced ONLY `ضَعْفًا` so we cannot infer whether this
+                is from surah Alroom so we have two ways with damma or fatha; or from surah AlAnfal so we only
+                pronounce it with fatha.
+        """
+
         for reg in self.regs:
             if len(reg) == 2:
-                input_reg, out_reg = reg
+                if type(reg[1]) is str:
+                    input_reg, out_reg = reg
+                else:
+                    assert mappings is not None
+                    mappings = add_tajweed_rule_to_mappings(
+                        mappings=mappings,
+                        pattern=reg[0],
+                        text=text,
+                        tajweed_rule=reg[1],
+                    )
+                    return text, mappings
                 taj_rule = None
             elif len(reg) == 3:
                 input_reg, out_reg, taj_rule = reg
@@ -663,21 +738,38 @@ class ConversionOperation:
         text: str,
         moshaf: MoshafAttributes,
         mappings: MappingListType | None,
+        sura_idx: int = 0,
         discard_ops: list["ConversionOperation"] = [],
         mode: Literal["inference", "test"] = "inference",
     ) -> tuple[str, MappingListType]:
+        """
+        Args:
+            sura_idx (int): the sura index from 1 to 114. If zero then there is no sura set.
+                Used when a specific rule is tied to a specific sura.
+                This is used particularly if the user pronounced ONLY `ضَعْفًا` so we cannot infer whether this
+                is from surah Alroom so we have two ways with damma or fatha; or from surah AlAnfal so we only
+                pronounce it with fatha.
+        """
+
         if mode == "test":
             discard_ops_names = {o.arabic_name for o in discard_ops}
             for op in self.ops_before:
                 if op.arabic_name not in discard_ops_names:
                     print(f"Applying: {type(op)}")
                     text, mappings = op.apply(
-                        text, moshaf, mappings, mode="test", discard_ops=discard_ops
+                        text,
+                        moshaf,
+                        mappings,
+                        sura_idx=sura_idx,
+                        mode="test",
+                        discard_ops=discard_ops,
                     )
 
         if mode in {"inference", "test"}:
             # TODO: Add real mapping
-            new_text, new_mappings = self.forward(text, moshaf, mappings)
+            new_text, new_mappings = self.forward(
+                text, moshaf, mappings, sura_idx=sura_idx
+            )
             return new_text, new_mappings
         else:
             raise ValueError(f"Invalid Model got: `{mode}`")

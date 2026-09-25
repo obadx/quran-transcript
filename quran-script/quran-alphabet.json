@@ -84,7 +84,7 @@
       "كٓهيعٓصٓ": "كَآفْ هَا يَا عَيٓن صَآدْ",
       "طه": "طَا هَا",
       "طسٓمٓ": "طَا سِيٓن مِّيٓمْ",
-      "طسٓ": "طَا سِيٓنْ",
+      "طسٓ": "طَا سِيٓن",
       "حمٓ": "حَا مِيٓمْ",
       "عٓسٓقٓ": "عَيٓن سِيٓن قَآفْ",
       "يسٓ": "يَا سِيٓنْ",
@@ -98,7 +98,8 @@
         "attr_name": null,
         "opts": null,
         "target_pattern": "ٱلْأَيْكَةِ",
-        "pos": "start"
+        "pos": "start",
+        "sura_idx": 0
       },
       {
         "pattern": "عِوَجَا قَيِّمًۭا",
@@ -108,7 +109,8 @@
           "idraj": "عِوَجًۭا قَيِّمًۭا"
         },
         "target_pattern": null,
-        "pos": "middle"
+        "pos": "middle",
+        "sura_idx": 0
       },
       {
         "pattern": "مَّرْقَدِنَا هَـٰذَا",
@@ -118,7 +120,8 @@
           "idraj": "مَّرْقَدِنَا هَـٰذَا"
         },
         "target_pattern": null,
-        "pos": "middle"
+        "pos": "middle",
+        "sura_idx": 0
       },
       {
         "pattern": "مَنْ رَاقٍۢ",
@@ -128,7 +131,8 @@
           "idraj": "مَن رَّاقٍۢ"
         },
         "target_pattern": null,
-        "pos": "middle"
+        "pos": "middle",
+        "sura_idx": 0
       },
       {
         "pattern": "بَلْ رَانَ",
@@ -138,7 +142,8 @@
           "idraj": "بَل رَّانَ"
         },
         "target_pattern": null,
-        "pos": "middle"
+        "pos": "middle",
+        "sura_idx": 0
       },
       {
         "pattern": "مَالِيَهْ هَلَكَ",
@@ -148,7 +153,8 @@
           "idgham": "مَالِيَه هَّلَكَ"
         },
         "target_pattern": null,
-        "pos": "middle"
+        "pos": "middle",
+        "sura_idx": 0
       },
       {
         "pattern": "عَلِيمٌۢ بَرَآءَةٌۭ",
@@ -158,7 +164,8 @@
           "wasl": "عَلِيمٌۢ بَرَآءَةٌۭ"
         },
         "target_pattern": null,
-        "pos": "middle"
+        "pos": "middle",
+        "sura_idx": 0
       },
       {
         "pattern": "يَا سِيٓنْ وَٱلْقُرْءَانِ",
@@ -168,7 +175,8 @@
           "izhar": "يَا سِيٓنْ وَٱلْقُرْءَانِ"
         },
         "target_pattern": null,
-        "pos": "middle"
+        "pos": "middle",
+        "sura_idx": 0
       },
       {
         "pattern": "نُوٓنْ وَٱلْقَلَمِ",
@@ -178,7 +186,8 @@
           "izhar": "نُوٓنْ وَٱلْقَلَمِ"
         },
         "target_pattern": null,
-        "pos": "middle"
+        "pos": "middle",
+        "sura_idx": 0
       },
       {
         "pattern": "ءَاتَىٰنِۦَ",
@@ -188,7 +197,8 @@
           "ithbat": "ءَاتَىٰنِي"
         },
         "target_pattern": null,
-        "pos": "end"
+        "pos": "end",
+        "sura_idx": 0
       },
       {
         "pattern": "ٱلِٱسْمُ",
@@ -198,7 +208,8 @@
           "alism": "أَلِسْمُ"
         },
         "target_pattern": null,
-        "pos": "start"
+        "pos": "start",
+        "sura_idx": 0
       },
       {
         "pattern": "وَيَبْصُۜطُ",
@@ -208,7 +219,8 @@
           "saad": "وَيَبْصُطُ"
         },
         "target_pattern": null,
-        "pos": "middle"
+        "pos": "middle",
+        "sura_idx": 0
       },
       {
         "pattern": "بَصْۜطَةًۭ",
@@ -218,7 +230,8 @@
           "saad": "بَصْطَةًۭ"
         },
         "target_pattern": null,
-        "pos": "middle"
+        "pos": "middle",
+        "sura_idx": 0
       },
       {
         "pattern": "ٱلْمُصَۣيْطِرُونَ",
@@ -228,7 +241,8 @@
           "saad": "ٱلْمُصَيْطِرُونَ"
         },
         "target_pattern": null,
-        "pos": "middle"
+        "pos": "middle",
+        "sura_idx": 0
       },
       {
         "pattern": "بِمُصَيْطِرٍ",
@@ -238,7 +252,8 @@
           "saad": "بِمُصَيْطِرٍ"
         },
         "target_pattern": null,
-        "pos": "middle"
+        "pos": "middle",
+        "sura_idx": 0
       },
       {
         "pattern": "ءَآل",
@@ -248,7 +263,8 @@
           "tasheel": "ءَا۬ل"
         },
         "target_pattern": null,
-        "pos": "middle"
+        "pos": "middle",
+        "sura_idx": 0
       },
       {
         "pattern": "يَلْهَث ذَّٰلِكَ",
@@ -258,7 +274,8 @@
           "idgham": "يَلْهَث ذَّٰلِكَ"
         },
         "target_pattern": null,
-        "pos": "middle"
+        "pos": "middle",
+        "sura_idx": 0
       },
       {
         "pattern": "ٱرْكَب مَّعَنَا",
@@ -268,7 +285,8 @@
           "idgham": "ٱرْكَب مَّعَنَا"
         },
         "target_pattern": null,
-        "pos": "middle"
+        "pos": "middle",
+        "sura_idx": 0
       },
       {
         "pattern": "تَأْمَ۫نَّا",
@@ -278,17 +296,30 @@
           "rawm": "تَأْمَنؙنَا"
         },
         "target_pattern": null,
-        "pos": "middle"
+        "pos": "middle",
+        "sura_idx": 0
       },
       {
-        "pattern": "(?<!\\bْ )ضَعْف\\b",
+        "pattern": "(?:([^ْ].)ضَعْف)|(?:ضَعْف(ٍۢ))",
+        "attr_name": "harakat_daaf",
+        "opts": {
+          "fath": "\\1ضَعْف\\2",
+          "dam": "\\1ضُعْف\\2"
+        },
+        "target_pattern": null,
+        "pos": "middle",
+        "sura_idx": 0
+      },
+      {
+        "pattern": "ضَعْف",
         "attr_name": "harakat_daaf",
         "opts": {
           "fath": "ضَعْف",
           "dam": "ضُعْف"
         },
         "target_pattern": null,
-        "pos": "middle"
+        "pos": "start",
+        "sura_idx": 30
       },
       {
         "pattern": "سَلَـٰسِلَا۟",
@@ -298,7 +329,8 @@
           "ithbat": "سَلَـٰسِلَا"
         },
         "target_pattern": null,
-        "pos": "end"
+        "pos": "end",
+        "sura_idx": 0
       },
       {
         "pattern": "نَخْلُقكُّم",
@@ -308,7 +340,16 @@
           "idgham_naqis": "نَخْلُقكُم"
         },
         "target_pattern": null,
-        "pos": "middle"
+        "pos": "middle",
+        "sura_idx": 0
+      },
+      {
+        "pattern": "فَٱدَّٰرَْٰٔتُمْ",
+        "attr_name": null,
+        "opts": null,
+        "target_pattern": "فَٱدَّٰرَْٔتُمْ",
+        "pos": "middle",
+        "sura_idx": 0
       }
     ],
     "tanween_fath_mothhar": "ً",
@@ -320,10 +361,17 @@
     "tanween_fath_iqlab": "ًۢ",
     "tanween_dam_iqlab": "ٌۢ",
     "tanween_kasr_iqlab": "ٍۢ",
-    "noon_ikhfaa_group": "صذثكجشقسدطزفةضط",
+    "madd_alif": "َا",
+    "madd_waw": "ُو",
+    "madd_yaa": "ِي",
+    "noon_ikhfaa_group": "صذثكجشقسدطزفتضظ",
+    "noon_idgham_group": "يرملون",
     "harakat_group": "َُِ",
     "hamazat_group": "ءأإؤئٔ",
-    "letters_group": "اىبتةثجحخدذرزسشصضطظعغفقكلمنهويء"
+    "letters_group": "اىبتةثجحخدذرزسشصضطظعغفقكلمنهويء",
+    "pure_letters_group": "بتثجحخدذرزسشصضطظعغفقكلمنهويء",
+    "pure_letters_without_yaa_and_waw_group": "بتثجحخدذرزسشصضطظعغفقكلمنهء",
+    "qlqla_group": "قطبجد"
   },
   "unique_rasm_map": {
     "rasm_map": [
