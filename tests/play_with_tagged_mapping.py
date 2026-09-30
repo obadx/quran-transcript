@@ -16,7 +16,6 @@ _mapped_tags = re.compile(
 )
 
 
-# TODO:
 def _expand_replacement(rep: str, match: re.Match) -> str:
     """Expand backreferences in a replacement string for a single match."""
     result = []
@@ -71,7 +70,6 @@ def parse_tags(pat: re.Pattern, rep: re.Pattern) -> list[MapTag]:
     mapped_tags = []
     offset = 0
     last_idx = 0
-    start = 0
     for match in _mapped_tags.finditer(str(pat)):
         # non tag pattern
         start = match.start()
