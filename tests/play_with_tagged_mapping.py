@@ -186,8 +186,8 @@ def sub_with_tagged_mapping(
                     )
                 else:
                     raise MappedTagPrasingError(
-                        f"Not supporting many to many mapping"
-                    )  # TODO: add more explanation
+                        f"Not supporting many to many or many to one mapping you want to map: `{tag_pat_text}` to `{tag_rep_text}` corresponds to tag: `{m_tag}`"
+                    )
             elif m_tag.rep == "":
                 tag_rep_text = ""
                 # Deletion
@@ -210,17 +210,42 @@ if __name__ == "__main__":
     in_text = "aNdef"
     pat = r"M:<x:[ab]>.<r:(def)>"
     rep = r"<x:A><r:\1>"
+    mappings = [
+        MappingPos(pos=(0, 1)),
+        MappingPos(pos=(1, 2)),
+        MappingPos(pos=(2, 3)),
+        MappingPos(pos=(3, 4)),
+        MappingPos(pos=(4, 5)),
+    ]
+
+    # in_text = "acNdef"
+    # pat = r"M:<x:[ab]c>.<r:(def)>"
+    # rep = r"<x:A><r:\1>"
+    # mappings = [
+    #     MappingPos(pos=(0, 1)),
+    #     MappingPos(pos=(1, 2)),
+    #     MappingPos(pos=(2, 3)),
+    #     MappingPos(pos=(3, 4)),
+    #     MappingPos(pos=(4, 5)),
+    #     MappingPos(pos=(5, 6)),
+    # ]
+    # in_text = "acNdef"
+    # pat = r"M:<x:[ab]c>.<r:(def)>"
+    # rep = r"<x:ABC><r:\1>"
+    # mappings = [
+    #     MappingPos(pos=(0, 1)),
+    #     MappingPos(pos=(1, 2)),
+    #     MappingPos(pos=(2, 3)),
+    #     MappingPos(pos=(3, 4)),
+    #     MappingPos(pos=(4, 5)),
+    #     MappingPos(pos=(5, 6)),
+    # ]
+
     out_text, out_mappings = sub_with_tagged_mapping(
         pat,
         rep,
         in_text,
-        [
-            MappingPos(pos=(0, 1)),
-            MappingPos(pos=(1, 2)),
-            MappingPos(pos=(2, 3)),
-            MappingPos(pos=(3, 4)),
-            MappingPos(pos=(4, 5)),
-        ],
+        mappings,
     )
     print(f"pat: `{pat}`")
     print(f"rep: `{rep}`")
