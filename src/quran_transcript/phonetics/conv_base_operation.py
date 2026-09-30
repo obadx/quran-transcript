@@ -209,7 +209,7 @@ class MappedTagPrasingError(Exception): ...
 class MappedTagPrasingCardinalityError(Exception): ...
 
 
-def parse_tags(pat: re.Pattern, rep: re.Pattern) -> list[MapTag]:
+def parse_tags(pat: str, rep: str) -> list[MapTag]:
 
     rep_tag_to_text = {}
     last_idx = 0
@@ -280,9 +280,28 @@ def parse_tags(pat: re.Pattern, rep: re.Pattern) -> list[MapTag]:
     return mapped_tags
 
 
+def shift_mappings(
+    mappings: MappingListType, in_pos: int, out_pos: int, N: int, deleted: bool
+) -> MappingListType:
+    if not deleted:
+        for in_idx, out_idx in zip(
+            range(in_pos, in_pos + N),
+            range(out_pos, out_pos + N),
+        ):
+            mappings[in_idx].pos = (out_idx, out_idx + 1)
+
+    # else (deleted = True)
+    else:
+        for in_idx in range(in_pos, in_pos + N):
+            mappings[in_idx].pos = (out_pos, out_pos)
+            mappings[in_idx].deleted = True
+
+    return mappings
+
+
 def sub_with_tagged_mapping(
-    pat: re.Pattern,
-    rep: re.Pattern,
+    pat: str,
+    rep: str,
     text: str,
     mappings: list[MappingPos],
 ) -> tuple[str, list[MappingPos]]:
@@ -305,8 +324,8 @@ def sub_with_tagged_mapping(
     * the len of `tag pattern` and `tag replacemnt` has either to be euqal in length or one to many (on for `tag pattern` and many for `tag replacemnt`
     """
 
-    assert str(pat).startswith("M:")
-    pat = str(pat)[2:]
+    assert pat.startswith("M:")
+    pat = pat[2:]
 
     out_text = ""
     mapped_tags = parse_tags(pat, rep)
@@ -320,10 +339,19 @@ def sub_with_tagged_mapping(
 
     in_pos = 0
     out_pos = 0
+    shifted = False
     for match in re_pat.finditer(text):
         out_text += text[in_pos : match.start()]  # text not cpatured by the pat
+
+        keep_num = match.start() - in_pos
+        # shifting mappings because applying the subitiion
+        if shifted:
+            mappings = shift_mappings(mappings, in_pos, out_pos, keep_num, False)
+
         in_pos = match.start()
+        out_pos += keep_num
         for m_tag in mapped_tags:
+            shifted = True
             # pattern exist not deleted
             tag_mat = m_tag.compiled_pat.match(
                 text, pos=in_pos
@@ -336,11 +364,9 @@ def sub_with_tagged_mapping(
                 tag_rep_text = _expand_replacement(m_tag.rep, tag_mat)
                 if tag_pat_len == len(tag_rep_text):
                     # equal mapping
-                    for in_idx, out_idx in zip(
-                        range(in_pos, in_pos + tag_pat_len),
-                        range(out_pos, out_pos + tag_pat_len),
-                    ):
-                        mappings[in_idx].pos = (out_idx, out_idx + 1)
+                    mappings = shift_mappings(
+                        mappings, in_pos, out_pos, tag_pat_len, False
+                    )
                 elif tag_pat_len == 1:
                     # one to many
                     mappings[in_pos].pos = (
@@ -354,16 +380,18 @@ def sub_with_tagged_mapping(
             elif m_tag.rep == "":
                 tag_rep_text = ""
                 # Deletion
-                for in_idx in range(in_pos, in_pos + tag_pat_len):
-                    mappings[in_idx].pos = (out_pos, out_pos)
-                    mappings[in_idx].deleted = True
+                mappings = shift_mappings(mappings, in_pos, out_pos, tag_pat_len, True)
 
             in_pos += tag_pat_len
             out_pos += len(tag_rep_text)
             out_text += tag_rep_text
         in_pos = match.end()
 
+    # The rest of positions
     out_text += text[in_pos:]
+    if shifted:
+        mappings = shift_mappings(mappings, in_pos, out_pos, len(text) - in_pos, False)
+
     return out_text, mappings
 
 

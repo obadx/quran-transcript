@@ -16,6 +16,12 @@ if __name__ == "__main__":
         MappingPos(pos=(4, 5)),
     ]
 
+    # Whithin text
+    in_text = "Ahmed aNdef Mahmoud"
+    pat = r"M:<x:[ab]>.<r:(def)>"
+    rep = r"<x:A><r:\1>"
+    mappings = [MappingPos(pos=(i, i + 1)) for i in range(len(in_text))]
+
     # WARN: Many to one Parsing error
     # in_text = "acNdef"
     # pat = r"M:<x:[ab]c>.<r:(def)>"
