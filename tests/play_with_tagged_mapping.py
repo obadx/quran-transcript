@@ -3,6 +3,8 @@ from dataclasses import dataclass
 
 from quran_transcript.phonetics.conv_base_operation import MappingPos
 
+# Avoiding catching preious tag patter for example <x:aa><y:aa> we will hit the same match again so we want to have a moving cursor to avoid that
+
 _groups = re.compile(
     r"""
       (?P<escape>\\\\)                              # literal backslash  \\
@@ -43,6 +45,7 @@ class MapTag:
     tag: str
     pat: str
     rep: str
+    compiled_pat: re.Pattern
 
 
 class MappedTagPrasingError(Exception): ...
@@ -81,6 +84,7 @@ def parse_tags(pat: re.Pattern, rep: re.Pattern) -> list[MapTag]:
                     pat=pat[last_idx:start],
                     rep="",
                     tag="",
+                    compiled_pat=re.compile(pat[last_idx:start]),
                 )
             )
         tag = match.group(1)
@@ -95,6 +99,7 @@ def parse_tags(pat: re.Pattern, rep: re.Pattern) -> list[MapTag]:
             tag=tag,
             pat=match.group(2),
             rep=rep_tag_to_text[tag],
+            compiled_pat=re.compile(match.group(2)),
         )
         offset += start_offset + 1
         mapped_tags.append(mapped_tag)
@@ -110,6 +115,7 @@ def parse_tags(pat: re.Pattern, rep: re.Pattern) -> list[MapTag]:
                 pat=pat[last_idx:start],
                 rep="",
                 tag="",
+                compiled_pat=re.compile(pat[last_idx:start]),
             )
         )
 
@@ -153,34 +159,35 @@ def sub_with_tagged_mapping(
         re_rep += m_tag.rep
 
     re_pat = re.compile(re_pat)
-    in_last_idx = 0
-    out_last_idx = 0
+
+    in_pos = 0
+    out_pos = 0
     for match in re_pat.finditer(text):
-        out_text += text[in_last_idx : match.start()]  # text not cpatured by the pat
-        pat_text = match.group()
-        pat_start = 0
+        out_text += text[in_pos : match.start()]  # text not cpatured by the pat
+        in_pos = match.start()
         for m_tag in mapped_tags:
+            # pattern exist not deleted
+            tag_mat = m_tag.compiled_pat.match(
+                text, pos=in_pos
+            )  # Avoiding catching preious tag patter for example <x:aa><y:aa> we will hit the same match again so we want to have a moving cursor to avoid that
+            assert tag_mat != None
+            tag_pat_text = tag_mat.group()
+            tag_pat_len = len(tag_pat_text)
+
             if m_tag.tag != "" and m_tag.rep != "":
-                # pattern exist not deleted
-                tag_mat = re.search(
-                    m_tag.pat, pat_text[pat_start:]
-                )  # Avoiding catching preious tag patter for example <x:aa><y:aa> we will hit the same match again so we want to have a moving cursor to avoid that
-                assert tag_mat != None
-                tag_pat_text = tag_mat.group()
-                tag_pat_len = len(tag_pat_text)
                 tag_rep_text = _expand_replacement(m_tag.rep, tag_mat)
                 if tag_pat_len == len(tag_rep_text):
                     # equal mapping
                     for in_idx, out_idx in zip(
-                        range(in_last_idx, in_last_idx + tag_pat_len),
-                        range(out_last_idx, out_last_idx + tag_pat_len),
+                        range(in_pos, in_pos + tag_pat_len),
+                        range(out_pos, out_pos + tag_pat_len),
                     ):
                         mappings[in_idx].pos = (out_idx, out_idx + 1)
                 elif tag_pat_len == 1:
                     # one to many
-                    mappings[in_last_idx].pos = (
-                        out_last_idx,
-                        out_last_idx + tag_pat_len,
+                    mappings[in_pos].pos = (
+                        out_pos,
+                        out_pos + tag_pat_len,
                     )
                 else:
                     raise MappedTagPrasingError(
@@ -189,17 +196,16 @@ def sub_with_tagged_mapping(
             elif m_tag.rep == "":
                 tag_rep_text = ""
                 # Deletion
-                for in_idx in range(in_last_idx, in_last_idx + tag_pat_len):
-                    mappings[in_idx].pos = (out_last_idx, out_last_idx)
+                for in_idx in range(in_pos, in_pos + tag_pat_len):
+                    mappings[in_idx].pos = (out_pos, out_pos)
                     mappings[in_idx].deleted = True
 
-            in_last_idx += tag_pat_len
-            pat_start += tag_pat_len
-            out_last_idx += len(tag_rep_text)
+            in_pos += tag_pat_len
+            out_pos += len(tag_rep_text)
             out_text += tag_rep_text
-        in_last_idx = match.end()
+        in_pos = match.end()
 
-    out_text += text[in_last_idx:]
+    out_text += text[in_pos:]
     return out_text, mappings
 
 
@@ -216,6 +222,7 @@ if __name__ == "__main__":
         MappingPos(pos=(4, 5)),
     ]
 
+    # WARN: Many to one Parsing error
     # in_text = "acNdef"
     # pat = r"M:<x:[ab]c>.<r:(def)>"
     # rep = r"<x:A><r:\1>"
@@ -227,6 +234,7 @@ if __name__ == "__main__":
     #     MappingPos(pos=(4, 5)),
     #     MappingPos(pos=(5, 6)),
     # ]
+    # WARN: Many to many Parsing error
     # in_text = "acNdef"
     # pat = r"M:<x:[ab]c>.<r:(def)>"
     # rep = r"<x:ABC><r:\1>"
