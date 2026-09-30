@@ -51,6 +51,9 @@ class MapTag:
 class MappedTagPrasingError(Exception): ...
 
 
+class MappedTagPrasingCardinalityError(Exception): ...
+
+
 def parse_tags(pat: re.Pattern, rep: re.Pattern) -> list[MapTag]:
 
     rep_tag_to_text = {}
@@ -190,7 +193,7 @@ def sub_with_tagged_mapping(
                         out_pos + tag_pat_len,
                     )
                 else:
-                    raise MappedTagPrasingError(
+                    raise MappedTagPrasingCardinalityError(
                         f"Not supporting many to many or many to one mapping you want to map: `{tag_pat_text}` to `{tag_rep_text}` corresponds to tag: `{m_tag}`"
                     )
             elif m_tag.rep == "":
