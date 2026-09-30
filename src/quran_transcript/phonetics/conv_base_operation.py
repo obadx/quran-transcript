@@ -246,17 +246,13 @@ def parse_tags(pat: str, rep: str) -> list[MapTag]:
                 )
             )
         tag = match.group(1)
-        if tag not in rep_tag_to_text:
-            raise MappedTagPrasingError(
-                f"Tag: `{tag}` is found in the pattern but not found in the replacment"
-            )
         start_offset = match.end(1) - match.start(1) + 2
         mapped_tag = MapTag(
             start=match.start(2) - offset - start_offset,
             end=match.end(2) - offset - start_offset,
             tag=tag,
             pat=match.group(2),
-            rep=rep_tag_to_text[tag],
+            rep=rep_tag_to_text.get(tag, ""),
             compiled_pat=re.compile(match.group(2)),
         )
         offset += start_offset + 1
@@ -322,6 +318,12 @@ def sub_with_tagged_mapping(
     * rep patterns Have to be connected like r"<x:ABC><y1:\1>" but not r"<x:ABC>N<y1:\1>" (N) is not mapped
     * if a group of patterns is existis in the `pat` and does not exist in the `rep` it will be deleted like `D` in the example
     * the len of `tag pattern` and `tag replacemnt` has either to be euqal in length or one to many (on for `tag pattern` and many for `tag replacemnt`
+
+    Limitation:
+    * not supporting named group followed by the end of tag brackets in `rep` like this: `r"<x:X><r:\g<c>>"`
+                                           -------------------------------------------------------------^
+    Because the parser will think that the end of named group is the group name closing
+
     """
 
     assert pat.startswith("M:")
@@ -371,7 +373,7 @@ def sub_with_tagged_mapping(
                     # one to many
                     mappings[in_pos].pos = (
                         out_pos,
-                        out_pos + tag_pat_len,
+                        out_pos + len(tag_rep_text),
                     )
                 else:
                     raise MappedTagPrasingCardinalityError(
