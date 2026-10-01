@@ -173,24 +173,12 @@ _mapped_tags = re.compile(
 )
 
 
-def _expand_replacement(rep: str, match: re.Match) -> str:
-    """Expand backreferences in a replacement string for a single match."""
-    result = []
-    last_end = 0
-
-    for m in _groups.finditer(rep):
-        result.append(rep[last_end : m.start()])
-        if m.group("escape"):
-            result.append("\\")
-        elif m.group("gname") is not None:
-            name = m.group("gname")
-            result.append(match.group(int(name) if name.isdigit() else name))
-        elif m.group("gnum") is not None:
-            result.append(match.group(int(m.group("gnum"))))
-        last_end = m.end()
-
-    result.append(rep[last_end:])
-    return "".join(result)
+@dataclass
+class RepPart:
+    t: Literal["ID", "NAME", "STR"]
+    grp_id: int
+    grp_name: str
+    text: str
 
 
 @dataclass
@@ -199,8 +187,84 @@ class MapTag:
     end: int
     tag: str
     pat: str
-    rep: str
+    rep_parts: list[RepPart]
     compiled_pat: re.Pattern
+
+
+def parse_replacement(rep: str) -> list[RepPart]:
+    result = []
+    last_end = 0
+
+    for m in _groups.finditer(rep):
+        if last_end != m.start():
+            rep_part = RepPart(
+                t="STR",
+                grp_id=-1,
+                grp_name="",
+                text=rep[last_end : m.start()],
+            )
+            result.append(rep_part)
+        if m.group("escape"):
+            rep_part = RepPart(
+                t="STR",
+                grp_id=-1,
+                grp_name="",
+                text="\\",
+            )
+            result.append(rep_part)
+        elif m.group("gname") is not None:
+            name = m.group("gname")
+            if name.isdigit():
+                rep_part = RepPart(
+                    t="ID",
+                    grp_id=int(name),
+                    grp_name="",
+                    text="",
+                )
+                result.append(rep_part)
+            else:
+                rep_part = RepPart(
+                    t="NAME",
+                    grp_id=-1,
+                    grp_name=name,
+                    text="",
+                )
+                result.append(rep_part)
+        elif m.group("gnum") is not None:
+            rep_part = RepPart(
+                t="ID",
+                grp_id=int(m.group("gnum")),
+                grp_name="",
+                text="",
+            )
+            result.append(rep_part)
+        last_end = m.end()
+
+    # last segment
+    if last_end != len(rep):
+        result.append(
+            RepPart(
+                t="STR",
+                grp_id=-1,
+                grp_name="",
+                text=rep[last_end:],
+            )
+        )
+    return result
+
+
+def expand_replacement(rep_parts: list[RepPart], match: re.Match) -> str:
+    """Expand backreferences in a replacement string for a single match."""
+    out_str = ""
+    for part in rep_parts:
+        match part.t:
+            case "STR":
+                out_str += part.text
+            case "ID":
+                out_str += match.group(part.grp_id)
+            case "NAME":
+                out_str += match.group(part.grp_name)
+    return out_str
 
 
 class MappedTagPrasingError(Exception): ...
@@ -240,7 +304,7 @@ def parse_tags(pat: str, rep: str) -> list[MapTag]:
                     start=last_idx,
                     end=start,
                     pat=pat[last_idx:start],
-                    rep="",
+                    rep_parts=[],
                     tag="",
                     compiled_pat=re.compile(pat[last_idx:start]),
                 )
@@ -252,7 +316,7 @@ def parse_tags(pat: str, rep: str) -> list[MapTag]:
             end=match.end(2) - offset - start_offset,
             tag=tag,
             pat=match.group(2),
-            rep=rep_tag_to_text.get(tag, ""),
+            rep_parts=parse_replacement(rep_tag_to_text.get(tag, "")),
             compiled_pat=re.compile(match.group(2)),
         )
         offset += start_offset + 1
@@ -267,7 +331,7 @@ def parse_tags(pat: str, rep: str) -> list[MapTag]:
                 start=last_idx,
                 end=start,
                 pat=pat[last_idx:start],
-                rep="",
+                rep_parts=[],
                 tag="",
                 compiled_pat=re.compile(pat[last_idx:start]),
             )
@@ -332,10 +396,8 @@ def sub_with_tagged_mapping(
     out_text = ""
     mapped_tags = parse_tags(pat, rep)
     re_pat = ""
-    re_rep = ""
     for m_tag in mapped_tags:
         re_pat += m_tag.pat
-        re_rep += m_tag.rep
 
     re_pat = re.compile(re_pat)
 
@@ -362,8 +424,8 @@ def sub_with_tagged_mapping(
             tag_pat_text = tag_mat.group()
             tag_pat_len = len(tag_pat_text)
 
-            if m_tag.tag != "" and m_tag.rep != "":
-                tag_rep_text = _expand_replacement(m_tag.rep, match)
+            if m_tag.tag != "" and m_tag.rep_parts != []:
+                tag_rep_text = expand_replacement(m_tag.rep_parts, match)
                 if tag_pat_len == len(tag_rep_text):
                     # equal mapping
                     mappings = shift_mappings(
@@ -379,7 +441,7 @@ def sub_with_tagged_mapping(
                     raise MappedTagPrasingCardinalityError(
                         f"Not supporting many to many or many to one mapping you want to map: `{tag_pat_text}` to `{tag_rep_text}` corresponds to tag: `{m_tag}`"
                     )
-            elif m_tag.rep == "":
+            elif m_tag.rep_parts == []:
                 tag_rep_text = ""
                 # Deletion
                 mappings = shift_mappings(mappings, in_pos, out_pos, tag_pat_len, True)

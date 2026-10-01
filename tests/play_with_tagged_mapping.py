@@ -22,6 +22,24 @@ if __name__ == "__main__":
     rep = r"<x:A><r:\1>"
     mappings = [MappingPos(pos=(i, i + 1)) for i in range(len(in_text))]
 
+    # Whithin text (more than a match)
+    in_text = "Ahmed aNdef Mahmoud aNdef Hello"
+    pat = r"M:<x:[ab]>.<r:(def)>"
+    rep = r"<x:A><r:\1>"
+    mappings = [MappingPos(pos=(i, i + 1)) for i in range(len(in_text))]
+
+    # Whithin text (more than a match)
+    in_text = "Ahmed aNdef Mahmoud aNdef"
+    pat = r"M:<x:[ab]>.<r:(def)>"
+    rep = r"<x:A><r:\1>"
+    mappings = [MappingPos(pos=(i, i + 1)) for i in range(len(in_text))]
+
+    # # More than one group
+    # in_text = "a123"
+    # pat = r"M:<x:(a)><r:(\d+)>"
+    # rep = r"<x:\1><r:\2>"
+    # mappings = [MappingPos(pos=(i, i + 1)) for i in range(len(in_text))]
+
     # WARN: Many to one Parsing error
     # in_text = "acNdef"
     # pat = r"M:<x:[ab]c>.<r:(def)>"

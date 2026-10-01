@@ -7,7 +7,9 @@ from quran_transcript.phonetics.conv_base_operation import (
     MappedTagPrasingError,
     MappingListType,
     MappingPos,
-    _expand_replacement,
+    RepPart,
+    expand_replacement,
+    parse_replacement,
     parse_tags,
     sub_with_tagged_mapping,
 )
@@ -23,6 +25,15 @@ def _init_mappings(in_text: str) -> list[MappingPos]:
 
 def _render(mappings: list[MappingPos], out_text: str) -> list[str]:
     return [out_text[m.pos[0] : m.pos[1]] for m in mappings]
+
+
+def _check_mapping_continuty(mappings: MappingListType):
+    if mappings:
+        last_end = mappings[0].pos[1]
+    for idx in range(1, len(mappings)):
+        if last_end != mappings[idx].pos[0]:
+            raise ValueError(f"Breaking mappings continutiy at idx: {idx}")
+        last_end = mappings[idx].pos[1]
 
 
 def _prety_print(
@@ -48,33 +59,33 @@ def _prety_print(
 class TestExpandReplacement:
     def test_plain(self):
         m = re.match(r"(a)", "a")
-        assert _expand_replacement("xyz", m) == "xyz"
+        assert expand_replacement(parse_replacement("xyz"), m) == "xyz"
 
     def test_numbered_backref(self):
         m = re.match(r"(a)(b)", "ab")
-        assert _expand_replacement(r"\1\2", m) == "ab"
-        assert _expand_replacement(r"\2\1", m) == "ba"
+        assert expand_replacement(parse_replacement(r"\1\2"), m) == "ab"
+        assert expand_replacement(parse_replacement(r"\2\1"), m) == "ba"
 
     def test_named_backref(self):
         m = re.match(r"(?P<first>a)(?P<second>b)", "ab")
-        assert _expand_replacement(r"\g<first>\g<second>", m) == "ab"
-        assert _expand_replacement(r"\g<second>\g<first>", m) == "ba"
+        assert expand_replacement(parse_replacement(r"\g<first>\g<second>"), m) == "ab"
+        assert expand_replacement(parse_replacement(r"\g<second>\g<first>"), m) == "ba"
 
     def test_g_numbered(self):
         m = re.match(r"(a)", "a")
-        assert _expand_replacement(r"\g<1>", m) == "a"
+        assert expand_replacement(parse_replacement(r"\g<1>"), m) == "a"
 
     def test_escaped_backslash(self):
         m = re.match(r"(a)", "a")
-        assert _expand_replacement(r"\\", m) == "\\"
+        assert expand_replacement(parse_replacement(r"\\"), m) == "\\"
 
     def test_mixed(self):
         m = re.match(r"(a)(b)", "ab")
-        assert _expand_replacement(r"X\1Y\2Z", m) == "XaYbZ"
+        assert expand_replacement(parse_replacement(r"X\1Y\2Z"), m) == "XaYbZ"
 
     def test_no_backrefs_only_literal(self):
         m = re.match(r"(a)", "a")
-        assert _expand_replacement("hello world", m) == "hello world"
+        assert expand_replacement(parse_replacement("hello world"), m) == "hello world"
 
 
 # ----------------------------------------------------------------------
@@ -88,10 +99,10 @@ class TestParseTags:
         assert len(tags) == 2
         assert tags[0].tag == "x"
         assert tags[0].pat == "a"
-        assert tags[0].rep == "A"
+        assert tags[0].rep_parts == [RepPart(t="STR", grp_id=-1, grp_name="", text="A")]
         assert tags[1].tag == "y"
         assert tags[1].pat == "b"
-        assert tags[1].rep == "B"
+        assert tags[1].rep_parts == [RepPart(t="STR", grp_id=-1, grp_name="", text="B")]
 
     def test_non_connected_rep(self):
         pat = r"<x:a>"
@@ -110,9 +121,14 @@ class TestParseTags:
         rep = r"<x:D>"
         tags = parse_tags(pat, rep)
         assert len(tags) == 3
-        assert tags[0].tag == "" and tags[0].pat == "abc" and tags[0].rep == ""
-        assert tags[1].tag == "x" and tags[1].pat == "d" and tags[1].rep == "D"
-        assert tags[2].tag == "" and tags[2].pat == "ef" and tags[2].rep == ""
+        assert tags[0].tag == "" and tags[0].pat == "abc" and tags[0].rep_parts == []
+        assert (
+            tags[1].tag == "x"
+            and tags[1].pat == "d"
+            and tags[1].rep_parts
+            == [RepPart(t="STR", grp_id=-1, grp_name="", text="D")]
+        )
+        assert tags[2].tag == "" and tags[2].pat == "ef" and tags[2].rep_parts == []
 
     def test_tag_with_digit(self):
         pat = r"<x1:a>"
@@ -146,6 +162,7 @@ class TestSubWithTaggedMapping:
         rep = r"<x:A>"
         mappings = _init_mappings(in_text)
         out_text, out_mappings = sub_with_tagged_mapping(pat, rep, in_text, mappings)
+        _check_mapping_continuty(out_mappings)
         assert out_text == "A"
         assert out_mappings[0].pos == (0, 1)
         assert not out_mappings[0].deleted
@@ -156,6 +173,7 @@ class TestSubWithTaggedMapping:
         rep = r"<x:A><y:B>"
         mappings = _init_mappings(in_text)
         out_text, out_mappings = sub_with_tagged_mapping(pat, rep, in_text, mappings)
+        _check_mapping_continuty(out_mappings)
         assert out_text == "AB"
         assert out_mappings[0].pos == (0, 1)
         assert out_mappings[1].pos == (1, 2)
@@ -168,6 +186,7 @@ class TestSubWithTaggedMapping:
         rep = r"<x:\1><y:\2>"
         mappings = _init_mappings(in_text)
         out_text, out_mappings = sub_with_tagged_mapping(pat, rep, in_text, mappings)
+        _check_mapping_continuty(out_mappings)
         assert out_text == "ab"
         assert out_mappings[0].pos == (0, 1)
         assert out_mappings[1].pos == (1, 2)
@@ -178,6 +197,7 @@ class TestSubWithTaggedMapping:
         rep = r"<x:A>"
         mappings = _init_mappings(in_text)
         out_text, out_mappings = sub_with_tagged_mapping(pat, rep, in_text, mappings)
+        _check_mapping_continuty(out_mappings)
         assert out_text == "A"
         assert out_mappings[0].pos == (0, 1)
         assert not out_mappings[0].deleted
@@ -190,6 +210,7 @@ class TestSubWithTaggedMapping:
         rep = r"<x:ABC>"
         mappings = _init_mappings(in_text)
         out_text, out_mappings = sub_with_tagged_mapping(pat, rep, in_text, mappings)
+        _check_mapping_continuty(out_mappings)
         assert out_text == "ABC"
         assert out_mappings[0].pos == (0, 3)
         assert not out_mappings[0].deleted
@@ -200,6 +221,7 @@ class TestSubWithTaggedMapping:
         rep = r"<x:A>"
         mappings = _init_mappings(in_text)
         out_text, out_mappings = sub_with_tagged_mapping(pat, rep, in_text, mappings)
+        _check_mapping_continuty(out_mappings)
         assert out_text == "A A"
         assert out_mappings[0].pos == (0, 1)
         # space between the two matches is untouched
@@ -212,6 +234,7 @@ class TestSubWithTaggedMapping:
         rep = r"<x:A>"
         mappings = _init_mappings(in_text)
         out_text, out_mappings = sub_with_tagged_mapping(pat, rep, in_text, mappings)
+        _check_mapping_continuty(out_mappings)
         assert out_text == "zA"
         assert out_mappings[0].pos == (0, 1)  # z unchanged
         assert out_mappings[1].pos == (1, 2)  # a -> A
@@ -242,6 +265,7 @@ class TestSubWithTaggedMapping:
         rep = r"<x:\1>"
         mappings = _init_mappings(in_text)
         out_text, out_mappings = sub_with_tagged_mapping(pat, rep, in_text, mappings)
+        _check_mapping_continuty(out_mappings)
         assert out_text == "a"
         assert out_mappings[0].pos == (0, 1)
 
@@ -251,6 +275,7 @@ class TestSubWithTaggedMapping:
         rep = r"<x:\\>"
         mappings = _init_mappings(in_text)
         out_text, out_mappings = sub_with_tagged_mapping(pat, rep, in_text, mappings)
+        _check_mapping_continuty(out_mappings)
         assert out_text == "\\"
         assert out_mappings[0].pos == (0, 1)
 
@@ -260,6 +285,7 @@ class TestSubWithTaggedMapping:
         rep = r"<x:\2\1>"
         mappings = _init_mappings(in_text)
         out_text, out_mappings = sub_with_tagged_mapping(pat, rep, in_text, mappings)
+        _check_mapping_continuty(out_mappings)
         assert out_text == "ba"
         assert out_mappings[0].pos == (0, 1)
         assert out_mappings[1].pos == (1, 2)
@@ -270,6 +296,7 @@ class TestSubWithTaggedMapping:
         rep = r""
         mappings = _init_mappings(in_text)
         out_text, out_mappings = sub_with_tagged_mapping(pat, rep, in_text, mappings)
+        _check_mapping_continuty(out_mappings)
         assert out_text == ""
         for m in out_mappings:
             assert m.deleted
@@ -281,6 +308,7 @@ class TestSubWithTaggedMapping:
         rep = r"<x:A><y:B>"
         mappings = _init_mappings(in_text)
         out_text, out_mappings = sub_with_tagged_mapping(pat, rep, in_text, mappings)
+        _check_mapping_continuty(out_mappings)
         assert out_text == "AB"
         assert out_mappings[0].deleted and out_mappings[0].pos == (0, 0)
         assert not out_mappings[1].deleted and out_mappings[1].pos == (0, 1)
@@ -294,6 +322,7 @@ class TestSubWithTaggedMapping:
         rep = r"<x:\1><y:\2>"
         mappings = _init_mappings(in_text)
         out_text, out_mappings = sub_with_tagged_mapping(pat, rep, in_text, mappings)
+        _check_mapping_continuty(out_mappings)
         assert out_text == "a123"
         assert out_mappings[0].pos == (0, 1)
         assert out_mappings[1].pos == (1, 2)
@@ -310,6 +339,7 @@ class TestSubWithTaggedMapping:
         mappings = _init_mappings(in_text)
 
         out_text, out_mappings = sub_with_tagged_mapping(pat, rep, in_text, mappings)
+        _check_mapping_continuty(out_mappings)
 
         assert out_text == "Ahmed Adef Mahmoud"
 
@@ -354,6 +384,7 @@ class TestSubWithTaggedMapping:
         rep = r"<x:A>"
         mappings = _init_mappings(in_text)
         out_text, out_mappings = sub_with_tagged_mapping(pat, rep, in_text, mappings)
+        _check_mapping_continuty(out_mappings)
         # no match at all
         assert out_text == "Ahmed"
         for i in range(len(in_text)):
@@ -366,6 +397,7 @@ class TestSubWithTaggedMapping:
         rep = r"<x:A><r:\1>"
         mappings = _init_mappings(in_text)
         out_text, out_mappings = sub_with_tagged_mapping(pat, rep, in_text, mappings)
+        _check_mapping_continuty(out_mappings)
         assert out_text == "AdefX"
         assert out_mappings[0].pos == (0, 1)
         assert out_mappings[1].deleted and out_mappings[1].pos == (1, 1)
@@ -379,6 +411,7 @@ class TestSubWithTaggedMapping:
         rep = r"<x:X><r:\1>"
         mappings = _init_mappings(in_text)
         out_text, out_mappings = sub_with_tagged_mapping(pat, rep, in_text, mappings)
+        _check_mapping_continuty(out_mappings)
         _prety_print(pat, rep, in_text, out_text, out_mappings)
         # 'aNb' -> 'Xb', 'aNc' -> 'Xc'
         assert out_text == "Xb Xc"
@@ -399,6 +432,7 @@ class TestSubWithTaggedMapping:
         rep = r"<x:D>"
         mappings = _init_mappings(in_text)
         out_text, out_mappings = sub_with_tagged_mapping(pat, rep, in_text, mappings)
+        _check_mapping_continuty(out_mappings)
         assert out_text == in_text
         for i in range(len(in_text)):
             assert out_mappings[i].pos == (i, i + 1)
@@ -410,8 +444,87 @@ class TestSubWithTaggedMapping:
         rep = r"<x:AAA>"
         mappings = _init_mappings(in_text)
         out_text, out_mappings = sub_with_tagged_mapping(pat, rep, in_text, mappings)
+        _check_mapping_continuty(out_mappings)
         _prety_print(pat, rep, in_text, out_text, out_mappings)
         assert out_text == "AAAXY"
         assert out_mappings[0].pos == (0, 3)
         assert out_mappings[1].pos == (3, 4)
         assert out_mappings[2].pos == (4, 5)
+
+    # ------------------------------------------------------------------
+    # Cases from play_with_tagged_mapping.py
+    # ------------------------------------------------------------------
+    def test_single_match_at_start(self):
+        in_text = "aNdef"
+        pat = r"M:<x:[ab]>.<r:(def)>"
+        rep = r"<x:A><r:\1>"
+        mappings = _init_mappings(in_text)
+        out_text, out_mappings = sub_with_tagged_mapping(pat, rep, in_text, mappings)
+        _check_mapping_continuty(out_mappings)
+        assert out_text == "Adef"
+        assert out_mappings[0].pos == (0, 1)
+        assert not out_mappings[0].deleted
+        assert out_mappings[1].deleted and out_mappings[1].pos == (1, 1)
+        assert out_mappings[2].pos == (1, 2)
+        assert out_mappings[3].pos == (2, 3)
+        assert out_mappings[4].pos == (3, 4)
+
+    def test_two_matches_with_tail(self):
+        in_text = "Ahmed aNdef Mahmoud aNdef Hello"
+        pat = r"M:<x:[ab]>.<r:(def)>"
+        rep = r"<x:A><r:\1>"
+        mappings = _init_mappings(in_text)
+        out_text, out_mappings = sub_with_tagged_mapping(pat, rep, in_text, mappings)
+        _check_mapping_continuty(out_mappings)
+        assert out_text == "Ahmed Adef Mahmoud Adef Hello"
+        # First match (indices 6-10)
+        assert out_mappings[6].pos == (6, 7)
+        assert out_mappings[7].deleted and out_mappings[7].pos == (7, 7)
+        assert out_mappings[8].pos == (7, 8)
+        assert out_mappings[9].pos == (8, 9)
+        assert out_mappings[10].pos == (9, 10)
+        # Unchanged middle " Mahmoud" (indices 11-18) shifted by -1
+        for i in range(11, 19):
+            assert out_mappings[i].pos == (i - 1, i)
+            assert not out_mappings[i].deleted
+        # Space before second match (index 19)
+        assert out_mappings[19].pos == (18, 19)
+        assert not out_mappings[19].deleted
+        # Second match (indices 20-24)
+        assert out_mappings[20].pos == (19, 20)
+        assert out_mappings[21].deleted and out_mappings[21].pos == (20, 20)
+        assert out_mappings[22].pos == (20, 21)
+        assert out_mappings[23].pos == (21, 22)
+        assert out_mappings[24].pos == (22, 23)
+        # Tail " Hello" (indices 25-30) shifted by -2
+        for i in range(25, 31):
+            assert out_mappings[i].pos == (i - 2, i - 1)
+            assert not out_mappings[i].deleted
+
+    def test_two_matches_at_end(self):
+        in_text = "Ahmed aNdef Mahmoud aNdef"
+        pat = r"M:<x:[ab]>.<r:(def)>"
+        rep = r"<x:A><r:\1>"
+        mappings = _init_mappings(in_text)
+        out_text, out_mappings = sub_with_tagged_mapping(pat, rep, in_text, mappings)
+        _check_mapping_continuty(out_mappings)
+        assert out_text == "Ahmed Adef Mahmoud Adef"
+        # First match (indices 6-10)
+        assert out_mappings[6].pos == (6, 7)
+        assert out_mappings[7].deleted and out_mappings[7].pos == (7, 7)
+        assert out_mappings[8].pos == (7, 8)
+        assert out_mappings[9].pos == (8, 9)
+        assert out_mappings[10].pos == (9, 10)
+        # Unchanged middle " Mahmoud" (indices 11-18) shifted by -1
+        for i in range(11, 19):
+            assert out_mappings[i].pos == (i - 1, i)
+            assert not out_mappings[i].deleted
+        # Space before second match (index 19)
+        assert out_mappings[19].pos == (18, 19)
+        assert not out_mappings[19].deleted
+        # Second match at end (indices 20-24)
+        assert out_mappings[20].pos == (19, 20)
+        assert out_mappings[21].deleted and out_mappings[21].pos == (20, 20)
+        assert out_mappings[22].pos == (20, 21)
+        assert out_mappings[23].pos == (21, 22)
+        assert out_mappings[24].pos == (22, 23)

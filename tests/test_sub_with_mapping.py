@@ -18,7 +18,8 @@ if __name__ == "__main__":
     aya = Aya(12, 1)
     # aya = Aya(2, 1)
     aya = Aya(19, 1)
-    # aya = Aya(75, 27)
+    aya = Aya(75, 27)
+    aya = Aya(28, 4)
     # aya = Aya(2, 6)
     # aya = Aya(2, 7)
     # aya = Aya(27, 62)
@@ -39,8 +40,12 @@ if __name__ == "__main__":
     # uth_text = "حمٓ عٓسٓقٓ"
     # uth_text = "بِسْمِ ٱللَّهِ ٱلرَّحْمَٰنِ ٱلرَّحِيمِ حمٓ عٓسٓقٓ"
     # uth_text = "ٱلسَّوْءِ"
-    uth_text = "قُرَيْشٍ"
-    uth_text = "لِّلْمُتَّقِينَ"
+    # uth_text = "قُرَيْشٍ"
+    # uth_text = "لِّلْمُتَّقِينَ"
+
+    # الإقلاب
+    # uth_text = "مِنۢ بَعْدِ"
+    uth_text = "سَمِيعٌۢ بَصِيرٌۭ"
 
     profiler = Profiler()
     profiler.start()
