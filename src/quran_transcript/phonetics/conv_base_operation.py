@@ -320,7 +320,7 @@ def sub_with_tagged_mapping(
     * the len of `tag pattern` and `tag replacemnt` has either to be euqal in length or one to many (on for `tag pattern` and many for `tag replacemnt`
 
     Limitation:
-    * not supporting named group followed by the end of tag brackets in `rep` like this: `r"<x:X><r:\g<c>>"`
+    * not supporting named group followed by the end of tag brackets in `rep` like this: `r"<x:X><r:\\g<c>>"`
                                            -------------------------------------------------------------^
     Because the parser will think that the end of named group is the group name closing
 
@@ -363,7 +363,7 @@ def sub_with_tagged_mapping(
             tag_pat_len = len(tag_pat_text)
 
             if m_tag.tag != "" and m_tag.rep != "":
-                tag_rep_text = _expand_replacement(m_tag.rep, tag_mat)
+                tag_rep_text = _expand_replacement(m_tag.rep, match)
                 if tag_pat_len == len(tag_rep_text):
                     # equal mapping
                     mappings = shift_mappings(
