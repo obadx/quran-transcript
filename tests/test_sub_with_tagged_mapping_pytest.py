@@ -5,10 +5,10 @@ import pytest
 from quran_transcript.phonetics.conv_base_operation import (
     MappedTagPrasingCardinalityError,
     MappedTagPrasingError,
-    MappingListType,
-    MappingPos,
+    PhonetizerMappings,
     RepPart,
     expand_replacement,
+    init_mappings,
     parse_replacement,
     parse_tags,
     sub_with_tagged_mapping,
@@ -18,26 +18,21 @@ from quran_transcript.phonetics.conv_base_operation import (
 # ----------------------------------------------------------------------
 # Helpers
 # ----------------------------------------------------------------------
-def _init_mappings(in_text: str) -> list[MappingPos]:
-    """Identity mapping covering the whole input text."""
-    return [MappingPos(pos=(i, i + 1)) for i in range(len(in_text))]
+def _render(mappings: PhonetizerMappings, out_text: str) -> list[str]:
+    return [out_text[m.pos[0] : m.pos[1]] for m in mappings.uth_to_ph]
 
 
-def _render(mappings: list[MappingPos], out_text: str) -> list[str]:
-    return [out_text[m.pos[0] : m.pos[1]] for m in mappings]
-
-
-def _check_mapping_continuty(mappings: MappingListType):
-    if mappings:
-        last_end = mappings[0].pos[1]
-    for idx in range(1, len(mappings)):
-        if last_end != mappings[idx].pos[0]:
+def _check_mapping_continuty(mappings: PhonetizerMappings):
+    if mappings.uth_to_ph:
+        last_end = mappings.uth_to_ph[0].pos[1]
+    for idx in range(1, len(mappings.uth_to_ph)):
+        if last_end != mappings.uth_to_ph[idx].pos[0]:
             raise ValueError(f"Breaking mappings continutiy at idx: {idx}")
-        last_end = mappings[idx].pos[1]
+        last_end = mappings.uth_to_ph[idx].pos[1]
 
 
 def _prety_print(
-    pat: str, rep: str, in_text: str, out_text: str, out_mappings: MappingListType
+    pat: str, rep: str, in_text: str, out_text: str, out_mappings: PhonetizerMappings
 ):
     print(f"pat: `{pat}`")
     print(f"rep: `{rep}`")
@@ -160,7 +155,7 @@ class TestSubWithTaggedMapping:
         in_text = "a"
         pat = r"M:<x:a>"
         rep = r"<x:A>"
-        mappings = _init_mappings(in_text)
+        mappings = init_mappings(in_text)
         out_text, out_mappings = sub_with_tagged_mapping(pat, rep, in_text, mappings)
         _check_mapping_continuty(out_mappings)
         assert out_text == "A"
@@ -171,7 +166,7 @@ class TestSubWithTaggedMapping:
         in_text = "ab"
         pat = r"M:<x:a><y:b>"
         rep = r"<x:A><y:B>"
-        mappings = _init_mappings(in_text)
+        mappings = init_mappings(in_text)
         out_text, out_mappings = sub_with_tagged_mapping(pat, rep, in_text, mappings)
         _check_mapping_continuty(out_mappings)
         assert out_text == "AB"
@@ -184,7 +179,7 @@ class TestSubWithTaggedMapping:
         in_text = "ab"
         pat = r"M:<x:(a)><y:(b)>"
         rep = r"<x:\1><y:\2>"
-        mappings = _init_mappings(in_text)
+        mappings = init_mappings(in_text)
         out_text, out_mappings = sub_with_tagged_mapping(pat, rep, in_text, mappings)
         _check_mapping_continuty(out_mappings)
         assert out_text == "ab"
@@ -195,7 +190,7 @@ class TestSubWithTaggedMapping:
         in_text = "aN"
         pat = r"M:<x:a>."
         rep = r"<x:A>"
-        mappings = _init_mappings(in_text)
+        mappings = init_mappings(in_text)
         out_text, out_mappings = sub_with_tagged_mapping(pat, rep, in_text, mappings)
         _check_mapping_continuty(out_mappings)
         assert out_text == "A"
@@ -208,7 +203,7 @@ class TestSubWithTaggedMapping:
         in_text = "a"
         pat = r"M:<x:a>"
         rep = r"<x:ABC>"
-        mappings = _init_mappings(in_text)
+        mappings = init_mappings(in_text)
         out_text, out_mappings = sub_with_tagged_mapping(pat, rep, in_text, mappings)
         _check_mapping_continuty(out_mappings)
         assert out_text == "ABC"
@@ -219,7 +214,7 @@ class TestSubWithTaggedMapping:
         in_text = "a a"
         pat = r"M:<x:a>"
         rep = r"<x:A>"
-        mappings = _init_mappings(in_text)
+        mappings = init_mappings(in_text)
         out_text, out_mappings = sub_with_tagged_mapping(pat, rep, in_text, mappings)
         _check_mapping_continuty(out_mappings)
         assert out_text == "A A"
@@ -232,7 +227,7 @@ class TestSubWithTaggedMapping:
         in_text = "za"
         pat = r"M:<x:a>"
         rep = r"<x:A>"
-        mappings = _init_mappings(in_text)
+        mappings = init_mappings(in_text)
         out_text, out_mappings = sub_with_tagged_mapping(pat, rep, in_text, mappings)
         _check_mapping_continuty(out_mappings)
         assert out_text == "zA"
@@ -243,7 +238,7 @@ class TestSubWithTaggedMapping:
         in_text = "ac"
         pat = r"M:<x:[ab]c>"
         rep = r"<x:ABC>"
-        mappings = _init_mappings(in_text)
+        mappings = init_mappings(in_text)
         with pytest.raises(MappedTagPrasingCardinalityError):
             sub_with_tagged_mapping(pat, rep, in_text, mappings)
 
@@ -251,19 +246,19 @@ class TestSubWithTaggedMapping:
         in_text = "ac"
         pat = r"M:<x:[ab]c>"
         rep = r"<x:A>"
-        mappings = _init_mappings(in_text)
+        mappings = init_mappings(in_text)
         with pytest.raises(MappedTagPrasingCardinalityError):
             sub_with_tagged_mapping(pat, rep, in_text, mappings)
 
     def test_missing_m_prefix(self):
         with pytest.raises(AssertionError):
-            sub_with_tagged_mapping(r"<x:a>", r"<x:A>", "a", [])
+            sub_with_tagged_mapping(r"<x:a>", r"<x:A>", "a", init_mappings("a"))
 
     def test_named_group_backref(self):
         in_text = "a"
         pat = r"M:<x:(a)>"
         rep = r"<x:\1>"
-        mappings = _init_mappings(in_text)
+        mappings = init_mappings(in_text)
         out_text, out_mappings = sub_with_tagged_mapping(pat, rep, in_text, mappings)
         _check_mapping_continuty(out_mappings)
         assert out_text == "a"
@@ -273,7 +268,7 @@ class TestSubWithTaggedMapping:
         in_text = "a"
         pat = r"M:<x:a>"
         rep = r"<x:\\>"
-        mappings = _init_mappings(in_text)
+        mappings = init_mappings(in_text)
         out_text, out_mappings = sub_with_tagged_mapping(pat, rep, in_text, mappings)
         _check_mapping_continuty(out_mappings)
         assert out_text == "\\"
@@ -283,7 +278,7 @@ class TestSubWithTaggedMapping:
         in_text = "ab"
         pat = r"M:<x:(a)(b)>"
         rep = r"<x:\2\1>"
-        mappings = _init_mappings(in_text)
+        mappings = init_mappings(in_text)
         out_text, out_mappings = sub_with_tagged_mapping(pat, rep, in_text, mappings)
         _check_mapping_continuty(out_mappings)
         assert out_text == "ba"
@@ -294,7 +289,7 @@ class TestSubWithTaggedMapping:
         in_text = "abc"
         pat = r"M:abc"
         rep = r""
-        mappings = _init_mappings(in_text)
+        mappings = init_mappings(in_text)
         out_text, out_mappings = sub_with_tagged_mapping(pat, rep, in_text, mappings)
         _check_mapping_continuty(out_mappings)
         assert out_text == ""
@@ -306,7 +301,7 @@ class TestSubWithTaggedMapping:
         in_text = "aXbYc"
         pat = r"M:a<x:X>b<y:Y>c"
         rep = r"<x:A><y:B>"
-        mappings = _init_mappings(in_text)
+        mappings = init_mappings(in_text)
         out_text, out_mappings = sub_with_tagged_mapping(pat, rep, in_text, mappings)
         _check_mapping_continuty(out_mappings)
         assert out_text == "AB"
@@ -320,7 +315,7 @@ class TestSubWithTaggedMapping:
         in_text = "a123"
         pat = r"M:<x:([a-z])><y:(\d+)>"
         rep = r"<x:\1><y:\2>"
-        mappings = _init_mappings(in_text)
+        mappings = init_mappings(in_text)
         out_text, out_mappings = sub_with_tagged_mapping(pat, rep, in_text, mappings)
         _check_mapping_continuty(out_mappings)
         assert out_text == "a123"
@@ -336,7 +331,7 @@ class TestSubWithTaggedMapping:
         in_text = "Ahmed aNdef Mahmoud"
         pat = r"M:<x:[ab]>.<r:(def)>"
         rep = r"<x:A><r:\1>"
-        mappings = _init_mappings(in_text)
+        mappings = init_mappings(in_text)
 
         out_text, out_mappings = sub_with_tagged_mapping(pat, rep, in_text, mappings)
         _check_mapping_continuty(out_mappings)
@@ -382,7 +377,7 @@ class TestSubWithTaggedMapping:
         in_text = "Ahmed"
         pat = r"M:<x:[ab]>."
         rep = r"<x:A>"
-        mappings = _init_mappings(in_text)
+        mappings = init_mappings(in_text)
         out_text, out_mappings = sub_with_tagged_mapping(pat, rep, in_text, mappings)
         _check_mapping_continuty(out_mappings)
         # no match at all
@@ -395,7 +390,7 @@ class TestSubWithTaggedMapping:
         in_text = "aNdefX"
         pat = r"M:<x:[ab]>.<r:(def)>"
         rep = r"<x:A><r:\1>"
-        mappings = _init_mappings(in_text)
+        mappings = init_mappings(in_text)
         out_text, out_mappings = sub_with_tagged_mapping(pat, rep, in_text, mappings)
         _check_mapping_continuty(out_mappings)
         assert out_text == "AdefX"
@@ -409,7 +404,7 @@ class TestSubWithTaggedMapping:
         # matches 'aNb' and 'aNc'
         pat = r"M:<x:[ab]>.<r:([bc])>"
         rep = r"<x:X><r:\1>"
-        mappings = _init_mappings(in_text)
+        mappings = init_mappings(in_text)
         out_text, out_mappings = sub_with_tagged_mapping(pat, rep, in_text, mappings)
         _check_mapping_continuty(out_mappings)
         _prety_print(pat, rep, in_text, out_text, out_mappings)
@@ -430,7 +425,7 @@ class TestSubWithTaggedMapping:
         in_text = "hello world"
         pat = r"M:<x:[0-9]>"
         rep = r"<x:D>"
-        mappings = _init_mappings(in_text)
+        mappings = init_mappings(in_text)
         out_text, out_mappings = sub_with_tagged_mapping(pat, rep, in_text, mappings)
         _check_mapping_continuty(out_mappings)
         assert out_text == in_text
@@ -442,7 +437,7 @@ class TestSubWithTaggedMapping:
         in_text = "aXY"
         pat = r"M:<x:a>"
         rep = r"<x:AAA>"
-        mappings = _init_mappings(in_text)
+        mappings = init_mappings(in_text)
         out_text, out_mappings = sub_with_tagged_mapping(pat, rep, in_text, mappings)
         _check_mapping_continuty(out_mappings)
         _prety_print(pat, rep, in_text, out_text, out_mappings)
@@ -458,7 +453,7 @@ class TestSubWithTaggedMapping:
         in_text = "aNdef"
         pat = r"M:<x:[ab]>.<r:(def)>"
         rep = r"<x:A><r:\1>"
-        mappings = _init_mappings(in_text)
+        mappings = init_mappings(in_text)
         out_text, out_mappings = sub_with_tagged_mapping(pat, rep, in_text, mappings)
         _check_mapping_continuty(out_mappings)
         assert out_text == "Adef"
@@ -473,7 +468,7 @@ class TestSubWithTaggedMapping:
         in_text = "Ahmed aNdef Mahmoud aNdef Hello"
         pat = r"M:<x:[ab]>.<r:(def)>"
         rep = r"<x:A><r:\1>"
-        mappings = _init_mappings(in_text)
+        mappings = init_mappings(in_text)
         out_text, out_mappings = sub_with_tagged_mapping(pat, rep, in_text, mappings)
         _check_mapping_continuty(out_mappings)
         assert out_text == "Ahmed Adef Mahmoud Adef Hello"
@@ -505,7 +500,7 @@ class TestSubWithTaggedMapping:
         in_text = "Ahmed aNdef Mahmoud aNdef"
         pat = r"M:<x:[ab]>.<r:(def)>"
         rep = r"<x:A><r:\1>"
-        mappings = _init_mappings(in_text)
+        mappings = init_mappings(in_text)
         out_text, out_mappings = sub_with_tagged_mapping(pat, rep, in_text, mappings)
         _check_mapping_continuty(out_mappings)
         assert out_text == "Ahmed Adef Mahmoud Adef"
@@ -528,3 +523,160 @@ class TestSubWithTaggedMapping:
         assert out_mappings[22].pos == (20, 21)
         assert out_mappings[23].pos == (21, 22)
         assert out_mappings[24].pos == (22, 23)
+
+    # ------------------------------------------------------------------
+    # One-to-many expansion cases from play_with_tagged_mapping.py
+    # ------------------------------------------------------------------
+    def test_no_mapping_change(self):
+        in_text = "adef"
+        pat = r"M:<x:[ab]><r:(def)>"
+        rep = r"<x:A><r:\1>"
+        mappings = init_mappings(in_text)
+        out_text, out_mappings = sub_with_tagged_mapping(pat, rep, in_text, mappings)
+        _check_mapping_continuty(out_mappings)
+        assert out_text == "Adef"
+        expected = [(0, 1), (1, 2), (2, 3), (3, 4)]
+        assert len(out_mappings.uth_to_ph) == len(expected)
+        for i, exp_pos in enumerate(expected):
+            assert out_mappings[i].pos == exp_pos
+            assert not out_mappings[i].deleted
+
+    def test_one_to_many_shifting(self):
+        in_text = "adef"
+        pat = r"M:<x:[ab]><r:(def)>"
+        rep = r"<x:AAAA><r:\1>"
+        mappings = init_mappings(in_text)
+        out_text, out_mappings = sub_with_tagged_mapping(pat, rep, in_text, mappings)
+        _check_mapping_continuty(out_mappings)
+        assert out_text == "AAAAdef"
+        expected = [(0, 4), (4, 5), (5, 6), (6, 7)]
+        assert len(out_mappings.uth_to_ph) == len(expected)
+        for i, exp_pos in enumerate(expected):
+            assert out_mappings[i].pos == exp_pos
+            assert not out_mappings[i].deleted
+
+    def test_one_to_many_with_trailing_text(self):
+        in_text = "adef Hello"
+        pat = r"M:<x:[ab]><r:(def)>"
+        rep = r"<x:AAAA><r:\1>"
+        mappings = init_mappings(in_text)
+        out_text, out_mappings = sub_with_tagged_mapping(pat, rep, in_text, mappings)
+        _check_mapping_continuty(out_mappings)
+        assert out_text == "AAAAdef Hello"
+        expected = [
+            (0, 4),
+            (4, 5),
+            (5, 6),
+            (6, 7),
+            (7, 8),
+            (8, 9),
+            (9, 10),
+            (10, 11),
+            (11, 12),
+            (12, 13),
+        ]
+        assert len(out_mappings.uth_to_ph) == len(expected)
+        for i, exp_pos in enumerate(expected):
+            assert out_mappings[i].pos == exp_pos
+            assert not out_mappings[i].deleted
+
+    def test_two_one_to_many_with_trailing_text(self):
+        in_text = "adefn Hello"
+        pat = r"M:<x:[ab]><r:(def)><y:n>"
+        rep = r"<x:AAAA><r:\1><y:NNN>"
+        mappings = init_mappings(in_text)
+        out_text, out_mappings = sub_with_tagged_mapping(pat, rep, in_text, mappings)
+        _check_mapping_continuty(out_mappings)
+        assert out_text == "AAAAdefNNN Hello"
+        expected = [
+            (0, 4),
+            (4, 5),
+            (5, 6),
+            (6, 7),
+            (7, 10),
+            (10, 11),
+            (11, 12),
+            (12, 13),
+            (13, 14),
+            (14, 15),
+            (15, 16),
+        ]
+        assert len(out_mappings.uth_to_ph) == len(expected)
+        for i, exp_pos in enumerate(expected):
+            assert out_mappings[i].pos == exp_pos
+            assert not out_mappings[i].deleted
+
+    # ------------------------------------------------------------------
+    # Word boundary cases from play_with_tagged_mapping.py
+    # ------------------------------------------------------------------
+    def test_word_boundary(self):
+        in_text = "word"
+        pat = r"M:<x:(word\b)>"
+        rep = r"<x:WORD>"
+        mappings = init_mappings(in_text)
+        out_text, out_mappings = sub_with_tagged_mapping(pat, rep, in_text, mappings)
+        _check_mapping_continuty(out_mappings)
+        assert out_text == "WORD"
+        for i in range(len(in_text)):
+            assert out_mappings[i].pos == (i, i + 1)
+            assert not out_mappings[i].deleted
+
+    def test_word_boundary_no_match(self):
+        in_text = "wordF"
+        pat = r"M:<x:(word\b)>"
+        rep = r"<x:WORD>"
+        mappings = init_mappings(in_text)
+        out_text, out_mappings = sub_with_tagged_mapping(pat, rep, in_text, mappings)
+        _check_mapping_continuty(out_mappings)
+        assert out_text == "wordF"
+        for i in range(len(in_text)):
+            assert out_mappings[i].pos == (i, i + 1)
+            assert not out_mappings[i].deleted
+
+    # ------------------------------------------------------------------
+    # Multiple groups case from play_with_tagged_mapping.py
+    # ------------------------------------------------------------------
+    def test_multiple_groups(self):
+        in_text = "a123"
+        pat = r"M:<x:(a)><r:(\d+)>"
+        rep = r"<x:\1><r:\2>"
+        mappings = init_mappings(in_text)
+        out_text, out_mappings = sub_with_tagged_mapping(pat, rep, in_text, mappings)
+        _check_mapping_continuty(out_mappings)
+        assert out_text == "a123"
+        for i in range(len(in_text)):
+            assert out_mappings[i].pos == (i, i + 1)
+            assert not out_mappings[i].deleted
+
+    # ------------------------------------------------------------------
+    # Anchor cases from play_with_tagged_mapping.py
+    # ------------------------------------------------------------------
+    def test_end_of_string_anchor(self):
+        in_text = "END"
+        pat = r"M:<x:END><r:($)>"
+        rep = r"<x:end><r:\1>"
+        mappings = init_mappings(in_text)
+        out_text, out_mappings = sub_with_tagged_mapping(pat, rep, in_text, mappings)
+        _check_mapping_continuty(out_mappings)
+        assert out_text == "end"
+        assert out_mappings[0].pos == (0, 1)
+        assert out_mappings[1].pos == (1, 2)
+        assert out_mappings[2].pos == (2, 3)
+        for m in out_mappings:
+            assert not m.deleted
+
+    def test_beginning_of_string_anchor(self):
+        in_text = "START"
+        pat = r"M:<x:(^)><r:START>"
+        rep = r"<x:\1><r:start>"
+        mappings = init_mappings(in_text)
+        out_text, out_mappings = sub_with_tagged_mapping(pat, rep, in_text, mappings)
+        _check_mapping_continuty(out_mappings)
+        assert out_text == "start"
+        assert out_mappings[0].pos == (0, 1)
+        assert out_mappings[1].pos == (1, 2)
+        assert out_mappings[2].pos == (2, 3)
+        assert out_mappings[3].pos == (3, 4)
+        assert out_mappings[4].pos == (4, 5)
+        for m in out_mappings:
+            assert not m.deleted
