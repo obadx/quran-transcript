@@ -68,6 +68,163 @@ class MappingPos:
 MappingListType: TypeAlias = list[MappingPos]
 
 
+@dataclass
+class PhonetizerMappings:
+    """The main Idea here it to update the mappings progressivly (avoid looping
+    at every partial update or shift)
+
+    """
+
+    uth_to_ph: list[MappingPos]
+
+    def __getitem__(self, idx: int):
+        return self.uth_to_ph[idx]
+
+    def __post_init__(self):
+        self._prev_pos: tuple[int, int] = (-1, -1)
+        self._uth_start: int = -1
+
+    def reset(self):
+        self._uth_start = -1
+        self._prev_pos = (-1, -1)
+
+    @classmethod
+    def init_mappings(cls, text: str):
+        """Initialize Mappings"""
+        uth_to_ph = []
+        for idx in range(len(text)):
+            uth_to_ph.append(MappingPos(pos=(idx, idx + 1)))
+        return cls(uth_to_ph=uth_to_ph)
+
+    def find_start_uth_idx(self, ph_pos_idx: int) -> int:
+        # TODO: to log or pivot search
+        for uth_idx in range(0, len(self.uth_to_ph)):
+            if (
+                ph_pos_idx >= self.uth_to_ph[uth_idx].pos[0]
+                and ph_pos_idx < self.uth_to_ph[uth_idx].pos[1]
+            ):
+                return uth_idx
+        raise ValueError("Can not find uth_idx")
+
+    def _is_uth_start_altered(self) -> bool:
+        assert self._uth_start != -1
+        return self.uth_to_ph[self._uth_start].pos != self._prev_pos
+
+    def find_uth_idx(self, curr_ph_pos_idx: int) -> int:
+        if self._uth_start == -1:
+            self._uth_start = self.find_start_uth_idx(curr_ph_pos_idx)
+            self._prev_pos = self.uth_to_ph[self._uth_start].pos
+
+        for uth_idx in range(self._uth_start, len(self.uth_to_ph)):
+            if uth_idx == self._uth_start and self._is_uth_start_altered():
+                start, end = self._prev_pos
+            else:
+                start, end = self.uth_to_ph[uth_idx].pos
+
+            if curr_ph_pos_idx >= start and curr_ph_pos_idx < end:
+                return uth_idx
+        raise ValueError("Can not find uth_idx")
+
+    def update_ph_one_to_many(self, curr_ph_pos_start: int, N: int) -> None:
+        """Update one to many relation ship"""
+        # update uth_to_ph
+        uth_idx = self.find_uth_idx(curr_ph_pos_start)
+        if uth_idx == self._uth_start:
+            # This implies two cases:
+            # 1. That the one to many update is the first change to the mappings
+            # 2. Or is altered (chages happends before)
+            self.uth_to_ph[uth_idx].pos = (
+                self.uth_to_ph[uth_idx].pos[0],
+                self.uth_to_ph[uth_idx].pos[1] - self.uth_to_ph[uth_idx].pos[0] + N - 1,
+            )
+
+        elif uth_idx > self._uth_start:
+            # This implies a shift has occured in ids befor uth_idx
+
+            # Moving the _uth_start
+            self._uth_start = uth_idx
+            self._prev_pos = self.uth_to_ph[uth_idx].pos
+
+            start = self.uth_to_ph[uth_idx - 1].pos[1]
+            old_span = self.uth_to_ph[uth_idx].pos[1] - self.uth_to_ph[uth_idx].pos[0]
+            self.uth_to_ph[uth_idx].pos = (
+                start,
+                start + old_span + N - 1,
+            )
+        else:
+            raise ValueError("UnCaptured case for `update_ph_one_to_many`")
+
+    def shift(
+        self,
+        curr_ph_pos_start: int,
+        new_ph_pos_start: int,
+        N: int,
+    ) -> None:
+        uth_start = self.find_uth_idx(curr_ph_pos_start)
+        uth_end = self.find_uth_idx(curr_ph_pos_start + N - 1)  # end is inclusive
+
+        assert self._is_uth_start_altered(), "a shift occured it has to be altered"
+
+        # skiping start as it was altered
+        if uth_start == self._uth_start:
+            uth_start += 1
+
+        shift = new_ph_pos_start - curr_ph_pos_start
+        prev_pos = (-1, -1)
+        for uth_idx in range(uth_start, uth_end + 1):
+            prev_pos = self.uth_to_ph[uth_idx].pos
+            self.uth_to_ph[uth_idx].pos = (
+                self.uth_to_ph[uth_idx].pos[0] + shift,
+                self.uth_to_ph[uth_idx].pos[1] + shift,
+            )
+        # Updatign our self._uth_start (states)
+        if prev_pos[0] != -1:
+            # A change happend so we need to udpate the:
+            # self_uth_start and self._prev_pos
+            self._uth_start = uth_idx
+            self._prev_pos = prev_pos
+
+    def delete_shift(
+        self,
+        curr_ph_pos_start: int,
+        new_ph_pos_start: int,
+        N: int,
+    ) -> None:
+        uth_start = self.find_uth_idx(curr_ph_pos_start)
+        uth_end = self.find_uth_idx(curr_ph_pos_start + N - 1)  # end is inclusive
+
+        shift = new_ph_pos_start - curr_ph_pos_start
+        prev_pos = (-1, -1)
+        for uth_idx in range(uth_start, uth_end + 1):
+            prev_pos = self.uth_to_ph[uth_idx].pos
+            start, end = self.uth_to_ph[uth_idx].pos
+            if uth_idx != self._uth_start:
+                # self._uth_start is already shifted
+                start += shift
+                end += shift
+
+            # Now start, end in the new_ph_pos space
+            start = min(start, new_ph_pos_start)
+            end = max(new_ph_pos_start, end - N)
+
+            self.uth_to_ph[uth_idx].pos = (start, end)
+            if start == end:
+                # delete the entire map
+                self.uth_to_ph[uth_idx].deleted = True
+
+        # Updating our self._uth_start (states)
+        if prev_pos[0] != -1:
+            # A change happend so we need to udpate the:
+            # self_uth_start and self._prev_pos
+            self._uth_start = uth_idx
+            self._prev_pos = prev_pos
+
+
+def init_mappings(text: str) -> PhonetizerMappings:
+    """Initialize Mappings"""
+    return PhonetizerMappings.init_mappings(text)
+
+
 def merge_mappings(
     mappings: MappingListType | None, new_mappings: MappingListType
 ) -> MappingListType:
@@ -363,7 +520,7 @@ def sub_with_tagged_mapping(
     pat: str,
     rep: str,
     text: str,
-    mappings: list[MappingPos],
+    mappings: PhonetizerMappings,
 ) -> tuple[str, list[MappingPos]]:
     """
     Rules:
@@ -404,18 +561,18 @@ def sub_with_tagged_mapping(
     in_pos = 0
     out_pos = 0
     shifted = False
+    mappings.reset()
     for match in re_pat.finditer(text):
         out_text += text[in_pos : match.start()]  # text not cpatured by the pat
 
         keep_num = match.start() - in_pos
-        # shifting mappings because applying the subitiion
+        # shifting mappings
         if shifted:
-            mappings = shift_mappings(mappings, in_pos, out_pos, keep_num, False)
+            mappings.shift(in_pos, out_pos, keep_num)
 
         in_pos = match.start()
         out_pos += keep_num
         for m_tag in mapped_tags:
-            shifted = True
             # pattern exist not deleted
             tag_mat = m_tag.compiled_pat.match(
                 text, pos=in_pos
@@ -426,25 +583,25 @@ def sub_with_tagged_mapping(
 
             if m_tag.tag != "" and m_tag.rep_parts != []:
                 tag_rep_text = expand_replacement(m_tag.rep_parts, match)
-                if tag_pat_len == len(tag_rep_text):
+                if (tag_pat_len == len(tag_rep_text)) and shifted:
                     # equal mapping
-                    mappings = shift_mappings(
-                        mappings, in_pos, out_pos, tag_pat_len, False
-                    )
-                elif tag_pat_len == 1:
+                    mappings.shift(in_pos, out_pos, tag_pat_len)
+                elif (tag_pat_len == len(tag_rep_text)) and not shifted:
+                    ...
+                elif tag_pat_len == 1 and (len(tag_rep_text) > 1):
+                    shifted = True
                     # one to many
-                    mappings[in_pos].pos = (
-                        out_pos,
-                        out_pos + len(tag_rep_text),
-                    )
+                    mappings.update_ph_one_to_many(in_pos, len(tag_rep_text))
                 else:
+                    print(tag_pat_len, len(tag_rep_text))
                     raise MappedTagPrasingCardinalityError(
                         f"Not supporting many to many or many to one mapping you want to map: `{tag_pat_text}` to `{tag_rep_text}` corresponds to tag: `{m_tag}`"
                     )
             elif m_tag.rep_parts == []:
-                tag_rep_text = ""
                 # Deletion
-                mappings = shift_mappings(mappings, in_pos, out_pos, tag_pat_len, True)
+                shifted = True
+                tag_rep_text = ""
+                mappings.delete_shift(in_pos, out_pos, tag_pat_len)
 
             in_pos += tag_pat_len
             out_pos += len(tag_rep_text)
@@ -453,8 +610,8 @@ def sub_with_tagged_mapping(
 
     # The rest of positions
     out_text += text[in_pos:]
-    if shifted:
-        mappings = shift_mappings(mappings, in_pos, out_pos, len(text) - in_pos, False)
+    if shifted and in_pos < len(text):
+        mappings.shift(in_pos, out_pos, len(text) - in_pos)
 
     return out_text, mappings
 
@@ -998,7 +1155,7 @@ class ConversionOperation:
         self,
         text,
         moshaf: MoshafAttributes,
-        mappings: MappingListType | None = None,
+        mappings: MappingListType,
         sura_idx: int = 0,
     ) -> tuple[str, MappingListType]:
         """
@@ -1038,7 +1195,7 @@ class ConversionOperation:
         self,
         text: str,
         moshaf: MoshafAttributes,
-        mappings: MappingListType | None,
+        mappings: MappingListType,
         sura_idx: int = 0,
         discard_ops: list["ConversionOperation"] = [],
         mode: Literal["inference", "test"] = "inference",
