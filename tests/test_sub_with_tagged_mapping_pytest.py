@@ -18,6 +18,18 @@ from quran_transcript.phonetics.conv_base_operation import (
 # ----------------------------------------------------------------------
 # Helpers
 # ----------------------------------------------------------------------
+def _assert_mappings(
+    out_mappings: PhonetizerMappings,
+    expected_pos: list[tuple[int, int]],
+    deleted_idx: set[int] | None = None,
+):
+    deleted_idx = deleted_idx or set()
+    assert len(out_mappings.uth_to_ph) == len(expected_pos)
+    for i, exp in enumerate(expected_pos):
+        assert out_mappings[i].pos == exp
+        assert out_mappings[i].deleted == (i in deleted_idx)
+
+
 def _render(mappings: PhonetizerMappings, out_text: str) -> list[str]:
     return [out_text[m.pos[0] : m.pos[1]] for m in mappings.uth_to_ph]
 
@@ -159,8 +171,7 @@ class TestSubWithTaggedMapping:
         out_text, out_mappings = sub_with_tagged_mapping(pat, rep, in_text, mappings)
         _check_mapping_continuty(out_mappings)
         assert out_text == "A"
-        assert out_mappings[0].pos == (0, 1)
-        assert not out_mappings[0].deleted
+        _assert_mappings(out_mappings, [(0, 1)])
 
     def test_multiple_tags(self):
         in_text = "ab"
@@ -170,10 +181,7 @@ class TestSubWithTaggedMapping:
         out_text, out_mappings = sub_with_tagged_mapping(pat, rep, in_text, mappings)
         _check_mapping_continuty(out_mappings)
         assert out_text == "AB"
-        assert out_mappings[0].pos == (0, 1)
-        assert out_mappings[1].pos == (1, 2)
-        assert not out_mappings[0].deleted
-        assert not out_mappings[1].deleted
+        _assert_mappings(out_mappings, [(0, 1), (1, 2)])
 
     def test_backreference(self):
         in_text = "ab"
@@ -183,8 +191,7 @@ class TestSubWithTaggedMapping:
         out_text, out_mappings = sub_with_tagged_mapping(pat, rep, in_text, mappings)
         _check_mapping_continuty(out_mappings)
         assert out_text == "ab"
-        assert out_mappings[0].pos == (0, 1)
-        assert out_mappings[1].pos == (1, 2)
+        _assert_mappings(out_mappings, [(0, 1), (1, 2)])
 
     def test_deletion(self):
         in_text = "aN"
@@ -194,10 +201,7 @@ class TestSubWithTaggedMapping:
         out_text, out_mappings = sub_with_tagged_mapping(pat, rep, in_text, mappings)
         _check_mapping_continuty(out_mappings)
         assert out_text == "A"
-        assert out_mappings[0].pos == (0, 1)
-        assert not out_mappings[0].deleted
-        assert out_mappings[1].deleted
-        assert out_mappings[1].pos == (1, 1)
+        _assert_mappings(out_mappings, [(0, 1), (1, 1)], deleted_idx={1})
 
     def test_one_to_many(self):
         in_text = "a"
@@ -207,8 +211,7 @@ class TestSubWithTaggedMapping:
         out_text, out_mappings = sub_with_tagged_mapping(pat, rep, in_text, mappings)
         _check_mapping_continuty(out_mappings)
         assert out_text == "ABC"
-        assert out_mappings[0].pos == (0, 3)
-        assert not out_mappings[0].deleted
+        _assert_mappings(out_mappings, [(0, 3)])
 
     def test_multiple_matches(self):
         in_text = "a a"
@@ -218,10 +221,7 @@ class TestSubWithTaggedMapping:
         out_text, out_mappings = sub_with_tagged_mapping(pat, rep, in_text, mappings)
         _check_mapping_continuty(out_mappings)
         assert out_text == "A A"
-        assert out_mappings[0].pos == (0, 1)
-        # space between the two matches is untouched
-        assert out_mappings[1].pos == (1, 2)
-        assert out_mappings[2].pos == (2, 3)
+        _assert_mappings(out_mappings, [(0, 1), (1, 2), (2, 3)])
 
     def test_unmapped_prefix_suffix(self):
         in_text = "za"
@@ -231,8 +231,7 @@ class TestSubWithTaggedMapping:
         out_text, out_mappings = sub_with_tagged_mapping(pat, rep, in_text, mappings)
         _check_mapping_continuty(out_mappings)
         assert out_text == "zA"
-        assert out_mappings[0].pos == (0, 1)  # z unchanged
-        assert out_mappings[1].pos == (1, 2)  # a -> A
+        _assert_mappings(out_mappings, [(0, 1), (1, 2)])
 
     def test_many_to_many_error(self):
         in_text = "ac"
@@ -262,7 +261,7 @@ class TestSubWithTaggedMapping:
         out_text, out_mappings = sub_with_tagged_mapping(pat, rep, in_text, mappings)
         _check_mapping_continuty(out_mappings)
         assert out_text == "a"
-        assert out_mappings[0].pos == (0, 1)
+        _assert_mappings(out_mappings, [(0, 1)])
 
     def test_escaped_backslash(self):
         in_text = "a"
@@ -272,7 +271,7 @@ class TestSubWithTaggedMapping:
         out_text, out_mappings = sub_with_tagged_mapping(pat, rep, in_text, mappings)
         _check_mapping_continuty(out_mappings)
         assert out_text == "\\"
-        assert out_mappings[0].pos == (0, 1)
+        _assert_mappings(out_mappings, [(0, 1)])
 
     def test_many_to_many_equal_length(self):
         in_text = "ab"
@@ -282,8 +281,7 @@ class TestSubWithTaggedMapping:
         out_text, out_mappings = sub_with_tagged_mapping(pat, rep, in_text, mappings)
         _check_mapping_continuty(out_mappings)
         assert out_text == "ba"
-        assert out_mappings[0].pos == (0, 1)
-        assert out_mappings[1].pos == (1, 2)
+        _assert_mappings(out_mappings, [(0, 1), (1, 2)])
 
     def test_no_tags(self):
         in_text = "abc"
@@ -293,9 +291,7 @@ class TestSubWithTaggedMapping:
         out_text, out_mappings = sub_with_tagged_mapping(pat, rep, in_text, mappings)
         _check_mapping_continuty(out_mappings)
         assert out_text == ""
-        for m in out_mappings:
-            assert m.deleted
-            assert m.pos == (0, 0)
+        _assert_mappings(out_mappings, [(0, 0), (0, 0), (0, 0)], deleted_idx={0, 1, 2})
 
     def test_complex_literals_and_tags(self):
         in_text = "aXbYc"
@@ -305,11 +301,11 @@ class TestSubWithTaggedMapping:
         out_text, out_mappings = sub_with_tagged_mapping(pat, rep, in_text, mappings)
         _check_mapping_continuty(out_mappings)
         assert out_text == "AB"
-        assert out_mappings[0].deleted and out_mappings[0].pos == (0, 0)
-        assert not out_mappings[1].deleted and out_mappings[1].pos == (0, 1)
-        assert out_mappings[2].deleted and out_mappings[2].pos == (1, 1)
-        assert not out_mappings[3].deleted and out_mappings[3].pos == (1, 2)
-        assert out_mappings[4].deleted and out_mappings[4].pos == (2, 2)
+        _assert_mappings(
+            out_mappings,
+            [(0, 0), (0, 1), (1, 1), (1, 2), (2, 2)],
+            deleted_idx={0, 2, 4},
+        )
 
     def test_pattern_with_brackets_and_group(self):
         in_text = "a123"
@@ -319,10 +315,7 @@ class TestSubWithTaggedMapping:
         out_text, out_mappings = sub_with_tagged_mapping(pat, rep, in_text, mappings)
         _check_mapping_continuty(out_mappings)
         assert out_text == "a123"
-        assert out_mappings[0].pos == (0, 1)
-        assert out_mappings[1].pos == (1, 2)
-        assert out_mappings[2].pos == (2, 3)
-        assert out_mappings[3].pos == (3, 4)
+        _assert_mappings(out_mappings, [(0, 1), (1, 2), (2, 3), (3, 4)])
 
     # ------------------------------------------------------------------
     # New cases derived from the "Ahmed aNdef Mahmoud" example
@@ -338,33 +331,31 @@ class TestSubWithTaggedMapping:
 
         assert out_text == "Ahmed Adef Mahmoud"
 
-        # Unchanged prefix "Ahmed " (indices 0..5) keeps identity mapping
-        for i in range(6):
-            assert out_mappings[i].pos == (i, i + 1)
-            assert not out_mappings[i].deleted
-
-        # 'a' at index 6 -> 'A' at output index 6
-        assert out_mappings[6].pos == (6, 7)
-        assert not out_mappings[6].deleted
-
-        # 'N' at index 7 -> deleted
-        assert out_mappings[7].deleted
-        assert out_mappings[7].pos == (7, 7)
-
-        # 'd', 'e', 'f' at indices 8..10 -> output indices 7..9
-        assert out_mappings[8].pos == (7, 8)
-        assert out_mappings[9].pos == (8, 9)
-        assert out_mappings[10].pos == (9, 10)
-        for i in (8, 9, 10):
-            assert not out_mappings[i].deleted
-
-        # Space at index 11 -> output index 10
-        assert out_mappings[11].pos == (10, 11)
-
-        # Tail "Mahmoud" (indices 12..18) shifted by -1 in output
-        for i in range(12, 19):
-            assert out_mappings[i].pos == (i - 1, i)
-            assert not out_mappings[i].deleted
+        _assert_mappings(
+            out_mappings,
+            [
+                (0, 1),
+                (1, 2),
+                (2, 3),
+                (3, 4),
+                (4, 5),
+                (5, 6),
+                (6, 7),
+                (7, 7),
+                (7, 8),
+                (8, 9),
+                (9, 10),
+                (10, 11),
+                (11, 12),
+                (12, 13),
+                (13, 14),
+                (14, 15),
+                (15, 16),
+                (16, 17),
+                (17, 18),
+            ],
+            deleted_idx={7},
+        )
 
         # Rendered characters
         rendered = _render(out_mappings, out_text)
@@ -382,9 +373,7 @@ class TestSubWithTaggedMapping:
         _check_mapping_continuty(out_mappings)
         # no match at all
         assert out_text == "Ahmed"
-        for i in range(len(in_text)):
-            assert out_mappings[i].pos == (i, i + 1)
-            assert not out_mappings[i].deleted
+        _assert_mappings(out_mappings, [(0, 1), (1, 2), (2, 3), (3, 4), (4, 5)])
 
     def test_match_at_very_start_and_end(self):
         in_text = "aNdefX"
@@ -394,10 +383,11 @@ class TestSubWithTaggedMapping:
         out_text, out_mappings = sub_with_tagged_mapping(pat, rep, in_text, mappings)
         _check_mapping_continuty(out_mappings)
         assert out_text == "AdefX"
-        assert out_mappings[0].pos == (0, 1)
-        assert out_mappings[1].deleted and out_mappings[1].pos == (1, 1)
-        # tail 'X' shifted to index 4
-        assert out_mappings[5].pos == (4, 5)
+        _assert_mappings(
+            out_mappings,
+            [(0, 1), (1, 1), (1, 2), (2, 3), (3, 4), (4, 5)],
+            deleted_idx={1},
+        )
 
     def test_multiple_occurrences_in_one_text(self):
         in_text = "aNb aNc"
@@ -410,16 +400,11 @@ class TestSubWithTaggedMapping:
         _prety_print(pat, rep, in_text, out_text, out_mappings)
         # 'aNb' -> 'Xb', 'aNc' -> 'Xc'
         assert out_text == "Xb Xc"
-        # first match
-        assert out_mappings[0].pos == (0, 1)  # a -> X
-        assert out_mappings[1].deleted and out_mappings[1].pos == (1, 1)  # N deleted
-        assert out_mappings[2].pos == (1, 2)  # b
-        # space unchanged
-        assert out_mappings[3].pos == (2, 3)
-        # second match
-        assert out_mappings[4].pos == (3, 4)  # a -> X
-        assert out_mappings[5].deleted and out_mappings[5].pos == (4, 4)  # N deleted
-        assert out_mappings[6].pos == (4, 5)  # c
+        _assert_mappings(
+            out_mappings,
+            [(0, 1), (1, 1), (1, 2), (2, 3), (3, 4), (4, 4), (4, 5)],
+            deleted_idx={1, 5},
+        )
 
     def test_no_match_returns_identical_text_and_mappings(self):
         in_text = "hello world"
@@ -429,9 +414,10 @@ class TestSubWithTaggedMapping:
         out_text, out_mappings = sub_with_tagged_mapping(pat, rep, in_text, mappings)
         _check_mapping_continuty(out_mappings)
         assert out_text == in_text
-        for i in range(len(in_text)):
-            assert out_mappings[i].pos == (i, i + 1)
-            assert not out_mappings[i].deleted
+        _assert_mappings(
+            out_mappings,
+            [(i, i + 1) for i in range(len(in_text))],
+        )
 
     def test_one_to_many_shifts_following_indices(self):
         in_text = "aXY"
@@ -442,9 +428,7 @@ class TestSubWithTaggedMapping:
         _check_mapping_continuty(out_mappings)
         _prety_print(pat, rep, in_text, out_text, out_mappings)
         assert out_text == "AAAXY"
-        assert out_mappings[0].pos == (0, 3)
-        assert out_mappings[1].pos == (3, 4)
-        assert out_mappings[2].pos == (4, 5)
+        _assert_mappings(out_mappings, [(0, 3), (3, 4), (4, 5)])
 
     # ------------------------------------------------------------------
     # Cases from play_with_tagged_mapping.py
@@ -457,12 +441,11 @@ class TestSubWithTaggedMapping:
         out_text, out_mappings = sub_with_tagged_mapping(pat, rep, in_text, mappings)
         _check_mapping_continuty(out_mappings)
         assert out_text == "Adef"
-        assert out_mappings[0].pos == (0, 1)
-        assert not out_mappings[0].deleted
-        assert out_mappings[1].deleted and out_mappings[1].pos == (1, 1)
-        assert out_mappings[2].pos == (1, 2)
-        assert out_mappings[3].pos == (2, 3)
-        assert out_mappings[4].pos == (3, 4)
+        _assert_mappings(
+            out_mappings,
+            [(0, 1), (1, 1), (1, 2), (2, 3), (3, 4)],
+            deleted_idx={1},
+        )
 
     def test_two_matches_with_tail(self):
         in_text = "Ahmed aNdef Mahmoud aNdef Hello"
@@ -472,29 +455,43 @@ class TestSubWithTaggedMapping:
         out_text, out_mappings = sub_with_tagged_mapping(pat, rep, in_text, mappings)
         _check_mapping_continuty(out_mappings)
         assert out_text == "Ahmed Adef Mahmoud Adef Hello"
-        # First match (indices 6-10)
-        assert out_mappings[6].pos == (6, 7)
-        assert out_mappings[7].deleted and out_mappings[7].pos == (7, 7)
-        assert out_mappings[8].pos == (7, 8)
-        assert out_mappings[9].pos == (8, 9)
-        assert out_mappings[10].pos == (9, 10)
-        # Unchanged middle " Mahmoud" (indices 11-18) shifted by -1
-        for i in range(11, 19):
-            assert out_mappings[i].pos == (i - 1, i)
-            assert not out_mappings[i].deleted
-        # Space before second match (index 19)
-        assert out_mappings[19].pos == (18, 19)
-        assert not out_mappings[19].deleted
-        # Second match (indices 20-24)
-        assert out_mappings[20].pos == (19, 20)
-        assert out_mappings[21].deleted and out_mappings[21].pos == (20, 20)
-        assert out_mappings[22].pos == (20, 21)
-        assert out_mappings[23].pos == (21, 22)
-        assert out_mappings[24].pos == (22, 23)
-        # Tail " Hello" (indices 25-30) shifted by -2
-        for i in range(25, 31):
-            assert out_mappings[i].pos == (i - 2, i - 1)
-            assert not out_mappings[i].deleted
+        _assert_mappings(
+            out_mappings,
+            [
+                (0, 1),
+                (1, 2),
+                (2, 3),
+                (3, 4),
+                (4, 5),
+                (5, 6),
+                (6, 7),
+                (7, 7),
+                (7, 8),
+                (8, 9),
+                (9, 10),
+                (10, 11),
+                (11, 12),
+                (12, 13),
+                (13, 14),
+                (14, 15),
+                (15, 16),
+                (16, 17),
+                (17, 18),
+                (18, 19),
+                (19, 20),
+                (20, 20),
+                (20, 21),
+                (21, 22),
+                (22, 23),
+                (23, 24),
+                (24, 25),
+                (25, 26),
+                (26, 27),
+                (27, 28),
+                (28, 29),
+            ],
+            deleted_idx={7, 21},
+        )
 
     def test_two_matches_at_end(self):
         in_text = "Ahmed aNdef Mahmoud aNdef"
@@ -504,25 +501,37 @@ class TestSubWithTaggedMapping:
         out_text, out_mappings = sub_with_tagged_mapping(pat, rep, in_text, mappings)
         _check_mapping_continuty(out_mappings)
         assert out_text == "Ahmed Adef Mahmoud Adef"
-        # First match (indices 6-10)
-        assert out_mappings[6].pos == (6, 7)
-        assert out_mappings[7].deleted and out_mappings[7].pos == (7, 7)
-        assert out_mappings[8].pos == (7, 8)
-        assert out_mappings[9].pos == (8, 9)
-        assert out_mappings[10].pos == (9, 10)
-        # Unchanged middle " Mahmoud" (indices 11-18) shifted by -1
-        for i in range(11, 19):
-            assert out_mappings[i].pos == (i - 1, i)
-            assert not out_mappings[i].deleted
-        # Space before second match (index 19)
-        assert out_mappings[19].pos == (18, 19)
-        assert not out_mappings[19].deleted
-        # Second match at end (indices 20-24)
-        assert out_mappings[20].pos == (19, 20)
-        assert out_mappings[21].deleted and out_mappings[21].pos == (20, 20)
-        assert out_mappings[22].pos == (20, 21)
-        assert out_mappings[23].pos == (21, 22)
-        assert out_mappings[24].pos == (22, 23)
+        _assert_mappings(
+            out_mappings,
+            [
+                (0, 1),
+                (1, 2),
+                (2, 3),
+                (3, 4),
+                (4, 5),
+                (5, 6),
+                (6, 7),
+                (7, 7),
+                (7, 8),
+                (8, 9),
+                (9, 10),
+                (10, 11),
+                (11, 12),
+                (12, 13),
+                (13, 14),
+                (14, 15),
+                (15, 16),
+                (16, 17),
+                (17, 18),
+                (18, 19),
+                (19, 20),
+                (20, 20),
+                (20, 21),
+                (21, 22),
+                (22, 23),
+            ],
+            deleted_idx={7, 21},
+        )
 
     # ------------------------------------------------------------------
     # One-to-many expansion cases from play_with_tagged_mapping.py
@@ -535,11 +544,7 @@ class TestSubWithTaggedMapping:
         out_text, out_mappings = sub_with_tagged_mapping(pat, rep, in_text, mappings)
         _check_mapping_continuty(out_mappings)
         assert out_text == "Adef"
-        expected = [(0, 1), (1, 2), (2, 3), (3, 4)]
-        assert len(out_mappings.uth_to_ph) == len(expected)
-        for i, exp_pos in enumerate(expected):
-            assert out_mappings[i].pos == exp_pos
-            assert not out_mappings[i].deleted
+        _assert_mappings(out_mappings, [(0, 1), (1, 2), (2, 3), (3, 4)])
 
     def test_one_to_many_shifting(self):
         in_text = "adef"
@@ -549,11 +554,7 @@ class TestSubWithTaggedMapping:
         out_text, out_mappings = sub_with_tagged_mapping(pat, rep, in_text, mappings)
         _check_mapping_continuty(out_mappings)
         assert out_text == "AAAAdef"
-        expected = [(0, 4), (4, 5), (5, 6), (6, 7)]
-        assert len(out_mappings.uth_to_ph) == len(expected)
-        for i, exp_pos in enumerate(expected):
-            assert out_mappings[i].pos == exp_pos
-            assert not out_mappings[i].deleted
+        _assert_mappings(out_mappings, [(0, 4), (4, 5), (5, 6), (6, 7)])
 
     def test_one_to_many_with_trailing_text(self):
         in_text = "adef Hello"
@@ -563,22 +564,21 @@ class TestSubWithTaggedMapping:
         out_text, out_mappings = sub_with_tagged_mapping(pat, rep, in_text, mappings)
         _check_mapping_continuty(out_mappings)
         assert out_text == "AAAAdef Hello"
-        expected = [
-            (0, 4),
-            (4, 5),
-            (5, 6),
-            (6, 7),
-            (7, 8),
-            (8, 9),
-            (9, 10),
-            (10, 11),
-            (11, 12),
-            (12, 13),
-        ]
-        assert len(out_mappings.uth_to_ph) == len(expected)
-        for i, exp_pos in enumerate(expected):
-            assert out_mappings[i].pos == exp_pos
-            assert not out_mappings[i].deleted
+        _assert_mappings(
+            out_mappings,
+            [
+                (0, 4),
+                (4, 5),
+                (5, 6),
+                (6, 7),
+                (7, 8),
+                (8, 9),
+                (9, 10),
+                (10, 11),
+                (11, 12),
+                (12, 13),
+            ],
+        )
 
     def test_two_one_to_many_with_trailing_text(self):
         in_text = "adefn Hello"
@@ -588,23 +588,22 @@ class TestSubWithTaggedMapping:
         out_text, out_mappings = sub_with_tagged_mapping(pat, rep, in_text, mappings)
         _check_mapping_continuty(out_mappings)
         assert out_text == "AAAAdefNNN Hello"
-        expected = [
-            (0, 4),
-            (4, 5),
-            (5, 6),
-            (6, 7),
-            (7, 10),
-            (10, 11),
-            (11, 12),
-            (12, 13),
-            (13, 14),
-            (14, 15),
-            (15, 16),
-        ]
-        assert len(out_mappings.uth_to_ph) == len(expected)
-        for i, exp_pos in enumerate(expected):
-            assert out_mappings[i].pos == exp_pos
-            assert not out_mappings[i].deleted
+        _assert_mappings(
+            out_mappings,
+            [
+                (0, 4),
+                (4, 5),
+                (5, 6),
+                (6, 7),
+                (7, 10),
+                (10, 11),
+                (11, 12),
+                (12, 13),
+                (13, 14),
+                (14, 15),
+                (15, 16),
+            ],
+        )
 
     # ------------------------------------------------------------------
     # Word boundary cases from play_with_tagged_mapping.py
@@ -617,9 +616,7 @@ class TestSubWithTaggedMapping:
         out_text, out_mappings = sub_with_tagged_mapping(pat, rep, in_text, mappings)
         _check_mapping_continuty(out_mappings)
         assert out_text == "WORD"
-        for i in range(len(in_text)):
-            assert out_mappings[i].pos == (i, i + 1)
-            assert not out_mappings[i].deleted
+        _assert_mappings(out_mappings, [(i, i + 1) for i in range(len(in_text))])
 
     def test_word_boundary_no_match(self):
         in_text = "wordF"
@@ -629,9 +626,7 @@ class TestSubWithTaggedMapping:
         out_text, out_mappings = sub_with_tagged_mapping(pat, rep, in_text, mappings)
         _check_mapping_continuty(out_mappings)
         assert out_text == "wordF"
-        for i in range(len(in_text)):
-            assert out_mappings[i].pos == (i, i + 1)
-            assert not out_mappings[i].deleted
+        _assert_mappings(out_mappings, [(i, i + 1) for i in range(len(in_text))])
 
     # ------------------------------------------------------------------
     # Multiple groups case from play_with_tagged_mapping.py
@@ -644,9 +639,7 @@ class TestSubWithTaggedMapping:
         out_text, out_mappings = sub_with_tagged_mapping(pat, rep, in_text, mappings)
         _check_mapping_continuty(out_mappings)
         assert out_text == "a123"
-        for i in range(len(in_text)):
-            assert out_mappings[i].pos == (i, i + 1)
-            assert not out_mappings[i].deleted
+        _assert_mappings(out_mappings, [(i, i + 1) for i in range(len(in_text))])
 
     # ------------------------------------------------------------------
     # Anchor cases from play_with_tagged_mapping.py
@@ -659,11 +652,7 @@ class TestSubWithTaggedMapping:
         out_text, out_mappings = sub_with_tagged_mapping(pat, rep, in_text, mappings)
         _check_mapping_continuty(out_mappings)
         assert out_text == "end"
-        assert out_mappings[0].pos == (0, 1)
-        assert out_mappings[1].pos == (1, 2)
-        assert out_mappings[2].pos == (2, 3)
-        for m in out_mappings:
-            assert not m.deleted
+        _assert_mappings(out_mappings, [(0, 1), (1, 2), (2, 3)])
 
     def test_beginning_of_string_anchor(self):
         in_text = "START"
@@ -673,10 +662,4 @@ class TestSubWithTaggedMapping:
         out_text, out_mappings = sub_with_tagged_mapping(pat, rep, in_text, mappings)
         _check_mapping_continuty(out_mappings)
         assert out_text == "start"
-        assert out_mappings[0].pos == (0, 1)
-        assert out_mappings[1].pos == (1, 2)
-        assert out_mappings[2].pos == (2, 3)
-        assert out_mappings[3].pos == (3, 4)
-        assert out_mappings[4].pos == (4, 5)
-        for m in out_mappings:
-            assert not m.deleted
+        _assert_mappings(out_mappings, [(0, 1), (1, 2), (2, 3), (3, 4), (4, 5)])
