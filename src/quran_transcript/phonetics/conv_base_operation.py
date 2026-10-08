@@ -80,6 +80,9 @@ class PhonetizerMappings:
     def __getitem__(self, idx: int):
         return self.uth_to_ph[idx]
 
+    def __len__(self):
+        return len(self.uth_to_ph)
+
     def __post_init__(self):
         self._prev_pos: tuple[int, int] = (-1, -1)
         self._uth_start: int = -1
@@ -97,7 +100,6 @@ class PhonetizerMappings:
         return cls(uth_to_ph=uth_to_ph)
 
     def find_start_uth_idx(self, ph_pos_idx: int) -> int:
-        # TODO: to log or pivot search
         for uth_idx in range(0, len(self.uth_to_ph)):
             if (
                 ph_pos_idx >= self.uth_to_ph[uth_idx].pos[0]
@@ -107,7 +109,6 @@ class PhonetizerMappings:
         raise ValueError("Can not find uth_idx")
 
     def _is_uth_start_altered(self) -> bool:
-        assert self._uth_start != -1
         return self.uth_to_ph[self._uth_start].pos != self._prev_pos
 
     def find_uth_idx(self, curr_ph_pos_idx: int) -> int:
@@ -125,7 +126,48 @@ class PhonetizerMappings:
                 return uth_idx
         raise ValueError("Can not find uth_idx")
 
-    def update_ph_one_to_many(self, curr_ph_pos_start: int, N: int) -> None:
+    def find_uth_idx_or_deleted_start(self, curr_ph_pos_idx: int) -> int:
+        if self._uth_start == -1:
+            self._uth_start = self.find_start_uth_idx(curr_ph_pos_idx)
+            self._prev_pos = self.uth_to_ph[self._uth_start].pos
+
+        for uth_idx in range(self._uth_start, len(self.uth_to_ph)):
+            if uth_idx == self._uth_start and self._is_uth_start_altered():
+                start, end = self._prev_pos
+            else:
+                start, end = self.uth_to_ph[uth_idx].pos
+
+            if curr_ph_pos_idx >= start and curr_ph_pos_idx <= end:
+                return uth_idx
+        raise ValueError("Can not find uth_idx")
+
+    def find_uth_idx_or_deleted_end(self, curr_ph_pos_idx: int) -> int:
+        if self._uth_start == -1:
+            self._uth_start = self.find_start_uth_idx(curr_ph_pos_idx)
+            self._prev_pos = self.uth_to_ph[self._uth_start].pos
+
+        found_uth_idx = -1
+        for uth_idx in range(self._uth_start, len(self.uth_to_ph)):
+            if uth_idx == self._uth_start and self._is_uth_start_altered():
+                start, end = self._prev_pos
+            else:
+                start, end = self.uth_to_ph[uth_idx].pos
+
+            if (
+                curr_ph_pos_idx >= start
+                and curr_ph_pos_idx < end
+                or (start == end and (curr_ph_pos_idx + 1) == start)
+            ):
+                found_uth_idx = uth_idx
+
+        if found_uth_idx == -1:
+            raise ValueError("Can not find uth_idx")
+        else:
+            return found_uth_idx
+
+    def update_ph_one_to_many(
+        self, curr_ph_pos_start: int, new_ph_pos_start: int, N: int
+    ) -> None:
         """Update one to many relation ship"""
         # update uth_to_ph
         uth_idx = self.find_uth_idx(curr_ph_pos_start)
@@ -133,13 +175,11 @@ class PhonetizerMappings:
             # This implies two cases:
             # 1. That the one to many update is the first change to the mappings
             # 2. Or is altered (chages happends before)
-            self.uth_to_ph[uth_idx].pos = (
-                self.uth_to_ph[uth_idx].pos[0],
-                self.uth_to_ph[uth_idx].pos[1] - self.uth_to_ph[uth_idx].pos[0] + N - 1,
-            )
+            start = self.uth_to_ph[uth_idx].pos[0]
+            old_span = self.uth_to_ph[uth_idx].pos[1] - self.uth_to_ph[uth_idx].pos[0]
 
         elif uth_idx > self._uth_start:
-            # This implies a shift has occured in ids befor uth_idx
+            # This implies a shift has occured in ids before uth_idx
 
             # Moving the _uth_start
             self._uth_start = uth_idx
@@ -147,12 +187,16 @@ class PhonetizerMappings:
 
             start = self.uth_to_ph[uth_idx - 1].pos[1]
             old_span = self.uth_to_ph[uth_idx].pos[1] - self.uth_to_ph[uth_idx].pos[0]
-            self.uth_to_ph[uth_idx].pos = (
-                start,
-                start + old_span + N - 1,
-            )
         else:
             raise ValueError("UnCaptured case for `update_ph_one_to_many`")
+
+        self.uth_to_ph[uth_idx].pos = (
+            start,
+            start + old_span + N - 1,
+        )
+        # Shifting rest of items (as a delete might occur after the one to many)
+        if self._uth_start < len(self.uth_to_ph) - 1:
+            self.shift(curr_ph_pos_start + 1, new_ph_pos_start + N, 0)
 
     def shift(
         self,
@@ -160,8 +204,10 @@ class PhonetizerMappings:
         new_ph_pos_start: int,
         N: int,
     ) -> None:
-        uth_start = self.find_uth_idx(curr_ph_pos_start)
-        uth_end = self.find_uth_idx(curr_ph_pos_start + N - 1)  # end is inclusive
+        uth_start = self.find_uth_idx_or_deleted_start(curr_ph_pos_start)
+        uth_end = self.find_uth_idx_or_deleted_end(
+            curr_ph_pos_start + N - 1
+        )  # end is inclusive
 
         assert self._is_uth_start_altered(), "a shift occured it has to be altered"
 
@@ -190,8 +236,10 @@ class PhonetizerMappings:
         new_ph_pos_start: int,
         N: int,
     ) -> None:
-        uth_start = self.find_uth_idx(curr_ph_pos_start)
-        uth_end = self.find_uth_idx(curr_ph_pos_start + N - 1)  # end is inclusive
+        uth_start = self.find_uth_idx_or_deleted_start(curr_ph_pos_start)
+        uth_end = self.find_uth_idx_or_deleted_end(
+            curr_ph_pos_start + N - 1
+        )  # end is inclusive
 
         shift = new_ph_pos_start - curr_ph_pos_start
         prev_pos = (-1, -1)
@@ -591,7 +639,7 @@ def sub_with_tagged_mapping(
                 elif tag_pat_len == 1 and (len(tag_rep_text) > 1):
                     shifted = True
                     # one to many
-                    mappings.update_ph_one_to_many(in_pos, len(tag_rep_text))
+                    mappings.update_ph_one_to_many(in_pos, out_pos, len(tag_rep_text))
                 else:
                     print(tag_pat_len, len(tag_rep_text))
                     raise MappedTagPrasingCardinalityError(
@@ -612,6 +660,8 @@ def sub_with_tagged_mapping(
     out_text += text[in_pos:]
     if shifted and in_pos < len(text):
         mappings.shift(in_pos, out_pos, len(text) - in_pos)
+
+    print(f"Last uth: {mappings._uth_start}", len(mappings))
 
     return out_text, mappings
 

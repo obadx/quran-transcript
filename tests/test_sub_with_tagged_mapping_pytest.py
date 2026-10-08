@@ -453,6 +453,7 @@ class TestSubWithTaggedMapping:
         rep = r"<x:A><r:\1>"
         mappings = init_mappings(in_text)
         out_text, out_mappings = sub_with_tagged_mapping(pat, rep, in_text, mappings)
+        _prety_print(pat, rep, in_text, out_text, out_mappings)
         _check_mapping_continuty(out_mappings)
         assert out_text == "Ahmed Adef Mahmoud Adef Hello"
         _assert_mappings(
@@ -586,6 +587,7 @@ class TestSubWithTaggedMapping:
         rep = r"<x:AAAA><r:\1><y:NNN>"
         mappings = init_mappings(in_text)
         out_text, out_mappings = sub_with_tagged_mapping(pat, rep, in_text, mappings)
+        _prety_print(pat, rep, in_text, out_text, out_mappings)
         _check_mapping_continuty(out_mappings)
         assert out_text == "AAAAdefNNN Hello"
         _assert_mappings(
@@ -663,3 +665,236 @@ class TestSubWithTaggedMapping:
         _check_mapping_continuty(out_mappings)
         assert out_text == "start"
         _assert_mappings(out_mappings, [(0, 1), (1, 2), (2, 3), (3, 4), (4, 5)])
+
+
+# ----------------------------------------------------------------------
+# Cascaded (two-stage) cases from play_with_tagged_mapping.py
+# ----------------------------------------------------------------------
+class TestCascadedSubWithTaggedMapping:
+    def test_cascade_one_to_many_delete_shifting_normal_text(self):
+        in_text = "aNdef Hello"
+        pat = r"M:<x:[ab]>.<r:(def)>"
+        rep = r"<x:AAAA><r:\1>"
+        mappings = init_mappings(in_text)
+
+        mid_text, mappings = sub_with_tagged_mapping(pat, rep, in_text, mappings)
+        _prety_print(pat, rep, in_text, mid_text, mappings)
+        _check_mapping_continuty(mappings)
+        assert mid_text == "AAAAdef Hello"
+
+        mid_pat = r"M:<x:A><r:d>"
+        mid_rep = r"<x:FFF><r:d>"
+        out_text, out_mappings = sub_with_tagged_mapping(
+            mid_pat, mid_rep, mid_text, mappings
+        )
+        _prety_print(mid_pat, mid_rep, in_text, out_text, out_mappings)
+        _check_mapping_continuty(out_mappings)
+
+        assert out_text == "AAAFFFdef Hello"
+        _assert_mappings(
+            out_mappings,
+            [
+                (0, 6),
+                (6, 6),
+                (6, 7),
+                (7, 8),
+                (8, 9),
+                (9, 10),
+                (10, 11),
+                (11, 12),
+                (12, 13),
+                (13, 14),
+                (14, 15),
+            ],
+            deleted_idx={1},
+        )
+
+    def test_cascade_one_to_many_then_replace_with_fff(self):
+        in_text = "aNdef Hello"
+        pat = r"M:<x:[ab]>.<r:(def)>"
+        rep = r"<x:AAAA><r:\1>"
+        mappings = init_mappings(in_text)
+
+        mid_text, mappings = sub_with_tagged_mapping(pat, rep, in_text, mappings)
+        _prety_print(pat, rep, in_text, mid_text, mappings)
+        _check_mapping_continuty(mappings)
+        assert mid_text == "AAAAdef Hello"
+
+        mid_pat = r"M:<x:A>.<r:(ef)>"
+        mid_rep = r"<x:FFF><r:\1>"
+        out_text, out_mappings = sub_with_tagged_mapping(
+            mid_pat, mid_rep, mid_text, mappings
+        )
+        _prety_print(mid_pat, mid_rep, in_text, out_text, out_mappings)
+        _check_mapping_continuty(out_mappings)
+
+        assert out_text == "AAAFFFef Hello"
+        _assert_mappings(
+            out_mappings,
+            [
+                (0, 6),
+                (6, 6),
+                (6, 6),
+                (6, 7),
+                (7, 8),
+                (8, 9),
+                (9, 10),
+                (10, 11),
+                (11, 12),
+                (12, 13),
+                (13, 14),
+            ],
+            deleted_idx={1, 2},
+        )
+
+    def test_cascade_one_to_many_then_replace_dropping_prefix(self):
+        in_text = "aNdef Hello"
+        pat = r"M:<x:[ab]>.<r:(def)>"
+        rep = r"<x:AAAA><r:\1>"
+        mappings = init_mappings(in_text)
+
+        mid_text, mappings = sub_with_tagged_mapping(pat, rep, in_text, mappings)
+        _prety_print(pat, rep, in_text, mid_text, mappings)
+        _check_mapping_continuty(mappings)
+        assert mid_text == "AAAAdef Hello"
+
+        mid_pat = r"M:<x:A>.<r:(ef)>"
+        mid_rep = r"<r:\1>"
+        out_text, out_mappings = sub_with_tagged_mapping(
+            mid_pat, mid_rep, mid_text, mappings
+        )
+        _prety_print(mid_pat, mid_rep, in_text, out_text, out_mappings)
+        _check_mapping_continuty(out_mappings)
+
+        assert out_text == "AAAef Hello"
+        _assert_mappings(
+            out_mappings,
+            [
+                (0, 3),
+                (3, 3),
+                (3, 3),
+                (3, 4),
+                (4, 5),
+                (5, 6),
+                (6, 7),
+                (7, 8),
+                (8, 9),
+                (9, 10),
+                (10, 11),
+            ],
+            deleted_idx={1, 2},
+        )
+
+    def test_cascade_delete_at_end(self):
+        in_text = "aNdef Hello"
+        pat = r"M:<x:[ab]>.<r:(def)>"
+        rep = r"<x:AAAA><r:\1>"
+        mappings = init_mappings(in_text)
+
+        mid_text, mappings = sub_with_tagged_mapping(pat, rep, in_text, mappings)
+        _prety_print(pat, rep, in_text, mid_text, mappings)
+        _check_mapping_continuty(mappings)
+        assert mid_text == "AAAAdef Hello"
+
+        mid_pat = r"M:<x:o$>"
+        mid_rep = r""
+        out_text, out_mappings = sub_with_tagged_mapping(
+            mid_pat, mid_rep, mid_text, mappings
+        )
+        _prety_print(mid_pat, mid_rep, in_text, out_text, out_mappings)
+        _check_mapping_continuty(out_mappings)
+
+        assert out_text == "AAAAdef Hell"
+        _assert_mappings(
+            out_mappings,
+            [
+                (0, 4),
+                (4, 4),
+                (4, 5),
+                (5, 6),
+                (6, 7),
+                (7, 8),
+                (8, 9),
+                (9, 10),
+                (10, 11),
+                (11, 12),
+                (12, 12),
+            ],
+            deleted_idx={1, 10},
+        )
+
+    def test_cascade_delete_tail_in_first_stage(self):
+        in_text = "aNdef Hello"
+        pat = r"M:<x:[ab]>.<r:(def)> Hello"
+        rep = r"<x:AAAA><r:\1>"
+        mappings = init_mappings(in_text)
+
+        mid_text, mappings = sub_with_tagged_mapping(pat, rep, in_text, mappings)
+        _prety_print(pat, rep, in_text, mid_text, mappings)
+        _check_mapping_continuty(mappings)
+        assert mid_text == "AAAAdef"
+
+        mid_pat = r"M:<x:A>.<r:(ef)>"
+        mid_rep = r"<x:FFF><r:\1>"
+        out_text, out_mappings = sub_with_tagged_mapping(
+            mid_pat, mid_rep, mid_text, mappings
+        )
+        _prety_print(mid_pat, mid_rep, in_text, out_text, out_mappings)
+        _check_mapping_continuty(out_mappings)
+
+        assert out_text == "AAAFFFef"
+        _assert_mappings(
+            out_mappings,
+            [
+                (0, 6),
+                (6, 6),
+                (6, 6),
+                (6, 7),
+                (7, 8),
+                (8, 8),
+                (8, 8),
+                (8, 8),
+                (8, 8),
+                (8, 8),
+                (8, 8),
+            ],
+            deleted_idx={1, 2, 5, 6, 7, 8, 9, 10},
+        )
+
+    def test_cascade_delete_tail_then_one_to_many_at_end(self):
+        in_text = "aNdef Hello"
+        pat = r"M:<x: Hello>"
+        rep = r""
+        mappings = init_mappings(in_text)
+
+        mid_text, mappings = sub_with_tagged_mapping(pat, rep, in_text, mappings)
+        _prety_print(pat, rep, in_text, mid_text, mappings)
+        _check_mapping_continuty(mappings)
+        assert mid_text == "aNdef"
+
+        mid_pat = r"M:<x:f$>"
+        mid_rep = r"<x:FFFF>"
+        out_text, out_mappings = sub_with_tagged_mapping(
+            mid_pat, mid_rep, mid_text, mappings
+        )
+        _prety_print(mid_pat, mid_rep, in_text, out_text, out_mappings)
+        _check_mapping_continuty(out_mappings)
+
+        assert out_text == "aNdeFFFF"
+        _assert_mappings(
+            out_mappings,
+            [
+                (0, 1),
+                (1, 2),
+                (2, 3),
+                (3, 4),
+                (4, 8),
+                (8, 8),
+                (8, 8),
+                (8, 8),
+                (8, 8),
+                (8, 8),
+                (8, 8),
+            ],
+            deleted_idx={5, 6, 7, 8, 9, 10},
+        )
