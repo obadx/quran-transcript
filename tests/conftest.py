@@ -9,11 +9,24 @@ from math import ceil
 import pytest
 
 from quran_transcript import Aya
+from quran_transcript.phonetics.conv_base_operation import (
+    MappingListType,
+    PhonetizerMappings,
+)
 from quran_transcript.phonetics.moshaf_attributes import MoshafAttributes
 from quran_transcript.phonetics.phonetizer import (
     QuranPhoneticScriptOutput,
     quran_phonetizer,
 )
+
+
+def _check_mapping_continuty(mappings: PhonetizerMappings | MappingListType):
+    if len(mappings) > 1:
+        last_end = mappings[0].pos[1]
+    for idx in range(1, len(mappings)):
+        if last_end != mappings[idx].pos[0]:
+            raise ValueError(f"Breaking mappings continutiy at idx: {idx}")
+        last_end = mappings[idx].pos[1]
 
 
 @dataclass

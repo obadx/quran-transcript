@@ -1,7 +1,12 @@
 from dataclasses import dataclass
 
 from .. import alphabet as alph
-from .conv_base_operation import MappingListType, MappingPos, sub_with_mapping
+from .conv_base_operation import (
+    MappingListType,
+    MappingPos,
+    init_mappings,
+    sub_with_mapping,
+)
 from .moshaf_attributes import MoshafAttributes
 from .operations import OPERATION_ORDER
 from .sifa import SifaOutput, process_sifat
@@ -31,9 +36,12 @@ def quran_phonetizer(
 
     """
     text = uhtmani_text
+    mappings = init_mappings(text)
 
     # cleaning extra scpace
-    text, mappings = sub_with_mapping(r"\s+", rf"{alph.uthmani.space}", text)
+    text, mappings = sub_with_mapping(
+        r"\s+", rf"{alph.uthmani.space}", text, mappings=mappings
+    )
     text, mappings = sub_with_mapping(r"(\s$|^\s)", r"", text, mappings=mappings)
 
     for op in OPERATION_ORDER:

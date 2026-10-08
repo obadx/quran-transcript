@@ -12,6 +12,7 @@ from quran_transcript import Aya
 from quran_transcript import alphabet as alph
 from quran_transcript.alphabet import phonetics as ph
 from quran_transcript.alphabet import uthmani as uth
+from quran_transcript.phonetics.conv_base_operation import init_mappings
 from quran_transcript.phonetics.moshaf_attributes import MoshafAttributes
 from quran_transcript.phonetics.operations import (
     AddAlifIsmAllah,
@@ -934,9 +935,11 @@ def test_disassemble_hrof_moqatta(
     in_text: str, target_text: str, moshaf: MoshafAttributes
 ):
     op = DisassembleHrofMoqatta()
+    t_mappings = init_mappings(target_text)
     for b_op in op.ops_before:
-        target_text, _ = b_op.apply(target_text, moshaf, None)
-    out_text, _ = op.apply(in_text, moshaf, None, mode="test")
+        target_text, t_mappings = b_op.apply(target_text, moshaf, t_mappings)
+    in_mappings = init_mappings(in_text)
+    out_text, _ = op.apply(in_text, moshaf, in_mappings, mode="test")
     print(out_text)
     assert out_text == target_text
 
@@ -1617,9 +1620,11 @@ def test_disassemble_hrof_moqatta(
 )
 def test_special_cases(in_text: str, target_text: str, moshaf: MoshafAttributes):
     op = SpecialCases()
+    t_mappings = init_mappings(target_text)
     for b_op in op.ops_before:
-        target_text, _ = b_op.apply(target_text, moshaf, None)
-    out_text, _ = op.apply(in_text, moshaf, None, mode="test")
+        target_text, t_mappings = b_op.apply(target_text, moshaf, t_mappings)
+    in_mappings = init_mappings(in_text)
+    out_text, _ = op.apply(in_text, moshaf, in_mappings, mode="test")
     print(out_text)
     assert out_text == target_text
 
@@ -2893,15 +2898,17 @@ def test_imala(in_text: str, target_text: str, moshaf: MoshafAttributes):
 )
 def test_madd(in_text: str, target_text: str, moshaf: MoshafAttributes):
     op = Madd()
+    t_mappings = init_mappings(target_text)
     for b_op in op.ops_before:
-        target_text, _ = b_op.apply(
+        target_text, t_mappings = b_op.apply(
             target_text,
             moshaf,
-            None,
+            t_mappings,
             mode="test",
             discard_ops=[EnlargeSmallLetters()],
         )
-    out_text, _ = op.apply(in_text, moshaf, None, mode="test")
+    in_mappings = init_mappings(in_text)
+    out_text, in_mappings = op.apply(in_text, moshaf, in_mappings, mode="test")
     print(f"Target Text:\n'{target_text}'")
     print(f"Out Text:\n'{out_text}'")
     assert out_text == target_text

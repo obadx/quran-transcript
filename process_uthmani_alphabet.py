@@ -1,11 +1,16 @@
 import json
 import re
 from dataclasses import asdict
+from hashlib import new
 from pathlib import Path
 
 from quran_transcript import Aya
 from quran_transcript import alphabet as alph
 from quran_transcript.alphabet import BeginHamzatWasl, SpecialPattern, UthmaniAlphabet
+from quran_transcript.phonetics.conv_base_operation import (
+    init_mappings,
+    sub_with_tagged_mapping,
+)
 
 
 def get_uthmani_alpabet() -> list[str]:
@@ -14,6 +19,52 @@ def get_uthmani_alpabet() -> list[str]:
     for aya in aya.get_ayat_after(114):
         alphabet |= set(aya.get().uthmani)
     return sorted(alphabet)
+
+
+def process_hrofp_moqtta_tagged_mapping(
+    key_to_expand: dict[str, str],
+) -> dict[str, str]:
+    new_key_to_expand = {}
+    for key, expand in key_to_expand.items():
+        key_words = key.split(alph.uthmani.space)
+        expand_words = expand.split(alph.uthmani.space)
+        if len(key_words) == 2:
+            word = key_words[0]
+            residual = alph.uthmani.space + key_words[1]
+            expand_words = expand_words[:-1]
+        else:
+            word = key
+            residual = ""
+
+        chars = re.findall(f".{alph.uthmani.madd}?", word)
+
+        # Starting condition
+        new_key = f"M:<s:(^|{alph.uthmani.space})>"
+        new_expand = r"<s:\1>"
+        for idx, (char, w_expand) in enumerate(zip(chars, expand_words)):
+            new_expand += f"<p{idx}:{w_expand}"
+            if len(char) == 1:
+                new_key += f"<p{idx}:{char}>"
+            elif len(char) == 2:
+                new_key += f"<p{idx}:{char[0]}>{char[1]}"
+            else:
+                raise ValueError()
+
+            if idx != (len(chars) - 1):
+                # add space (for non last iteration)
+                new_expand += alph.uthmani.space
+            new_expand += ">"  # closing the exapnd
+
+        if residual:
+            new_key += f"<r:{residual}>"
+            new_expand += f"<r:{residual}>"
+
+        # end
+        new_key += f"<e:({alph.uthmani.space}|$)>"
+        new_expand += r"<e:\2>"
+
+        new_key_to_expand[new_key] = new_expand
+    return new_key_to_expand
 
 
 if __name__ == "__main__":
@@ -38,6 +89,14 @@ if __name__ == "__main__":
         "قٓ": "قَا~فْ",
         "نٓ": "نُو~نْ",
     }
+    hrof_moqtta_disassemble = process_hrofp_moqtta_tagged_mapping(
+        hrof_moqtta_disassemble
+    )
+    for key, val in hrof_moqtta_disassemble.items():
+        print(key)
+        print(val)
+        sub_with_tagged_mapping(key, val, "", init_mappings(key))
+        print("-" * 40)
     special_patterns = [
         # SpecialPattern(
         #     pattern=f"{alph.uthmani.lam}({alph.uthmani.kasra})?{alph.uthmani.lam}{alph.uthmani.shadda}{alph.uthmani.fatha}{alph.uthmani.haa}",

@@ -10,11 +10,16 @@ from .conv_base_operation import (
     add_tajweed_rule_to_mappings,
     get_mappings,
     sub_with_mapping,
+    sub_with_tagged_mapping,
 )
 from .moshaf_attributes import MoshafAttributes
 from .tajweed_rulses import (
     AaredMaddRule,
     IdghamKamel,
+    IdghamWithGunnah,
+    Ikhfaa,
+    Iqlab,
+    IzharHalqy,
     LazemMaddRule,
     LeenMaddRule,
     MonfaselMaddRule,
@@ -35,29 +40,12 @@ class DisassembleHrofMoqatta(ConversionOperation):
         self,
         text: str,
         moshaf: MoshafAttributes,
-        mappings: MappingListType | None = None,
+        mappings: MappingListType,
         sura_idx: int = 0,
     ) -> tuple[str, MappingListType]:
         for word, rep in uth.hrof_moqtaa_disassemble.items():
-            new_text = re.sub(
-                f"(^|{uth.space}){word}({uth.space}|$)", f"\\1{rep}\\2", text
-            )
-            # we have inserted discounted letter
-            if len(text) != len(new_text):
-                # process mapings
-                mappings = self._process_mappings(
-                    old_text=text,
-                    uth_word=word,
-                    rep=rep,
-                    mappings=mappings,
-                )
-            text = new_text
-
-        # Initialize mappings
-        if mappings is None:
-            return text, get_mappings(text, text)
-        else:
-            return text, mappings
+            text, mappings = sub_with_tagged_mapping(word, rep, text, mappings)
+        return text, mappings
 
     def _process_mappings(
         self,
@@ -173,7 +161,7 @@ class SpecialCases(ConversionOperation):
         self,
         text: str,
         moshaf: MoshafAttributes,
-        mappings: MappingListType | None = None,
+        mappings: MappingListType,
         sura_idx: int = 0,
     ) -> tuple[str, MappingListType]:
         for case in uth.special_patterns:
@@ -240,7 +228,7 @@ class BeginWithHamzatWasl(ConversionOperation):
         self,
         text: str,
         moshaf: MoshafAttributes,
-        mappings: MappingListType | None = None,
+        mappings: MappingListType,
         sura_idx: int = 0,
     ) -> tuple[str, MappingListType]:
         new_text = text

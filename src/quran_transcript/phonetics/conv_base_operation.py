@@ -80,6 +80,9 @@ class PhonetizerMappings:
     def __getitem__(self, idx: int):
         return self.uth_to_ph[idx]
 
+    def __setitem__(self, idx: int, val):
+        self.uth_to_ph[idx] = val
+
     def __len__(self):
         return len(self.uth_to_ph)
 
@@ -1249,7 +1252,7 @@ class ConversionOperation:
         self,
         text: str,
         moshaf: MoshafAttributes,
-        mappings: MappingListType,
+        mappings: MappingListType | None,
         sura_idx: int = 0,
         discard_ops: list["ConversionOperation"] = [],
         mode: Literal["inference", "test"] = "inference",
@@ -1262,6 +1265,9 @@ class ConversionOperation:
                 is from surah Alroom so we have two ways with damma or fatha; or from surah AlAnfal so we only
                 pronounce it with fatha.
         """
+        # TODO: only using mappinsg no None
+        if mappings is None:
+            mappings = init_mappings(text)
 
         if mode == "test":
             discard_ops_names = {o.arabic_name for o in discard_ops}

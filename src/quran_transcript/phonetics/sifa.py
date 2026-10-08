@@ -7,6 +7,7 @@ from pydantic import BaseModel
 from ..alphabet import phonetic_groups as phg
 from ..alphabet import phonetics as ph
 from ..alphabet import uthmani as uth
+from .conv_base_operation import init_mappings
 from .moshaf_attributes import MoshafAttributes
 from .operations import (
     CleanEnd,
@@ -255,8 +256,9 @@ def raa_tafkheem_tarqeeq_finder(
     This specially created to handel alif after lam اسم الله
     """
     clean_text = uthmani_script
+    mappings = init_mappings(uthmani_script)
     for op in RAA_OPERATIONS:
-        clean_text, _ = op.apply(clean_text, moshaf, None)
+        clean_text, mappings = op.apply(clean_text, moshaf, mappings)
 
     raa_reg = (
         f"({uth.raa})[{uth.harakat_group}{uth.shadda}{uth.ras_haaa}{uth.imala_sign}]?"

@@ -13,6 +13,7 @@ from quran_transcript.phonetics.conv_base_operation import (
     parse_tags,
     sub_with_tagged_mapping,
 )
+from tests.conftest import _check_mapping_continuty
 
 
 # ----------------------------------------------------------------------
@@ -32,15 +33,6 @@ def _assert_mappings(
 
 def _render(mappings: PhonetizerMappings, out_text: str) -> list[str]:
     return [out_text[m.pos[0] : m.pos[1]] for m in mappings.uth_to_ph]
-
-
-def _check_mapping_continuty(mappings: PhonetizerMappings):
-    if mappings.uth_to_ph:
-        last_end = mappings.uth_to_ph[0].pos[1]
-    for idx in range(1, len(mappings.uth_to_ph)):
-        if last_end != mappings.uth_to_ph[idx].pos[0]:
-            raise ValueError(f"Breaking mappings continutiy at idx: {idx}")
-        last_end = mappings.uth_to_ph[idx].pos[1]
 
 
 def _prety_print(

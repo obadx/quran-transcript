@@ -6,6 +6,7 @@ from quran_transcript import Aya, MoshafAttributes, quran_phonetizer
 from quran_transcript.phonetics.conv_base_operation import (
     MappingListType,
     MappingPos,
+    PhonetizerMappings,
     get_mappings,
     merge_mappings,
     sub_with_mapping,
@@ -21,6 +22,7 @@ from quran_transcript.phonetics.tajweed_rulses import (
     NormalMaddRule,
     Qalqalah,
 )
+from tests.conftest import _check_mapping_continuty
 
 # Import the sub_with_mapping function from the existing test file
 
@@ -179,6 +181,7 @@ def test_sub_with_mapping_operations(
     """Test sub_with_mapping function with various regex operations."""
 
     result_text, result_mappings = sub_with_mapping(pattern, repl, input_text)
+    _check_mapping_continuty(result_mappings)
 
     # Assert output text matches expected
     assert result_text == expected_output, (
@@ -342,6 +345,7 @@ def test_get_mappings(
     """Test Get Mappings"""
 
     out_mappings = get_mappings(input_text, out_text, in_mappings)
+    _check_mapping_continuty(out_mappings)
 
     # Assert each mapping matches expected
     print(f"OUT: {out_mappings}")
@@ -1473,9 +1477,15 @@ def test_phonetizer_with_mappings(
     print(uth_text)
     print(ph_out.phonemes)
     print(ph_out.mappings)
+    _check_mapping_continuty(ph_out.mappings)
 
+    out_mappings = (
+        ph_out.mappings.uth_to_ph
+        if isinstance(ph_out.mappings, PhonetizerMappings)
+        else ph_out.mappings
+    )
     assert ph_out.phonemes == ph_text
-    assert exp_mappings == ph_out.mappings
+    assert exp_mappings == out_mappings
     for idx, uth_c in enumerate(uth_text):
         print(f"UTH_IDX: `{idx}`, SPAN: `{ph_out.mappings[idx]}`")
         ph_c = ""
@@ -1490,6 +1500,8 @@ def test_phonetizer_with_mappings(
 @pytest.mark.stress
 def test_sub_with_mapping_stress_test(quran_segs_phonetized_with_constat_moshaf):
     quran_segments, ph_outs = quran_segs_phonetized_with_constat_moshaf
+    for ph_out in ph_outs:
+        _check_mapping_continuty(ph_out.mappings)
 
 
 if __name__ == "__main__":
