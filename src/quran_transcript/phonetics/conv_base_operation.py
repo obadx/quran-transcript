@@ -99,22 +99,28 @@ class PhonetizerMappings:
             uth_to_ph.append(MappingPos(pos=(idx, idx + 1)))
         return cls(uth_to_ph=uth_to_ph)
 
-    def find_start_uth_idx(self, ph_pos_idx: int) -> int:
+    def init_uth_start(self, ph_pos_idx: int) -> None:
+        if self._uth_start != -1:
+            return
+        found_uth_idx = -1
         for uth_idx in range(0, len(self.uth_to_ph)):
             if (
                 ph_pos_idx >= self.uth_to_ph[uth_idx].pos[0]
                 and ph_pos_idx < self.uth_to_ph[uth_idx].pos[1]
             ):
-                return uth_idx
-        raise ValueError("Can not find uth_idx")
+                found_uth_idx = uth_idx
+                break
+        if found_uth_idx == -1:
+            raise ValueError("Can not find uth_idx at first time")
+
+        self._uth_start = found_uth_idx
+        self._prev_pos = self.uth_to_ph[found_uth_idx].pos
 
     def _is_uth_start_altered(self) -> bool:
         return self.uth_to_ph[self._uth_start].pos != self._prev_pos
 
     def find_uth_idx(self, curr_ph_pos_idx: int) -> int:
-        if self._uth_start == -1:
-            self._uth_start = self.find_start_uth_idx(curr_ph_pos_idx)
-            self._prev_pos = self.uth_to_ph[self._uth_start].pos
+        self.init_uth_start(curr_ph_pos_idx)
 
         for uth_idx in range(self._uth_start, len(self.uth_to_ph)):
             if uth_idx == self._uth_start and self._is_uth_start_altered():
@@ -127,9 +133,7 @@ class PhonetizerMappings:
         raise ValueError("Can not find uth_idx")
 
     def find_uth_idx_or_deleted_start(self, curr_ph_pos_idx: int) -> int:
-        if self._uth_start == -1:
-            self._uth_start = self.find_start_uth_idx(curr_ph_pos_idx)
-            self._prev_pos = self.uth_to_ph[self._uth_start].pos
+        self.init_uth_start(curr_ph_pos_idx)
 
         for uth_idx in range(self._uth_start, len(self.uth_to_ph)):
             if uth_idx == self._uth_start and self._is_uth_start_altered():
@@ -142,9 +146,7 @@ class PhonetizerMappings:
         raise ValueError("Can not find uth_idx")
 
     def find_uth_idx_or_deleted_end(self, curr_ph_pos_idx: int) -> int:
-        if self._uth_start == -1:
-            self._uth_start = self.find_start_uth_idx(curr_ph_pos_idx)
-            self._prev_pos = self.uth_to_ph[self._uth_start].pos
+        self.init_uth_start(curr_ph_pos_idx)
 
         found_uth_idx = -1
         for uth_idx in range(self._uth_start, len(self.uth_to_ph)):
