@@ -102,13 +102,17 @@ class PhonetizerMappings:
     def init_uth_start(self, ph_pos_idx: int) -> None:
         if self._uth_start != -1:
             return
+        lo, hi = 0, len(self.uth_to_ph) - 1
         found_uth_idx = -1
-        for uth_idx in range(0, len(self.uth_to_ph)):
-            if (
-                ph_pos_idx >= self.uth_to_ph[uth_idx].pos[0]
-                and ph_pos_idx < self.uth_to_ph[uth_idx].pos[1]
-            ):
-                found_uth_idx = uth_idx
+        while lo <= hi:
+            mid = (lo + hi) // 2
+            start, end = self.uth_to_ph[mid].pos
+            if ph_pos_idx < start:
+                hi = mid - 1
+            elif ph_pos_idx >= end:
+                lo = mid + 1
+            else:
+                found_uth_idx = mid
                 break
         if found_uth_idx == -1:
             raise ValueError("Can not find uth_idx at first time")
@@ -662,8 +666,6 @@ def sub_with_tagged_mapping(
     out_text += text[in_pos:]
     if shifted and in_pos < len(text):
         mappings.shift(in_pos, out_pos, len(text) - in_pos)
-
-    print(f"Last uth: {mappings._uth_start}", len(mappings))
 
     return out_text, mappings
 
