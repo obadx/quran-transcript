@@ -1,12 +1,13 @@
 import re
-from dataclasses import dataclass, field
-from typing import Literal, TypeAlias
+from dataclasses import dataclass
+from typing import Callable, Literal, TypeAlias
+from uuid import uuid4
 
 from Levenshtein import opcodes
 
 from .. import alphabet as alph
 from .moshaf_attributes import MoshafAttributes
-from .tajweed_rulses import TajweedRule
+from .tajweed_rulses import TajweedRule, TajweedRuleMetadata, TajweedRuleType
 
 
 @dataclass
@@ -68,14 +69,198 @@ class MappingPos:
 MappingListType: TypeAlias = list[MappingPos]
 
 
+def merge_mappings(
+    mappings: MappingListType | None, new_mappings: MappingListType
+) -> MappingListType:
+    """
+    Merge character position mappings from original text with mappings after regex substitution.
+
+    * This function maintains the relationship between character positions in the original text
+    and their corresponding positions after one or more regex substitution operations.
+
+    **Important:** This function **mutates** the input `mappings` list in‑place.
+    It updates each `MappingPos` object with a new `pos` tuple and a new `deleted`
+    flag, and also merges the tajweed rules from the corresponding entries in
+    `new_mappings`. The length of the list remains unchanged.
+
+    Args:
+        mappings: Previous character position mappings from original text. Each MappingPos
+                 represents a span (start, end) in the output text. `None` values indicate
+                 previously deleted characters. If `None`, returns new_mappings unchanged.
+        new_mappings: New character position mappings after the latest regex substitution.
+                     `None` values represent characters deleted in this substitution.
+
+    Returns:
+        Merged position mappings maintaining the relationship between the original text
+        and the final substituted text. The length matches the original mappings length.
+
+    Raises:
+        ValueError: if `new_mappings` is an empty list
+
+
+
+    Examples:
+        # Identity mapping - no change
+        >>> old = [MappingPos(pos=(0, 1)), MappingPos(pos=(1, 2))]
+        >>> new = [MappingPos(pos=(0, 1)), MappingPos(pos=(1, 2))]
+        >>> result = merge_mappings(old, new)
+        # result: [MappingPos(pos=(0, 1)), MappingPos(pos=(1, 2))]
+
+        # Expansion - single character expands to range
+        >>> old = [MappingPos(pos=(0, 1))]
+        >>> new = [MappingPos(pos=(0, 3))]
+        >>> result = merge_mappings(old, new)
+        # result: [MappingPos(pos=(0, 3))]
+
+        # Contraction with deletions - range contracts with None values
+        >>> old = [MappingPos(pos=(0, 3))]
+        >>> new = [MappingPos(pos=(0, 1)), MappingPos(pos=(1, 1), deleted=True), MappingPos(pos=(1, 5))]
+        >>> result = merge_mappings(old, new)
+        # result: [MappingPos(pos=(0, 5))]  # spans first to last
+    """
+
+    if mappings is None:
+        return new_mappings
+
+    if new_mappings == []:
+        raise ValueError("`new_mappings` should not be an empty list")
+
+    for idx in range(len(mappings)):
+        old_map = mappings[idx]
+        if old_map is None:
+            raise ValueError()
+        start = old_map.pos[0]
+        end = old_map.pos[1]
+
+        if old_map.deleted:
+            if start < len(new_mappings):
+                mappings[idx].pos = (
+                    new_mappings[start].pos[0],
+                    new_mappings[start].pos[0],
+                )
+            else:
+                mappings[idx].pos = (
+                    new_mappings[-1].pos[1],
+                    new_mappings[-1].pos[1],
+                )
+
+        else:
+            mappings[idx].pos = (
+                new_mappings[start].pos[0],
+                new_mappings[end - 1].pos[1],
+            )
+
+        deleted = True
+        for new_idx in range(start, end):
+            mappings[idx].add_tajweed_rule(new_mappings[new_idx].tajweed_rules)
+            deleted = deleted and new_mappings[new_idx].deleted
+        mappings[idx].deleted = deleted
+
+    return mappings
+
+
+TagType: TypeAlias = Literal["TAJWEED", "TAJWEED_DEP", "TAG"]
+TajweedRulePartType: TypeAlias = Literal[
+    "PIVOT_START", "PIVOT_END", "DEP_START", "DEP_END"
+]
+
+
+@dataclass
+class TajweedRulePart:
+    id: str
+    part_type: TajweedRulePartType
+    taj_type: TajweedRuleType
+    tag: str
+    ph_idx: int
+
+
+class TajweedRulePartContainer:
+    """
+    Shift or deleted assumed to be called before insert
+    Attributes:
+        temp_map: in the old idx space
+    """
+
+    def __inti__(self):
+        self.map: dict[int, list[TajweedRulePart]] = {}
+        self.temp_map: dict[
+            int, list[TajweedRulePart]
+        ] = {}  # temp is in the old idx space
+
+    def reset(self):
+        self.temp_map = {}
+
+    def insert(self, idx: int, taj_rule_part: TajweedRulePart) -> None:
+        if idx not in self.map:
+            self.map[idx] = []
+        self.map[idx].append(taj_rule_part)
+
+    def get_tjaweed_types(self, idx: int) -> list[TajweedRuleType]:
+        L = []
+        for part in self.map[idx]:
+            if part.part_type == "PIVOT_START":
+                L.append(part.taj_type)
+        return L
+
+    def shift(self, old_start: int, old_end: int, shift_val: int) -> None:
+        """
+        Args:
+            start (int): inclusive
+            end (int): execlusive
+
+        """
+        if shift_val == 0:
+            return
+        for idx in range(old_start, old_end):
+            new_idx = idx + shift_val
+            if new_idx in self.map:
+                # saving the old idx for later use
+                self.temp_map[new_idx] = self.map.pop(new_idx)
+
+            if idx in self.temp_map:
+                parts = self.temp_map.pop(idx)
+            else:
+                parts = self.map.pop(idx)
+
+            # updating the idx
+            for p_idx in range(len(parts)):
+                parts[p_idx].ph_idx = new_idx
+            self.map[new_idx] = parts
+
+    def delete_shift(self, old_start: int, old_end: int, new_idx: int) -> None:
+        """Not acully deleting but moving old idx and concatenate them to the new index
+        Args:
+            start (int): inclusive
+            end (int): execlusive
+
+        """
+        if old_end - 1 == new_idx:
+            return
+        for idx in range(old_start, old_end):
+            if idx in self.temp_map:
+                parts = self.temp_map.pop(idx)
+            else:
+                parts = self.map.pop(idx)
+
+            # updating the idx
+            for p_idx in range(len(parts)):
+                parts[p_idx].ph_idx = new_idx
+            self.map[new_idx].extend(parts)
+
+
 @dataclass
 class PhonetizerMappings:
     """The main Idea here it to update the mappings progressivly (avoid looping
-    at every partial update or shift)
+        at every partial update or shift)
+
+    Attributes:
+    taj_parts: is a sorted list according to to TajweedRulePart.ph_pos
+
 
     """
 
     uth_to_ph: list[MappingPos]
+    taj_parts: list[TajweedRulePart]
 
     def __getitem__(self, idx: int):
         return self.uth_to_ph[idx]
@@ -89,10 +274,14 @@ class PhonetizerMappings:
     def __post_init__(self):
         self._prev_pos: tuple[int, int] = (-1, -1)
         self._uth_start: int = -1
+        self._taj_to_id = {}
+        self._taj_parts = TajweedRulePartContainer()
 
     def reset(self):
         self._uth_start = -1
         self._prev_pos = (-1, -1)
+        self._taj_to_id = {}
+        self._taj_parts.reset()
 
     @classmethod
     def init_mappings(cls, text: str):
@@ -213,6 +402,14 @@ class PhonetizerMappings:
         new_ph_pos_start: int,
         N: int,
     ) -> None:
+
+        # Shifting Tajweed Rules
+        self._taj_parts.shift(
+            curr_ph_pos_start,
+            curr_ph_pos_start + N,
+            new_ph_pos_start - curr_ph_pos_start,
+        )
+
         uth_start = self.find_uth_idx_or_deleted_start(curr_ph_pos_start)
         uth_end = self.find_uth_idx_or_deleted_end(
             curr_ph_pos_start + N - 1
@@ -245,6 +442,10 @@ class PhonetizerMappings:
         new_ph_pos_start: int,
         N: int,
     ) -> None:
+        # Shifting Tajweed rule parts
+        self._taj_parts.delete_shift(
+            curr_ph_pos_start, curr_ph_pos_start + N, new_ph_pos_start
+        )
         uth_start = self.find_uth_idx_or_deleted_start(curr_ph_pos_start)
         uth_end = self.find_uth_idx_or_deleted_end(
             curr_ph_pos_start + N - 1
@@ -276,100 +477,64 @@ class PhonetizerMappings:
             self._uth_start = uth_idx
             self._prev_pos = prev_pos
 
+    def insert_tajweed_rule_part(
+        self,
+        new_ph_pos_start: int,
+        new_ph_pos_end: int,
+        parsed_taj_rule_tag: str,
+        is_dep: bool,
+        tajweed_rule_type: TajweedRuleType | None,
+        insert_tajweed_cond: Callable[[list[TajweedRuleType], TajweedRuleType], bool]
+        | None,
+        tajweed_rule_tag: str,
+    ) -> None:
+        """
+        WARN: insert is assumed to be called after shift
+        """
+        # WARN: insert is assumed to be called after shift
+
+        if tajweed_rule_type is None:
+            return
+        if parsed_taj_rule_tag not in self._taj_to_id:
+            self._taj_to_id[parsed_taj_rule_tag] = str(uuid4())
+
+        if insert_tajweed_cond is None:
+            cond = True
+        else:
+            cond = insert_tajweed_cond(
+                self._taj_parts.get_tjaweed_types(new_ph_pos_start), tajweed_rule_type
+            )
+
+        if cond:
+            # Start
+            taj_part = TajweedRulePart(
+                id=self._taj_to_id[parsed_taj_rule_tag],
+                part_type="DEP_START" if is_dep else "PIVOT_START",
+                taj_type=tajweed_rule_type,
+                tag=tajweed_rule_tag,
+                ph_idx=new_ph_pos_start,
+            )
+            self.taj_parts.insert(new_ph_pos_start, taj_part)
+
+            # End
+            taj_part = TajweedRulePart(
+                id=self._taj_to_id[parsed_taj_rule_tag],
+                part_type="DEP_END" if is_dep else "PIVOT_END",
+                taj_type=tajweed_rule_type,
+                tag=tajweed_rule_tag,
+                ph_idx=new_ph_pos_end,
+            )
+            self.taj_parts.insert(new_ph_pos_end, taj_part)
+
+    def finalize(self, curr_ph_text_len, new_ph_text_len):
+        self._taj_parts.shift(
+            curr_ph_text_len, curr_ph_text_len + 1, new_ph_text_len - curr_ph_text_len
+        )
+
 
 def init_mappings(text: str) -> PhonetizerMappings:
     """Initialize Mappings"""
     return PhonetizerMappings.init_mappings(text)
-
-
-def merge_mappings(
-    mappings: MappingListType | None, new_mappings: MappingListType
-) -> MappingListType:
-    """
-    Merge character position mappings from original text with mappings after regex substitution.
-
-    * This function maintains the relationship between character positions in the original text
-    and their corresponding positions after one or more regex substitution operations.
-
-    **Important:** This function **mutates** the input `mappings` list in‑place.
-    It updates each `MappingPos` object with a new `pos` tuple and a new `deleted`
-    flag, and also merges the tajweed rules from the corresponding entries in
-    `new_mappings`. The length of the list remains unchanged.
-
-    Args:
-        mappings: Previous character position mappings from original text. Each MappingPos
-                 represents a span (start, end) in the output text. `None` values indicate
-                 previously deleted characters. If `None`, returns new_mappings unchanged.
-        new_mappings: New character position mappings after the latest regex substitution.
-                     `None` values represent characters deleted in this substitution.
-
-    Returns:
-        Merged position mappings maintaining the relationship between the original text
-        and the final substituted text. The length matches the original mappings length.
-
-    Raises:
-        ValueError: if `new_mappings` is an empty list
-
-
-
-    Examples:
-        # Identity mapping - no change
-        >>> old = [MappingPos(pos=(0, 1)), MappingPos(pos=(1, 2))]
-        >>> new = [MappingPos(pos=(0, 1)), MappingPos(pos=(1, 2))]
-        >>> result = merge_mappings(old, new)
-        # result: [MappingPos(pos=(0, 1)), MappingPos(pos=(1, 2))]
-
-        # Expansion - single character expands to range
-        >>> old = [MappingPos(pos=(0, 1))]
-        >>> new = [MappingPos(pos=(0, 3))]
-        >>> result = merge_mappings(old, new)
-        # result: [MappingPos(pos=(0, 3))]
-
-        # Contraction with deletions - range contracts with None values
-        >>> old = [MappingPos(pos=(0, 3))]
-        >>> new = [MappingPos(pos=(0, 1)), MappingPos(pos=(1, 1), deleted=True), MappingPos(pos=(1, 5))]
-        >>> result = merge_mappings(old, new)
-        # result: [MappingPos(pos=(0, 5))]  # spans first to last
-    """
-
-    if mappings is None:
-        return new_mappings
-
-    if new_mappings == []:
-        raise ValueError("`new_mappings` should not be an empty list")
-
-    for idx in range(len(mappings)):
-        old_map = mappings[idx]
-        if old_map is None:
-            raise ValueError()
-        start = old_map.pos[0]
-        end = old_map.pos[1]
-
-        if old_map.deleted:
-            if start < len(new_mappings):
-                mappings[idx].pos = (
-                    new_mappings[start].pos[0],
-                    new_mappings[start].pos[0],
-                )
-            else:
-                mappings[idx].pos = (
-                    new_mappings[-1].pos[1],
-                    new_mappings[-1].pos[1],
-                )
-
-        else:
-            mappings[idx].pos = (
-                new_mappings[start].pos[0],
-                new_mappings[end - 1].pos[1],
-            )
-
-        deleted = True
-        for new_idx in range(start, end):
-            mappings[idx].add_tajweed_rule(new_mappings[new_idx].tajweed_rules)
-            deleted = deleted and new_mappings[new_idx].deleted
-        mappings[idx].deleted = deleted
-
-    return mappings
 
 
 # Avoiding catching preious tag patter for example <x:aa><y:aa> we will hit the same match again so we want to have a moving cursor to avoid that
@@ -383,11 +548,11 @@ _groups = re.compile(
     re.VERBOSE,
 )
 _mapped_tags = re.compile(
-    r"<(\w\d?):((?:\\.|\[(?:\\.|[^\]\\])*\]|\(\?P<\w+>|[^>\\])*)>"
+    r"<(D[0-9][0-9]|D[0-9]|[Ta-z][0-9]?):((?:\\.|\[(?:\\.|[^\]\\])*\]|\(\?P<\w+>|[^>\\])*)>"
 )
 
 
-@dataclass
+@dataclass(frozen=True)
 class RepPart:
     t: Literal["ID", "NAME", "STR"]
     grp_id: int
@@ -395,11 +560,14 @@ class RepPart:
     text: str
 
 
-@dataclass
+@dataclass(frozen=True)
 class MapTag:
     start: int
     end: int
     tag: str
+    tag_tp: TagType
+    taj_tag: str  # Which taj tag dep is associated to
+    taj_deps: list[str]  # list of taj dep tags
     pat: str
     rep_parts: list[RepPart]
     compiled_pat: re.Pattern
@@ -554,31 +722,16 @@ def parse_tags(pat: str, rep: str) -> list[MapTag]:
     return mapped_tags
 
 
-def shift_mappings(
-    mappings: MappingListType, in_pos: int, out_pos: int, N: int, deleted: bool
-) -> MappingListType:
-    if not deleted:
-        for in_idx, out_idx in zip(
-            range(in_pos, in_pos + N),
-            range(out_pos, out_pos + N),
-        ):
-            mappings[in_idx].pos = (out_idx, out_idx + 1)
-
-    # else (deleted = True)
-    else:
-        for in_idx in range(in_pos, in_pos + N):
-            mappings[in_idx].pos = (out_pos, out_pos)
-            mappings[in_idx].deleted = True
-
-    return mappings
-
-
 def sub_with_tagged_mapping(
     pat: str,
     rep: str,
     text: str,
     mappings: PhonetizerMappings,
-) -> tuple[str, list[MappingPos]]:
+    tajweed_rule_type: TajweedRuleType | None = None,
+    insert_tajweed_cond: Callable[[list[TajweedRuleType], TajweedRuleType], bool]
+    | None = None,
+    tajweed_rule_tag: str = "",
+) -> tuple[str, PhonetizerMappings]:
     """
     Rules:
     * This a modified re.sub the defines explicit mapping from `pat` to `rep`
@@ -596,6 +749,36 @@ def sub_with_tagged_mapping(
     * rep patterns Have to be connected like r"<x:ABC><y1:\1>" but not r"<x:ABC>N<y1:\1>" (N) is not mapped
     * if a group of patterns is existis in the `pat` and does not exist in the `rep` it will be deleted like `D` in the example
     * the len of `tag pattern` and `tag replacemnt` has either to be euqal in length or one to many (on for `tag pattern` and many for `tag replacemnt`
+
+    ## Adding Tajweed Rule
+    * You can add tajweed rules using Tajweed tag `T` with our wihout numbers from 0 to 9 like `T0`
+    * Also you can annoated depedencies which the Tajweed Rule relies on. Using `D` tag followed by a single digit number or two.
+    * If you you used `T` tag only without any number digit you can you use `D` followed by a single digit either before the Tajweed Rule or after it like:
+    EX: pat = r"<D0:ab><T:cd><D1:ef>"
+        rep = r"<D0:ab><T:CD><D1:ef>"
+    * If you used a Tajweed tag `T` followed by a single digit like `T1`, Tajweed dpedencies has to have two digits like `D10`. The first digit corrresponds to the digit following the Tajweed tag and the second on is the Depdency index
+    EX: pat = r"<T0:ab><D00:cd><T1:ef><D10:gh>"
+        rep = r"<T0:AB><D00:cd><T1:EF><D10:gh>"
+    * Depdeny order matters, increments with one and have to start from 0 like:
+    EX: pat = r"<D0:ab><T:cd><D1:ef>"
+        rep = r"<D0:ab><T:CD><D1:ef>"
+
+
+    ### What is not Allowed with Tajweed Tags
+    * Using a single digit depenceis like `D0` with a Tajweed Tag with a digit `T1`
+    * Using a two digit depdency like `D12` with no digit Tajweed tag like: `T`
+    * Out of order depencies or increment more than one or start with non zero depdency index like:
+    EX: pat = r"<D5:ab><T:cd><D3:ef>"
+        rep = r"<D5:ab><T:CD><D3:ef>"
+
+    EX: pat = r"<D2:ab><T:cd><D4:ef>"
+        rep = r"<D2:ab><T:CD><D4:ef>"
+
+
+    EX: pat = r"<D2:ab><T:cd><D3:ef>"
+        rep = r"<D2:ab><T:CD><D3:ef>"
+
+
 
     Limitation:
     * not supporting named group followed by the end of tag brackets in `rep` like this: `r"<x:X><r:\\g<c>>"`
@@ -660,6 +843,21 @@ def sub_with_tagged_mapping(
                 tag_rep_text = ""
                 mappings.delete_shift(in_pos, out_pos, tag_pat_len)
 
+            if m_tag.tag_tp in {"TAJWEED", "TAJWEED_DEP"}:
+                if not shifted:
+                    mappings.shift(in_pos, out_pos, tag_pat_len)
+                    shifted = True
+                is_dep = True if m_tag.tag_tp == "TAJWEED_DEP" else False
+                mappings.insert_tajweed_rule_part(
+                    out_pos,
+                    out_pos + len(tag_rep_text),
+                    m_tag.tag,
+                    is_dep,
+                    tajweed_rule_type,
+                    insert_tajweed_cond,
+                    tajweed_rule_tag,  # NOTE: `tajweed_rule_tag` here is not the tag name but another thig raelate d to Tajweed rule we might need to rename it for disamiguity
+                )
+
             in_pos += tag_pat_len
             out_pos += len(tag_rep_text)
             out_text += tag_rep_text
@@ -669,6 +867,7 @@ def sub_with_tagged_mapping(
     out_text += text[in_pos:]
     if shifted and in_pos < len(text):
         mappings.shift(in_pos, out_pos, len(text) - in_pos)
+    mappings.finalize(len(text), len(out_text))
 
     return out_text, mappings
 
