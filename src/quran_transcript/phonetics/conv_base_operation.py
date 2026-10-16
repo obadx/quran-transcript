@@ -209,7 +209,7 @@ class TajweedRulePartContainer:
             end (int): execlusive
 
         """
-        if shift_val == 0:
+        if shift_val == 0 or self.map == {}:
             return
         for idx in range(old_start, old_end):
             new_idx = idx + shift_val
@@ -240,12 +240,12 @@ class TajweedRulePartContainer:
             if idx in self.temp_map:
                 parts = self.temp_map.pop(idx)
             else:
-                parts = self.map.pop(idx)
+                parts = self.map.pop(idx, [])
 
             # updating the idx
             for p_idx in range(len(parts)):
                 parts[p_idx].ph_idx = new_idx
-            self.map[new_idx].extend(parts)
+            self.map.setdefault(new_idx, []).extend(parts)
 
 
 @dataclass
@@ -260,7 +260,6 @@ class PhonetizerMappings:
     """
 
     uth_to_ph: list[MappingPos]
-    taj_parts: list[TajweedRulePart]
 
     def __getitem__(self, idx: int):
         return self.uth_to_ph[idx]
