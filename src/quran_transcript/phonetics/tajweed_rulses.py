@@ -18,6 +18,7 @@ class TajweedRuleMetadata:
     pivot: tuple[int, int]
     deps: list[tuple[int, int]]
     tag: str
+    rule_type: TajweedRuleType
 
 
 @dataclass

@@ -1,6 +1,6 @@
 import re
 from dataclasses import dataclass
-from typing import Callable, Literal, TypeAlias
+from typing import Callable, Iterator, Literal, TypeAlias
 from uuid import uuid4
 
 from Levenshtein import opcodes
@@ -181,11 +181,16 @@ class TajweedRulePartContainer:
         temp_map: in the old idx space
     """
 
-    def __inti__(self):
+    def __init__(self):
         self.map: dict[int, list[TajweedRulePart]] = {}
         self.temp_map: dict[
             int, list[TajweedRulePart]
         ] = {}  # temp is in the old idx space
+
+    def __iter__(self) -> Iterator[TajweedRulePart]:
+        sorted_keys = sorted(self.map.keys())
+        for idx in sorted_keys:
+            yield from self.map[idx]
 
     def reset(self):
         self.temp_map = {}
@@ -242,6 +247,9 @@ class TajweedRulePartContainer:
             else:
                 parts = self.map.pop(idx, [])
 
+            if not parts:
+                continue
+
             # updating the idx
             for p_idx in range(len(parts)):
                 parts[p_idx].ph_idx = new_idx
@@ -254,7 +262,8 @@ class PhonetizerMappings:
         at every partial update or shift)
 
     Attributes:
-    taj_parts: is a sorted list according to to TajweedRulePart.ph_pos
+    _taj_parts: TajweedRulePartContainer holding tajweed rule parts keyed by
+        their phonetic space index.
 
 
     """
@@ -513,7 +522,7 @@ class PhonetizerMappings:
                 tag=tajweed_rule_tag,
                 ph_idx=new_ph_pos_start,
             )
-            self.taj_parts.insert(new_ph_pos_start, taj_part)
+            self._taj_parts.insert(new_ph_pos_start, taj_part)
 
             # End
             taj_part = TajweedRulePart(
@@ -523,12 +532,20 @@ class PhonetizerMappings:
                 tag=tajweed_rule_tag,
                 ph_idx=new_ph_pos_end,
             )
-            self.taj_parts.insert(new_ph_pos_end, taj_part)
+            self._taj_parts.insert(new_ph_pos_end, taj_part)
 
     def finalize(self, curr_ph_text_len, new_ph_text_len):
         self._taj_parts.shift(
             curr_ph_text_len, curr_ph_text_len + 1, new_ph_text_len - curr_ph_text_len
         )
+
+    def get_ph_to_tajweed_rules(self) -> list[list[TajweedRuleMetadata]]:
+        max_ph = self.uth_to_ph[-1].pos[1]
+        ph_to_taj_rules = [[] for _ in range(max_ph)]
+
+        taj_to_meta = {}
+        for part in self._taj_parts:
+            ...
 
 
 def init_mappings(text: str) -> PhonetizerMappings:
@@ -654,6 +671,118 @@ class MappedTagPrasingError(Exception): ...
 class MappedTagPrasingCardinalityError(Exception): ...
 
 
+_taj_tag_re = re.compile(r"^T([0-9])$")
+_dep_tag_re = re.compile(r"^D([0-9])([0-9])?$")
+
+
+def _classify_tag_type(tag: str) -> TagType:
+    """Classify a tag name into its `TagType`.
+
+    * Tajweed pivot tags: `T` or `T0`-`T9` -> `"TAJWEED"`.
+    * Tajweed dependency tags: `D0`-`D9` or `D00`-`D99` -> `"TAJWEED_DEP"`.
+    * Anything else (including literal pattern segments) -> `"TAG"`.
+    """
+    if tag == "T" or _taj_tag_re.match(tag):
+        return "TAJWEED"
+    if _dep_tag_re.match(tag):
+        return "TAJWEED_DEP"
+    return "TAG"
+
+
+def _resolve_tajweed_tags(
+    taj_tags: list[str], dep_tags: list[str]
+) -> tuple[dict[str, str], dict[str, list[str]]]:
+    """Associate Tajweed dependency tags (`D...`) with their pivot tag (`T...`).
+
+    Args:
+        taj_tags: Tajweed pivot tags (`T` or `T0`-`T9`) in pattern order.
+        dep_tags: Tajweed dependency tags (`D0`-`D9` or `D00`-`D99`) in pattern
+            order.
+
+    Returns:
+        A tuple `(tag_to_taj, taj_to_deps)`:
+
+        * `tag_to_taj`: maps every `T`/`D` tag name to the pivot (`T`) tag it
+          belongs to.
+        * `taj_to_deps`: maps every pivot (`T`) tag to its dependency tags
+          ordered by their dependency index.
+
+    Raises:
+        MappedTagPrasingError: on any of the invalid usages documented in
+            `sub_with_tagged_mapping`, e.g. duplicate Tajweed tags, single
+            digit dependencies mixed with numbered (`T1`) tags, dependencies
+            referring to a non existing Tajweed tag, or dependency indices
+            that do not start from 0 and increment by one in order.
+    """
+    # Unique pivot tags
+    seen_taj_tags: set[str] = set()
+    for taj_tag in taj_tags:
+        if taj_tag in seen_taj_tags:
+            raise MappedTagPrasingError(
+                f"Duplicated Tajweed tag `{taj_tag}` each Tajweed rule needs a "
+                f"unique tag use `T0`-`T9` for multiple Tajweed rules"
+            )
+        seen_taj_tags.add(taj_tag)
+
+    has_digitized = any(taj_tag != "T" for taj_tag in taj_tags)
+    has_plain = "T" in taj_tags
+    taj_tag_set = set(taj_tags)
+
+    tag_to_taj: dict[str, str] = {taj_tag: taj_tag for taj_tag in taj_tags}
+    # (dependency index, dependency tag) in pattern order per pivot tag
+    deps_of: dict[str, list[tuple[int, str]]] = {taj_tag: [] for taj_tag in taj_tags}
+
+    for dep_tag in dep_tags:
+        dep_match = _dep_tag_re.match(dep_tag)
+        assert dep_match is not None
+        first_digit = dep_match.group(1)
+        second_digit = dep_match.group(2)
+        if second_digit is None:
+            # single digit dependency `D0`-`D9`
+            if has_digitized:
+                raise MappedTagPrasingError(
+                    f"Single digit dependency tag `{dep_tag}` can not be used "
+                    f"with a numbered Tajweed tag use `D<rule digit><dep digit>` "
+                    f"like `D10` with `T1`"
+                )
+            if not has_plain:
+                raise MappedTagPrasingError(
+                    f"Dependency tag `{dep_tag}` has no Tajweed tag to depend on"
+                )
+            taj_tag = "T"
+            dep_idx = int(first_digit)
+        else:
+            # two digit dependency `D00`-`D99`
+            taj_tag = f"T{first_digit}"
+            if taj_tag not in taj_tag_set:
+                raise MappedTagPrasingError(
+                    f"Dependency tag `{dep_tag}` refers to the Tajweed tag "
+                    f"`{taj_tag}` which does not exist"
+                    + (
+                        ""
+                        if has_digitized
+                        else " two digit dependencies need a numbered Tajweed tag like `T1`"
+                    )
+                )
+            dep_idx = int(second_digit)
+        tag_to_taj[dep_tag] = taj_tag
+        deps_of[taj_tag].append((dep_idx, dep_tag))
+
+    taj_to_deps: dict[str, list[str]] = {}
+    for taj_tag, deps in deps_of.items():
+        dep_idxs = [dep_idx for dep_idx, _ in deps]
+        for pos, dep_idx in enumerate(dep_idxs):
+            if dep_idx != pos:
+                raise MappedTagPrasingError(
+                    f"Dependencies of the Tajweed tag `{taj_tag}` have to start "
+                    f"from 0 and increment by one in order but got dependency "
+                    f"indices: `{dep_idxs}`"
+                )
+        taj_to_deps[taj_tag] = [dep_tag for _, dep_tag in deps]
+
+    return tag_to_taj, taj_to_deps
+
+
 def parse_tags(pat: str, rep: str) -> list[MapTag]:
 
     rep_tag_to_text = {}
@@ -673,48 +802,64 @@ def parse_tags(pat: str, rep: str) -> list[MapTag]:
             f"out-of-bounds element from position {last_idx}: `{rep[last_idx:]}`",
         )
 
-    mapped_tags = []
+    # (tag, tag pattern, start, end) in pattern order
+    # a tag of `""` denotes a plain (non tagged) pattern segment
+    entries: list[tuple[str, str, int, int]] = []
     offset = 0
     last_idx = 0
     for match in _mapped_tags.finditer(str(pat)):
         # non tag pattern
         start = match.start()
         if start != last_idx:
-            mapped_tags.append(
-                MapTag(
-                    start=last_idx,
-                    end=start,
-                    pat=pat[last_idx:start],
-                    rep_parts=[],
-                    tag="",
-                    compiled_pat=re.compile(pat[last_idx:start]),
-                )
-            )
+            entries.append(("", pat[last_idx:start], last_idx, start))
         tag = match.group(1)
         start_offset = match.end(1) - match.start(1) + 2
-        mapped_tag = MapTag(
-            start=match.start(2) - offset - start_offset,
-            end=match.end(2) - offset - start_offset,
-            tag=tag,
-            pat=match.group(2),
-            rep_parts=parse_replacement(rep_tag_to_text.get(tag, "")),
-            compiled_pat=re.compile(match.group(2)),
+        entries.append(
+            (
+                tag,
+                match.group(2),
+                match.start(2) - offset - start_offset,
+                match.end(2) - offset - start_offset,
+            )
         )
         offset += start_offset + 1
-        mapped_tags.append(mapped_tag)
         last_idx = match.end()
 
     # last non tag pattern
     start = len(pat)
     if start != last_idx:
+        entries.append(("", pat[last_idx:], last_idx, start))
+
+    # Classify tags & resolve Tajweed pivot/dependency association
+    taj_tags = [tag for tag, _, _, _ in entries if _classify_tag_type(tag) == "TAJWEED"]
+    dep_tags = [
+        tag for tag, _, _, _ in entries if _classify_tag_type(tag) == "TAJWEED_DEP"
+    ]
+    tag_to_taj, taj_to_deps = _resolve_tajweed_tags(taj_tags, dep_tags)
+
+    mapped_tags = []
+    for tag, tag_pat, start, end in entries:
+        tag_tp = _classify_tag_type(tag)
+        if tag_tp == "TAJWEED":
+            taj_tag = tag
+            taj_deps = taj_to_deps[tag]
+        elif tag_tp == "TAJWEED_DEP":
+            taj_tag = tag_to_taj[tag]
+            taj_deps = []
+        else:
+            taj_tag = ""
+            taj_deps = []
         mapped_tags.append(
             MapTag(
-                start=last_idx,
-                end=start,
-                pat=pat[last_idx:start],
-                rep_parts=[],
-                tag="",
-                compiled_pat=re.compile(pat[last_idx:start]),
+                start=start,
+                end=end,
+                tag=tag,
+                tag_tp=tag_tp,
+                taj_tag=taj_tag,
+                taj_deps=taj_deps,
+                pat=tag_pat,
+                rep_parts=parse_replacement(rep_tag_to_text.get(tag, "")),
+                compiled_pat=re.compile(tag_pat),
             )
         )
 
@@ -843,14 +988,11 @@ def sub_with_tagged_mapping(
                 mappings.delete_shift(in_pos, out_pos, tag_pat_len)
 
             if m_tag.tag_tp in {"TAJWEED", "TAJWEED_DEP"}:
-                if not shifted:
-                    mappings.shift(in_pos, out_pos, tag_pat_len)
-                    shifted = True
                 is_dep = True if m_tag.tag_tp == "TAJWEED_DEP" else False
                 mappings.insert_tajweed_rule_part(
                     out_pos,
                     out_pos + len(tag_rep_text),
-                    m_tag.tag,
+                    m_tag.taj_tag,  # NOTE: the associated pivot (T) tag so a pivot and its deps share the same id
                     is_dep,
                     tajweed_rule_type,
                     insert_tajweed_cond,
