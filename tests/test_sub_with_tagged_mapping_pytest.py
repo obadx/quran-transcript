@@ -136,12 +136,11 @@ class TestParseTags:
         assert len(tags) == 1
         assert tags[0].tag == "x1"
 
-    def test_extra_tag_in_rep_ignored(self):
+    def test_extra_tag_in_rep_error(self):
         pat = r"<x:a>"
         rep = r"<x:A><y:B>"
-        tags = parse_tags(pat, rep)
-        assert len(tags) == 1
-        assert tags[0].tag == "x"
+        with pytest.raises(MappedTagPrasingError):
+            parse_tags(pat, rep)
 
     def test_compiled_pat_present(self):
         pat = r"<x:a>"
@@ -149,6 +148,119 @@ class TestParseTags:
         tags = parse_tags(pat, rep)
         assert tags[0].compiled_pat is not None
         assert tags[0].compiled_pat.pattern == "a"
+
+
+# ----------------------------------------------------------------------
+# parse_tags: Tajweed tags (T / D) rules
+# ----------------------------------------------------------------------
+class TestParseTagsTajweed:
+    def test_plain_tags_are_classified_as_tag(self):
+        pat = r"<x:a><y1:b>"
+        rep = r"<x:A><y1:B>"
+        tags = parse_tags(pat, rep)
+        assert all(t.tag_tp == "TAG" for t in tags)
+        assert all(t.taj_tag == "" and t.taj_deps == [] for t in tags)
+
+    def test_tajweed_pivot_with_single_digit_deps(self):
+        pat = r"<D0:ab><T:cd><D1:ef>"
+        rep = r"<D0:ab><T:CD><D1:ef>"
+        tags = parse_tags(pat, rep)
+        assert [t.tag_tp for t in tags] == ["TAJWEED_DEP", "TAJWEED", "TAJWEED_DEP"]
+        # deps may come before or after the pivot both belong to `T`
+        assert tags[0].taj_tag == "T"
+        assert tags[2].taj_tag == "T"
+        assert tags[1].taj_tag == "T"
+        assert tags[1].taj_deps == ["D0", "D1"]
+        assert tags[0].taj_deps == [] and tags[2].taj_deps == []
+        # dep_idx & num_deps
+        assert tags[1].dep_idx == -1 and tags[1].num_deps == 2
+        assert tags[0].dep_idx == 0 and tags[0].num_deps == 2
+        assert tags[2].dep_idx == 1 and tags[2].num_deps == 2
+
+    def test_numbered_tajweed_pivots_with_two_digit_deps(self):
+        pat = r"<T0:ab><D00:cd><T1:ef><D10:gh>"
+        rep = r"<T0:AB><D00:cd><T1:EF><D10:gh>"
+        tags = parse_tags(pat, rep)
+        assert [t.tag_tp for t in tags] == [
+            "TAJWEED",
+            "TAJWEED_DEP",
+            "TAJWEED",
+            "TAJWEED_DEP",
+        ]
+        assert tags[0].taj_tag == "T0" and tags[0].taj_deps == ["D00"]
+        assert tags[1].taj_tag == "T0"
+        assert tags[2].taj_tag == "T1" and tags[2].taj_deps == ["D10"]
+        assert tags[3].taj_tag == "T1"
+        # dep_idx & num_deps
+        assert tags[0].dep_idx == -1 and tags[0].num_deps == 1
+        assert tags[1].dep_idx == 0 and tags[1].num_deps == 1
+        assert tags[2].dep_idx == -1 and tags[2].num_deps == 1
+        assert tags[3].dep_idx == 0 and tags[3].num_deps == 1
+
+    def test_tajweed_tag_with_no_deps(self):
+        pat = r"<x:a><T:cd>"
+        rep = r"<x:A><T:CD>"
+        tags = parse_tags(pat, rep)
+        assert tags[1].tag_tp == "TAJWEED"
+        assert tags[1].taj_deps == []
+
+    # ------------------------------------------------------------------
+    # Not allowed usages
+    # ------------------------------------------------------------------
+    def test_single_digit_dep_with_numbered_tajweed_error(self):
+        pat = r"<T1:ab><D0:cd>"
+        rep = r"<T1:AB><D0:cd>"
+        with pytest.raises(MappedTagPrasingError):
+            parse_tags(pat, rep)
+
+    def test_two_digit_dep_with_plain_tajweed_error(self):
+        pat = r"<T:ab><D12:cd>"
+        rep = r"<T:AB><D12:cd>"
+        with pytest.raises(MappedTagPrasingError):
+            parse_tags(pat, rep)
+
+    def test_dep_with_no_tajweed_tag_error(self):
+        pat = r"<D0:ab>"
+        rep = r"<D0:ab>"
+        with pytest.raises(MappedTagPrasingError):
+            parse_tags(pat, rep)
+
+    def test_out_of_order_deps_error(self):
+        pat = r"<D5:ab><T:cd><D3:ef>"
+        rep = r"<D5:ab><T:CD><D3:ef>"
+        with pytest.raises(MappedTagPrasingError):
+            parse_tags(pat, rep)
+
+    def test_gap_in_deps_error(self):
+        pat = r"<D2:ab><T:cd><D4:ef>"
+        rep = r"<D2:ab><T:CD><D4:ef>"
+        with pytest.raises(MappedTagPrasingError):
+            parse_tags(pat, rep)
+
+    def test_non_zero_start_deps_error(self):
+        pat = r"<D2:ab><T:cd><D3:ef>"
+        rep = r"<D2:ab><T:CD><D3:ef>"
+        with pytest.raises(MappedTagPrasingError):
+            parse_tags(pat, rep)
+
+    def test_duplicated_plain_tajweed_error(self):
+        pat = r"<T:ab><T:cd>"
+        rep = r"<T:AB><T:CD>"
+        with pytest.raises(MappedTagPrasingError):
+            parse_tags(pat, rep)
+
+    def test_duplicated_numbered_tajweed_error(self):
+        pat = r"<T1:ab><D10:cd><T1:ef><D11:gh>"
+        rep = r"<T1:AB><D10:cd><T1:EF><D11:gh>"
+        with pytest.raises(MappedTagPrasingError):
+            parse_tags(pat, rep)
+
+    def test_rep_tag_not_in_pat_error(self):
+        # `D1` exists in the `rep` but the `pat` only defines `D0`
+        pat = r"<T:ab><D0:(cd)>"
+        rep = r"<T:AB><D1:\1>"
+        with pytest.raises(MappedTagPrasingError):
+            parse_tags(pat, rep)
 
 
 # ----------------------------------------------------------------------
