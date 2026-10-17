@@ -11,7 +11,7 @@ class TajweedRuleType(IntEnum):
     LAZIM_MADD = auto()
 
 
-@dataclass(frozen=True)
+@dataclass
 class TajweedRuleMetadata:
     """The Tajweed rule poition in phonetic script space (not uthmani space)"""
 
@@ -19,6 +19,18 @@ class TajweedRuleMetadata:
     deps: list[tuple[int, int]]
     tag: str
     rule_type: TajweedRuleType
+
+    def update_pivot_start(self, x: int) -> None:
+        self.pivot = (x, self.pivot[1])
+
+    def update_pivot_end(self, x: int) -> None:
+        self.pivot = (self.pivot[0], x)
+
+    def update_dep_start(self, dep_idx, x: int) -> None:
+        self.deps[dep_idx] = (x, self.deps[dep_idx][1])
+
+    def update_dep_end(self, dep_idx, x: int) -> None:
+        self.deps[dep_idx] = (self.deps[dep_idx][0], x)
 
 
 @dataclass

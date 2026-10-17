@@ -172,6 +172,8 @@ class TajweedRulePart:
     taj_type: TajweedRuleType
     tag: str
     ph_idx: int
+    dep_idx: int
+    num_deps: int
 
 
 class TajweedRulePartContainer:
@@ -201,6 +203,8 @@ class TajweedRulePartContainer:
         self.map[idx].append(taj_rule_part)
 
     def get_tjaweed_types(self, idx: int) -> list[TajweedRuleType]:
+        if idx not in self.map:
+            return []
         L = []
         for part in self.map[idx]:
             if part.part_type == "PIVOT_START":
@@ -222,7 +226,10 @@ class TajweedRulePartContainer:
                 # saving the old idx for later use
                 self.temp_map[new_idx] = self.map.pop(new_idx)
 
-            if idx in self.temp_map:
+            if (idx not in self.temp_map) and (idx not in self.map):
+                # No Tajweed Rules in that index
+                continue
+            elif idx in self.temp_map:
                 parts = self.temp_map.pop(idx)
             else:
                 parts = self.map.pop(idx)
@@ -242,13 +249,12 @@ class TajweedRulePartContainer:
         if old_end - 1 == new_idx:
             return
         for idx in range(old_start, old_end):
-            if idx in self.temp_map:
+            if idx not in self.temp_map and idx not in self.map:
+                continue
+            elif idx in self.temp_map:
                 parts = self.temp_map.pop(idx)
             else:
-                parts = self.map.pop(idx, [])
-
-            if not parts:
-                continue
+                parts = self.map.pop(idx)
 
             # updating the idx
             for p_idx in range(len(parts)):
@@ -490,7 +496,8 @@ class PhonetizerMappings:
         new_ph_pos_start: int,
         new_ph_pos_end: int,
         parsed_taj_rule_tag: str,
-        is_dep: bool,
+        dep_idx: int,
+        num_deps: int,
         tajweed_rule_type: TajweedRuleType | None,
         insert_tajweed_cond: Callable[[list[TajweedRuleType], TajweedRuleType], bool]
         | None,
@@ -517,20 +524,24 @@ class PhonetizerMappings:
             # Start
             taj_part = TajweedRulePart(
                 id=self._taj_to_id[parsed_taj_rule_tag],
-                part_type="DEP_START" if is_dep else "PIVOT_START",
+                part_type="DEP_START" if dep_idx != -1 else "PIVOT_START",
                 taj_type=tajweed_rule_type,
                 tag=tajweed_rule_tag,
                 ph_idx=new_ph_pos_start,
+                num_deps=num_deps,
+                dep_idx=dep_idx,
             )
             self._taj_parts.insert(new_ph_pos_start, taj_part)
 
             # End
             taj_part = TajweedRulePart(
                 id=self._taj_to_id[parsed_taj_rule_tag],
-                part_type="DEP_END" if is_dep else "PIVOT_END",
+                part_type="DEP_END" if dep_idx != -1 else "PIVOT_END",
                 taj_type=tajweed_rule_type,
                 tag=tajweed_rule_tag,
                 ph_idx=new_ph_pos_end,
+                num_deps=num_deps,
+                dep_idx=dep_idx,
             )
             self._taj_parts.insert(new_ph_pos_end, taj_part)
 
@@ -540,12 +551,41 @@ class PhonetizerMappings:
         )
 
     def get_ph_to_tajweed_rules(self) -> list[list[TajweedRuleMetadata]]:
-        max_ph = self.uth_to_ph[-1].pos[1]
-        ph_to_taj_rules = [[] for _ in range(max_ph)]
+        """ """
+        max_ph = self.uth_to_ph[-1].pos[1] if self.uth_to_ph else 0
+        ph_to_taj_rules: list[list[TajweedRuleMetadata]] = [
+            [] for _ in range(max_ph + 1)
+        ]
 
-        taj_to_meta = {}
-        for part in self._taj_parts:
-            ...
+        taj_to_meta: dict[str, TajweedRuleMetadata] = {}
+        for part in self._taj_parts:  # parts are yielded sorted by ph_idx
+            if part.id not in taj_to_meta:
+                taj_to_meta[part.id] = TajweedRuleMetadata(
+                    pivot=(-1, -1),
+                    deps=[(-1, -1) for _ in range(part.num_deps)],
+                    tag=part.tag,
+                    rule_type=part.taj_type,
+                )
+
+            match part.part_type:
+                case "PIVOT_START":
+                    taj_to_meta[part.id].update_pivot_start(part.ph_idx)
+                case "PIVOT_END":
+                    taj_to_meta[part.id].update_pivot_end(part.ph_idx)
+                case "DEP_START":
+                    taj_to_meta[part.id].update_dep_start(part.dep_idx, part.ph_idx)
+                case "DEP_END":
+                    taj_to_meta[part.id].update_dep_end(part.dep_idx, part.ph_idx)
+
+        taj_ids = list(taj_to_meta.keys())
+        for taj_id in taj_ids:
+            taj_meta = taj_to_meta.pop(taj_id)
+            ph_to_taj_rules[taj_meta.pivot[0]].append(taj_meta)
+        return ph_to_taj_rules
+
+    @property
+    def ph_to_taj_rules(self):
+        return self.get_ph_to_tajweed_rules()
 
 
 def init_mappings(text: str) -> PhonetizerMappings:
@@ -988,12 +1028,13 @@ def sub_with_tagged_mapping(
                 mappings.delete_shift(in_pos, out_pos, tag_pat_len)
 
             if m_tag.tag_tp in {"TAJWEED", "TAJWEED_DEP"}:
-                is_dep = True if m_tag.tag_tp == "TAJWEED_DEP" else False
+                dep_idx = -1 if m_tag.tag_tp == "TAJWEED" else int(m_tag.tag[-1])
                 mappings.insert_tajweed_rule_part(
                     out_pos,
                     out_pos + len(tag_rep_text),
                     m_tag.taj_tag,  # NOTE: the associated pivot (T) tag so a pivot and its deps share the same id
-                    is_dep,
+                    dep_idx,
+                    len(m_tag.taj_deps),
                     tajweed_rule_type,
                     insert_tajweed_cond,
                     tajweed_rule_tag,  # NOTE: `tajweed_rule_tag` here is not the tag name but another thig raelate d to Tajweed rule we might need to rename it for disamiguity
