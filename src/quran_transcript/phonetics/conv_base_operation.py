@@ -194,8 +194,10 @@ class TajweedRulePartContainer:
         for idx in sorted_keys:
             yield from self.map[idx]
 
-    def reset(self):
-        self.temp_map = {}
+    def finalize(self):
+        assert self.temp_map == {}, (
+            "temp has to be emtpy. There is something wrong is happending"
+        )
 
     def insert(self, idx: int, taj_rule_part: TajweedRulePart) -> None:
         if idx not in self.map:
@@ -220,24 +222,36 @@ class TajweedRulePartContainer:
         """
         if shift_val == 0 or self.map == {}:
             return
-        for idx in range(old_start, old_end):
-            new_idx = idx + shift_val
-            if new_idx in self.map:
-                # saving the old idx for later use
-                self.temp_map[new_idx] = self.map.pop(new_idx)
 
+        finished = set()
+        for idx in range(old_start, old_end):
             if (idx not in self.temp_map) and (idx not in self.map):
                 # No Tajweed Rules in that index
                 continue
             elif idx in self.temp_map:
                 parts = self.temp_map.pop(idx)
+            elif idx in finished:
+                # We have worked in this idx in an erlieer loop
+                continue
             else:
                 parts = self.map.pop(idx)
+
+            new_idx = idx + shift_val
+            if new_idx in self.map:
+                # saving the old idx for later use
+                self.temp_map[new_idx] = self.map.pop(new_idx)
 
             # updating the idx
             for p_idx in range(len(parts)):
                 parts[p_idx].ph_idx = new_idx
+
+            # In case of new_idx < idx we want to accumlate parts on the new_idx
+            if new_idx < idx and new_idx in self.temp_map:
+                parts.extend(self.temp_map.pop(new_idx))
             self.map[new_idx] = parts
+
+            # Avoid shifting a finished idx
+            finished.add(new_idx)
 
     def delete_shift(self, old_start: int, old_end: int, new_idx: int) -> None:
         """Not acully deleting but moving old idx and concatenate them to the new index
@@ -248,6 +262,7 @@ class TajweedRulePartContainer:
         """
         if old_end - 1 == new_idx:
             return
+
         for idx in range(old_start, old_end):
             if idx not in self.temp_map and idx not in self.map:
                 continue
@@ -295,7 +310,6 @@ class PhonetizerMappings:
         self._uth_start = -1
         self._prev_pos = (-1, -1)
         self._taj_to_id = {}
-        self._taj_parts.reset()
 
     @classmethod
     def init_mappings(cls, text: str):
@@ -507,6 +521,7 @@ class PhonetizerMappings:
         WARN: insert is assumed to be called after shift
         """
         # WARN: insert is assumed to be called after shift
+        print("insert pos", new_ph_pos_start, new_ph_pos_end)
 
         if tajweed_rule_type is None:
             return
@@ -549,6 +564,7 @@ class PhonetizerMappings:
         self._taj_parts.shift(
             curr_ph_text_len, curr_ph_text_len + 1, new_ph_text_len - curr_ph_text_len
         )
+        self._taj_parts.finalize()
 
     def get_ph_to_tajweed_rules(self) -> list[list[TajweedRuleMetadata]]:
         """ """
@@ -1006,12 +1022,19 @@ def sub_with_tagged_mapping(
                 if (tag_pat_len == len(tag_rep_text)) and shifted:
                     # equal mapping
                     mappings.shift(in_pos, out_pos, tag_pat_len)
+                    insert_taj_rule_out_pos_end = out_pos + len(tag_rep_text)
+
                 elif (tag_pat_len == len(tag_rep_text)) and not shifted:
-                    ...
+                    insert_taj_rule_out_pos_end = out_pos + len(tag_rep_text)
+
                 elif tag_pat_len == 1 and (len(tag_rep_text) > 1):
                     shifted = True
                     # one to many
                     mappings.update_ph_one_to_many(in_pos, out_pos, len(tag_rep_text))
+                    # NOTE: only in this case as the out pos will be shifted in the ntext iteration
+                    insert_taj_rule_out_pos_end = out_pos + tag_pat_len
+                    print("insert end", insert_taj_rule_out_pos_end)
+
                 else:
                     print(tag_pat_len, len(tag_rep_text))
                     raise MappedTagPrasingCardinalityError(
@@ -1021,12 +1044,13 @@ def sub_with_tagged_mapping(
                 # Deletion
                 shifted = True
                 tag_rep_text = ""
+                insert_taj_rule_out_pos_end = out_pos
                 mappings.delete_shift(in_pos, out_pos, tag_pat_len)
 
             if m_tag.tag_tp in {"TAJWEED", "TAJWEED_DEP"}:
                 mappings.insert_tajweed_rule_part(
                     out_pos,
-                    out_pos + len(tag_rep_text),
+                    insert_taj_rule_out_pos_end,
                     m_tag.taj_tag,  # NOTE: the associated pivot (T) tag so a pivot and its deps share the same id
                     m_tag.dep_idx,
                     m_tag.num_deps,
