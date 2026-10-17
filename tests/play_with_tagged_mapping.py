@@ -39,6 +39,7 @@ def run_case(
     mid_rep: str | None = None,
     first_taj_rule: TajweedRuleType | None = None,
     mid_taj_rule: TajweedRuleType | None = None,
+    mid_insert_taj_cond=None,
 ):
     print("#" * 30, pat, "#" * 30)
     mappings = init_mappings(in_text)
@@ -62,6 +63,7 @@ def run_case(
             mid_text,
             mappings,
             tajweed_rule_type=mid_taj_rule,
+            insert_tajweed_cond=mid_insert_taj_cond,
         )
         check_mapping_continuty(out_mappings)
         print(f"mid pat: `{mid_pat}`")
@@ -257,3 +259,38 @@ if __name__ == "__main__":
     #     first_taj_rule=TajweedRuleType.LAZIM_MADD,
     #     mid_taj_rule=TajweedRuleType.NORMAL_MADD,
     # )
+
+    # # Cascaded: Tajweed Rule only + Dep + delete the tajweed rule at end in between text
+    # run_case(
+    #     "Ahmed Mahmoud abcdef",
+    #     r"M:<T:ef><D0:($)>",
+    #     r"",
+    #     r"M:<T:cd><D0:($)>",
+    #     r"",
+    #     first_taj_rule=TajweedRuleType.LAZIM_MADD,
+    #     mid_taj_rule=TajweedRuleType.NORMAL_MADD,
+    # )
+
+    # # Cascaded: More than Tajweed Rule + in between text
+    # run_case(
+    #     "Hello How are you: abcdef Good ",
+    #     r"M:<T:ab><D0:c>",
+    #     r"<T:AB><D0:c>",
+    #     r"M:<T:B>",
+    #     r"<T:BBBB>",
+    #     first_taj_rule=TajweedRuleType.LAZIM_MADD,
+    #     mid_taj_rule=TajweedRuleType.NORMAL_MADD,
+    # )
+
+    # Cascaded: More than Tajweed Rule + in between text + condition
+    run_case(
+        "Hello How are you: abcdef Good ",
+        r"M:<T:ab><D0:c>",
+        r"<T:AB><D0:c>",
+        r"M:<T:A>",
+        r"<T:aaaa>",
+        first_taj_rule=TajweedRuleType.LAZIM_MADD,
+        mid_taj_rule=TajweedRuleType.NORMAL_MADD,
+        mid_insert_taj_cond=lambda L, x: TajweedRuleType.LAZIM_MADD not in L,
+        # mid_insert_taj_cond=lambda L, x: True,
+    )
