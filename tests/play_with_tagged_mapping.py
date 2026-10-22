@@ -186,6 +186,8 @@ if __name__ == "__main__":
     #     r"<x:aa><y:bbb>",
     # )
 
+    # Tagging with Tajweed
+
     # # Simple Case: Tajweed Rule only
     # run_case(
     #     "abcdef",
@@ -215,6 +217,30 @@ if __name__ == "__main__":
     #     "abcdef",
     #     r"M:<T:a>",
     #     r"<T:AAAA>",
+    #     first_taj_rule=TajweedRuleType.LAZIM_MADD,
+    # )
+
+    # # Simple Case: Tajweed Rule one to many + another tag
+    # run_case(
+    #     "abcdef",
+    #     r"M:<T:a><r:.>",
+    #     r"<T:AAAA><r:b>",
+    #     first_taj_rule=TajweedRuleType.LAZIM_MADD,
+    # )
+
+    # # Simple Case: Tajweed Rule one to many + another tag + dep
+    # run_case(
+    #     "abcdef",
+    #     r"M:<T:a><r:.><D0:c>",
+    #     r"<T:AAAA><r:b><D0:c>",
+    #     first_taj_rule=TajweedRuleType.LAZIM_MADD,
+    # )
+
+    # # Simple Case: Tajweed Rule one to many + deletion + dep
+    # run_case(
+    #     "abcdef",
+    #     r"M:<T:a>.<D0:c>",
+    #     r"<T:AAAA><D0:c>",
     #     first_taj_rule=TajweedRuleType.LAZIM_MADD,
     # )
 
@@ -282,13 +308,26 @@ if __name__ == "__main__":
     #     mid_taj_rule=TajweedRuleType.NORMAL_MADD,
     # )
 
-    # Cascaded: More than Tajweed Rule + in between text + condition
+    # # Cascaded: More than Tajweed Rule + in between text + condition
+    # run_case(
+    #     "Hello How are you: abcdef Good ",
+    #     r"M:<T:ab><D0:c>",
+    #     r"<T:AB><D0:c>",
+    #     r"M:<T:A>",
+    #     r"<T:aaaa>",
+    #     first_taj_rule=TajweedRuleType.LAZIM_MADD,
+    #     mid_taj_rule=TajweedRuleType.NORMAL_MADD,
+    #     mid_insert_taj_cond=lambda L, x: TajweedRuleType.LAZIM_MADD not in L,
+    #     # mid_insert_taj_cond=lambda L, x: True,
+    # )
+
+    # anomly case
     run_case(
-        "Hello How are you: abcdef Good ",
+        "abcdef",
         r"M:<T:ab><D0:c>",
         r"<T:AB><D0:c>",
-        r"M:<T:A>",
-        r"<T:aaaa>",
+        r"M:<T:B>",
+        r"<T:BBBB>",
         first_taj_rule=TajweedRuleType.LAZIM_MADD,
         mid_taj_rule=TajweedRuleType.NORMAL_MADD,
         mid_insert_taj_cond=lambda L, x: TajweedRuleType.LAZIM_MADD not in L,

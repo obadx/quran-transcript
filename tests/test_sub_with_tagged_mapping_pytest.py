@@ -13,6 +13,10 @@ from quran_transcript.phonetics.conv_base_operation import (
     parse_tags,
     sub_with_tagged_mapping,
 )
+from quran_transcript.phonetics.tajweed_rulses import (
+    TajweedRuleMetadata,
+    TajweedRuleType,
+)
 from tests.conftest import _check_mapping_continuty
 
 
@@ -29,6 +33,18 @@ def _assert_mappings(
     for i, exp in enumerate(expected_pos):
         assert out_mappings[i].pos == exp
         assert out_mappings[i].deleted == (i in deleted_idx)
+
+
+def _assert_tajweed_rules(
+    out_mappings: PhonetizerMappings,
+    expected: dict[int, list[TajweedRuleMetadata]],
+):
+    actual = {
+        idx: rules
+        for idx, rules in enumerate(out_mappings.ph_to_taj_rules)
+        if rules
+    }
+    assert actual == expected
 
 
 def _render(mappings: PhonetizerMappings, out_text: str) -> list[str]:
@@ -772,6 +788,202 @@ class TestSubWithTaggedMapping:
 
 
 # ----------------------------------------------------------------------
+# sub_with_tagged_mapping: Tajweed rules
+# ----------------------------------------------------------------------
+class TestSubWithTaggedMappingTajweed:
+    def test_tajweed_rule_only(self):
+        in_text = "abcdef"
+        pat = r"M:<T:ab>"
+        rep = r"<T:AB>"
+        mappings = init_mappings(in_text)
+        out_text, out_mappings = sub_with_tagged_mapping(
+            pat,
+            rep,
+            in_text,
+            mappings,
+            tajweed_rule_type=TajweedRuleType.LAZIM_MADD,
+        )
+        _check_mapping_continuty(out_mappings)
+        assert out_text == "ABcdef"
+        _assert_mappings(out_mappings, [(i, i + 1) for i in range(len(in_text))])
+        _assert_tajweed_rules(
+            out_mappings,
+            {
+                0: [
+                    TajweedRuleMetadata(
+                        pivot=(0, 2),
+                        deps=[],
+                        tag="",
+                        rule_type=TajweedRuleType.LAZIM_MADD,
+                    )
+                ],
+            },
+        )
+
+    def test_tajweed_rule_on_deletion(self):
+        in_text = "abcdef"
+        pat = r"M:<T:ef>"
+        rep = r""
+        mappings = init_mappings(in_text)
+        out_text, out_mappings = sub_with_tagged_mapping(
+            pat,
+            rep,
+            in_text,
+            mappings,
+            tajweed_rule_type=TajweedRuleType.LAZIM_MADD,
+        )
+        _check_mapping_continuty(out_mappings)
+        assert out_text == "abcd"
+        _assert_mappings(
+            out_mappings,
+            [(0, 1), (1, 2), (2, 3), (3, 4), (4, 4), (4, 4)],
+            deleted_idx={4, 5},
+        )
+        _assert_tajweed_rules(
+            out_mappings,
+            {
+                4: [
+                    TajweedRuleMetadata(
+                        pivot=(4, 4),
+                        deps=[],
+                        tag="",
+                        rule_type=TajweedRuleType.LAZIM_MADD,
+                    )
+                ],
+            },
+        )
+
+    def test_tajweed_rule_one_to_many(self):
+        in_text = "abcdef"
+        pat = r"M:<T:a>"
+        rep = r"<T:AAAA>"
+        mappings = init_mappings(in_text)
+        out_text, out_mappings = sub_with_tagged_mapping(
+            pat,
+            rep,
+            in_text,
+            mappings,
+            tajweed_rule_type=TajweedRuleType.LAZIM_MADD,
+        )
+        _check_mapping_continuty(out_mappings)
+        assert out_text == "AAAAbcdef"
+        _assert_mappings(
+            out_mappings,
+            [(0, 4), (4, 5), (5, 6), (6, 7), (7, 8), (8, 9)],
+        )
+        _assert_tajweed_rules(
+            out_mappings,
+            {
+                0: [
+                    TajweedRuleMetadata(
+                        pivot=(0, 4),
+                        deps=[],
+                        tag="",
+                        rule_type=TajweedRuleType.LAZIM_MADD,
+                    )
+                ],
+            },
+        )
+
+    def test_tajweed_rule_one_to_many_with_tag(self):
+        in_text = "abcdef"
+        pat = r"M:<T:a><r:.>"
+        rep = r"<T:AAAA><r:b>"
+        mappings = init_mappings(in_text)
+        out_text, out_mappings = sub_with_tagged_mapping(
+            pat,
+            rep,
+            in_text,
+            mappings,
+            tajweed_rule_type=TajweedRuleType.LAZIM_MADD,
+        )
+        _check_mapping_continuty(out_mappings)
+        assert out_text == "AAAAbcdef"
+        _assert_mappings(
+            out_mappings,
+            [(0, 4), (4, 5), (5, 6), (6, 7), (7, 8), (8, 9)],
+        )
+        _assert_tajweed_rules(
+            out_mappings,
+            {
+                0: [
+                    TajweedRuleMetadata(
+                        pivot=(0, 4),
+                        deps=[],
+                        tag="",
+                        rule_type=TajweedRuleType.LAZIM_MADD,
+                    )
+                ],
+            },
+        )
+
+    def test_tajweed_rule_one_to_many_with_tag_and_dep(self):
+        in_text = "abcdef"
+        pat = r"M:<T:a><r:.><D0:c>"
+        rep = r"<T:AAAA><r:b><D0:c>"
+        mappings = init_mappings(in_text)
+        out_text, out_mappings = sub_with_tagged_mapping(
+            pat,
+            rep,
+            in_text,
+            mappings,
+            tajweed_rule_type=TajweedRuleType.LAZIM_MADD,
+        )
+        _check_mapping_continuty(out_mappings)
+        assert out_text == "AAAAbcdef"
+        _assert_mappings(
+            out_mappings,
+            [(0, 4), (4, 5), (5, 6), (6, 7), (7, 8), (8, 9)],
+        )
+        _assert_tajweed_rules(
+            out_mappings,
+            {
+                0: [
+                    TajweedRuleMetadata(
+                        pivot=(0, 4),
+                        deps=[(5, 6)],
+                        tag="",
+                        rule_type=TajweedRuleType.LAZIM_MADD,
+                    )
+                ],
+            },
+        )
+
+    def test_tajweed_rule_one_to_many_with_deletion_and_dep(self):
+        in_text = "abcdef"
+        pat = r"M:<T:a>.<D0:c>"
+        rep = r"<T:AAAA><D0:c>"
+        mappings = init_mappings(in_text)
+        out_text, out_mappings = sub_with_tagged_mapping(
+            pat,
+            rep,
+            in_text,
+            mappings,
+            tajweed_rule_type=TajweedRuleType.LAZIM_MADD,
+        )
+        _check_mapping_continuty(out_mappings)
+        assert out_text == "AAAAcdef"
+        _assert_mappings(
+            out_mappings,
+            [(0, 4), (4, 4), (4, 5), (5, 6), (6, 7), (7, 8)],
+            deleted_idx={1},
+        )
+        _assert_tajweed_rules(
+            out_mappings,
+            {
+                0: [
+                    TajweedRuleMetadata(
+                        pivot=(0, 4),
+                        deps=[(4, 5)],
+                        tag="",
+                        rule_type=TajweedRuleType.LAZIM_MADD,
+                    )
+                ],
+            },
+        )
+
+
+# ----------------------------------------------------------------------
 # Cascaded (two-stage) cases from play_with_tagged_mapping.py
 # ----------------------------------------------------------------------
 class TestCascadedSubWithTaggedMapping:
@@ -1001,4 +1213,416 @@ class TestCascadedSubWithTaggedMapping:
                 (8, 8),
             ],
             deleted_idx={5, 6, 7, 8, 9, 10},
+        )
+
+
+# ----------------------------------------------------------------------
+# Cascaded (two-stage) Tajweed rule cases from play_with_tagged_mapping.py
+# ----------------------------------------------------------------------
+class TestCascadedSubWithTaggedMappingTajweed:
+    def test_tajweed_rule_with_dep_then_reorder_prefix(self):
+        in_text = "abcdef"
+        pat = r"M:<T:ab><D0:(cd)>"
+        rep = r"<T:AB><D0:\1>"
+        mappings = init_mappings(in_text)
+
+        mid_text, mappings = sub_with_tagged_mapping(
+            pat,
+            rep,
+            in_text,
+            mappings,
+            tajweed_rule_type=TajweedRuleType.LAZIM_MADD,
+        )
+        _check_mapping_continuty(mappings)
+        assert mid_text == "ABcdef"
+
+        mid_pat = r"M:<x:AB>"
+        mid_rep = r"<x:BA>"
+        out_text, out_mappings = sub_with_tagged_mapping(
+            mid_pat, mid_rep, mid_text, mappings
+        )
+        _check_mapping_continuty(out_mappings)
+
+        assert out_text == "BAcdef"
+        _assert_mappings(out_mappings, [(i, i + 1) for i in range(len(in_text))])
+        _assert_tajweed_rules(
+            out_mappings,
+            {
+                0: [
+                    TajweedRuleMetadata(
+                        pivot=(0, 2),
+                        deps=[(2, 4)],
+                        tag="",
+                        rule_type=TajweedRuleType.LAZIM_MADD,
+                    )
+                ],
+            },
+        )
+
+    def test_tajweed_rule_with_dep_then_delete_prefix(self):
+        in_text = "abcdef"
+        pat = r"M:<T:ab><D0:(cd)>"
+        rep = r"<T:AB><D0:\1>"
+        mappings = init_mappings(in_text)
+
+        mid_text, mappings = sub_with_tagged_mapping(
+            pat,
+            rep,
+            in_text,
+            mappings,
+            tajweed_rule_type=TajweedRuleType.LAZIM_MADD,
+        )
+        _check_mapping_continuty(mappings)
+        assert mid_text == "ABcdef"
+
+        mid_pat = r"M:<x:AB>"
+        mid_rep = r""
+        out_text, out_mappings = sub_with_tagged_mapping(
+            mid_pat, mid_rep, mid_text, mappings
+        )
+        _check_mapping_continuty(out_mappings)
+
+        assert out_text == "cdef"
+        _assert_mappings(
+            out_mappings,
+            [(0, 0), (0, 0), (0, 1), (1, 2), (2, 3), (3, 4)],
+            deleted_idx={0, 1},
+        )
+        # The tajweed pivot is collapsed to zero width but is not removed.
+        _assert_tajweed_rules(
+            out_mappings,
+            {
+                0: [
+                    TajweedRuleMetadata(
+                        pivot=(0, 0),
+                        deps=[(0, 2)],
+                        tag="",
+                        rule_type=TajweedRuleType.LAZIM_MADD,
+                    )
+                ],
+            },
+        )
+
+    def test_second_tajweed_rule_added(self):
+        in_text = "abcdef"
+        pat = r"M:<T:ab><D0:c>"
+        rep = r"<T:AB><D0:c>"
+        mappings = init_mappings(in_text)
+
+        mid_text, mappings = sub_with_tagged_mapping(
+            pat,
+            rep,
+            in_text,
+            mappings,
+            tajweed_rule_type=TajweedRuleType.LAZIM_MADD,
+        )
+        _check_mapping_continuty(mappings)
+        assert mid_text == "ABcdef"
+
+        mid_pat = r"M:<T:B>"
+        mid_rep = r"<T:BBBB>"
+        out_text, out_mappings = sub_with_tagged_mapping(
+            mid_pat,
+            mid_rep,
+            mid_text,
+            mappings,
+            tajweed_rule_type=TajweedRuleType.NORMAL_MADD,
+        )
+        _check_mapping_continuty(out_mappings)
+
+        assert out_text == "ABBBBcdef"
+        _assert_mappings(
+            out_mappings,
+            [(0, 1), (1, 5), (5, 6), (6, 7), (7, 8), (8, 9)],
+        )
+        _assert_tajweed_rules(
+            out_mappings,
+            {
+                0: [
+                    TajweedRuleMetadata(
+                        pivot=(0, 5),
+                        deps=[(5, 6)],
+                        tag="",
+                        rule_type=TajweedRuleType.LAZIM_MADD,
+                    )
+                ],
+                1: [
+                    TajweedRuleMetadata(
+                        pivot=(1, 5),
+                        deps=[],
+                        tag="",
+                        rule_type=TajweedRuleType.NORMAL_MADD,
+                    )
+                ],
+            },
+        )
+
+    def test_second_tajweed_rule_added_with_allowing_condition(self):
+        in_text = "abcdef"
+        pat = r"M:<T:ab><D0:c>"
+        rep = r"<T:AB><D0:c>"
+        mappings = init_mappings(in_text)
+
+        mid_text, mappings = sub_with_tagged_mapping(
+            pat,
+            rep,
+            in_text,
+            mappings,
+            tajweed_rule_type=TajweedRuleType.LAZIM_MADD,
+        )
+        _check_mapping_continuty(mappings)
+        assert mid_text == "ABcdef"
+
+        mid_pat = r"M:<T:B>"
+        mid_rep = r"<T:BBBB>"
+        out_text, out_mappings = sub_with_tagged_mapping(
+            mid_pat,
+            mid_rep,
+            mid_text,
+            mappings,
+            tajweed_rule_type=TajweedRuleType.NORMAL_MADD,
+            insert_tajweed_cond=lambda types, rule_type: (
+                TajweedRuleType.LAZIM_MADD not in types
+            ),
+        )
+        _check_mapping_continuty(out_mappings)
+
+        assert out_text == "ABBBBcdef"
+        _assert_mappings(
+            out_mappings,
+            [(0, 1), (1, 5), (5, 6), (6, 7), (7, 8), (8, 9)],
+        )
+        _assert_tajweed_rules(
+            out_mappings,
+            {
+                0: [
+                    TajweedRuleMetadata(
+                        pivot=(0, 5),
+                        deps=[(5, 6)],
+                        tag="",
+                        rule_type=TajweedRuleType.LAZIM_MADD,
+                    )
+                ],
+                1: [
+                    TajweedRuleMetadata(
+                        pivot=(1, 5),
+                        deps=[],
+                        tag="",
+                        rule_type=TajweedRuleType.NORMAL_MADD,
+                    )
+                ],
+            },
+        )
+
+    def test_tajweed_rules_deleted_at_end(self):
+        in_text = "abcdef"
+        pat = r"M:<T:ef><D0:($)>"
+        rep = r""
+        mappings = init_mappings(in_text)
+
+        mid_text, mappings = sub_with_tagged_mapping(
+            pat,
+            rep,
+            in_text,
+            mappings,
+            tajweed_rule_type=TajweedRuleType.LAZIM_MADD,
+        )
+        _check_mapping_continuty(mappings)
+        assert mid_text == "abcd"
+
+        mid_pat = r"M:<T:cd><D0:($)>"
+        mid_rep = r""
+        out_text, out_mappings = sub_with_tagged_mapping(
+            mid_pat,
+            mid_rep,
+            mid_text,
+            mappings,
+            tajweed_rule_type=TajweedRuleType.NORMAL_MADD,
+        )
+        _check_mapping_continuty(out_mappings)
+
+        assert out_text == "ab"
+        _assert_mappings(
+            out_mappings,
+            [(0, 1), (1, 2), (2, 2), (2, 2), (2, 2), (2, 2)],
+            deleted_idx={2, 3, 4, 5},
+        )
+        _assert_tajweed_rules(
+            out_mappings,
+            {
+                2: [
+                    TajweedRuleMetadata(
+                        pivot=(2, 2),
+                        deps=[(2, 2)],
+                        tag="",
+                        rule_type=TajweedRuleType.NORMAL_MADD,
+                    ),
+                    TajweedRuleMetadata(
+                        pivot=(2, 2),
+                        deps=[(2, 2)],
+                        tag="",
+                        rule_type=TajweedRuleType.LAZIM_MADD,
+                    ),
+                ],
+            },
+        )
+
+    def test_tajweed_rules_deleted_at_end_with_surrounding_text(self):
+        in_text = "Ahmed Mahmoud abcdef"
+        pat = r"M:<T:ef><D0:($)>"
+        rep = r""
+        mappings = init_mappings(in_text)
+
+        mid_text, mappings = sub_with_tagged_mapping(
+            pat,
+            rep,
+            in_text,
+            mappings,
+            tajweed_rule_type=TajweedRuleType.LAZIM_MADD,
+        )
+        _check_mapping_continuty(mappings)
+        assert mid_text == "Ahmed Mahmoud abcd"
+
+        mid_pat = r"M:<T:cd><D0:($)>"
+        mid_rep = r""
+        out_text, out_mappings = sub_with_tagged_mapping(
+            mid_pat,
+            mid_rep,
+            mid_text,
+            mappings,
+            tajweed_rule_type=TajweedRuleType.NORMAL_MADD,
+        )
+        _check_mapping_continuty(out_mappings)
+
+        assert out_text == "Ahmed Mahmoud ab"
+        _assert_mappings(
+            out_mappings,
+            [(i, i + 1) for i in range(16)] + [(16, 16)] * 4,
+            deleted_idx={16, 17, 18, 19},
+        )
+        _assert_tajweed_rules(
+            out_mappings,
+            {
+                16: [
+                    TajweedRuleMetadata(
+                        pivot=(16, 16),
+                        deps=[(16, 16)],
+                        tag="",
+                        rule_type=TajweedRuleType.NORMAL_MADD,
+                    ),
+                    TajweedRuleMetadata(
+                        pivot=(16, 16),
+                        deps=[(16, 16)],
+                        tag="",
+                        rule_type=TajweedRuleType.LAZIM_MADD,
+                    ),
+                ],
+            },
+        )
+
+    def test_second_tajweed_rule_added_with_surrounding_text(self):
+        in_text = "Hello How are you: abcdef Good "
+        pat = r"M:<T:ab><D0:c>"
+        rep = r"<T:AB><D0:c>"
+        mappings = init_mappings(in_text)
+
+        mid_text, mappings = sub_with_tagged_mapping(
+            pat,
+            rep,
+            in_text,
+            mappings,
+            tajweed_rule_type=TajweedRuleType.LAZIM_MADD,
+        )
+        _check_mapping_continuty(mappings)
+        assert mid_text == "Hello How are you: ABcdef Good "
+
+        mid_pat = r"M:<T:B>"
+        mid_rep = r"<T:BBBB>"
+        out_text, out_mappings = sub_with_tagged_mapping(
+            mid_pat,
+            mid_rep,
+            mid_text,
+            mappings,
+            tajweed_rule_type=TajweedRuleType.NORMAL_MADD,
+        )
+        _check_mapping_continuty(out_mappings)
+
+        assert out_text == "Hello How are you: ABBBBcdef Good "
+        _assert_mappings(
+            out_mappings,
+            [(i, i + 1) for i in range(19)]
+            + [(19, 20), (20, 24)]
+            + [(i + 3, i + 4) for i in range(21, 31)],
+        )
+        _assert_tajweed_rules(
+            out_mappings,
+            {
+                19: [
+                    TajweedRuleMetadata(
+                        pivot=(19, 24),
+                        deps=[(24, 25)],
+                        tag="",
+                        rule_type=TajweedRuleType.LAZIM_MADD,
+                    )
+                ],
+                20: [
+                    TajweedRuleMetadata(
+                        pivot=(20, 24),
+                        deps=[],
+                        tag="",
+                        rule_type=TajweedRuleType.NORMAL_MADD,
+                    )
+                ],
+            },
+        )
+
+    def test_second_tajweed_rule_blocked_by_condition(self):
+        in_text = "Hello How are you: abcdef Good "
+        pat = r"M:<T:ab><D0:c>"
+        rep = r"<T:AB><D0:c>"
+        mappings = init_mappings(in_text)
+
+        mid_text, mappings = sub_with_tagged_mapping(
+            pat,
+            rep,
+            in_text,
+            mappings,
+            tajweed_rule_type=TajweedRuleType.LAZIM_MADD,
+        )
+        _check_mapping_continuty(mappings)
+        assert mid_text == "Hello How are you: ABcdef Good "
+
+        mid_pat = r"M:<T:A>"
+        mid_rep = r"<T:aaaa>"
+        out_text, out_mappings = sub_with_tagged_mapping(
+            mid_pat,
+            mid_rep,
+            mid_text,
+            mappings,
+            tajweed_rule_type=TajweedRuleType.NORMAL_MADD,
+            insert_tajweed_cond=lambda types, rule_type: (
+                TajweedRuleType.LAZIM_MADD not in types
+            ),
+        )
+        _check_mapping_continuty(out_mappings)
+
+        assert out_text == "Hello How are you: aaaaBcdef Good "
+        _assert_mappings(
+            out_mappings,
+            [(i, i + 1) for i in range(19)]
+            + [(19, 23), (23, 24)]
+            + [(i + 3, i + 4) for i in range(21, 31)],
+        )
+        _assert_tajweed_rules(
+            out_mappings,
+            {
+                19: [
+                    TajweedRuleMetadata(
+                        pivot=(19, 24),
+                        deps=[(24, 25)],
+                        tag="",
+                        rule_type=TajweedRuleType.LAZIM_MADD,
+                    )
+                ],
+            },
         )
