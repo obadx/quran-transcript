@@ -961,6 +961,14 @@ def sub_with_tagged_mapping(
     * rep patterns Have to be connected like r"<x:ABC><y1:\1>" but not r"<x:ABC>N<y1:\1>" (N) is not mapped
     * if a group of patterns is existis in the `pat` and does not exist in the `rep` it will be deleted like `D` in the example
     * a tag in the `rep` has to exist in the `pat` as well otherwise a parsing error is raised
+    * tag names have to be unique in both `pat` and `rep`; repeating a tag raises
+      `MappedTagPrasingError`
+    EX: pat = r"<x:a><x:b>"  # repeated `x` in `pat`
+        rep = r"<x:a>"
+
+    EX: pat = r"<x:a><y:b>"
+        rep = r"<x:a><x:c>"  # repeated `x` in `rep`
+
     * the len of `tag pattern` and `tag replacemnt` has either to be euqal in length or one to many (on for `tag pattern` and many for `tag replacemnt`
 
     ## Adding Tajweed Rule
