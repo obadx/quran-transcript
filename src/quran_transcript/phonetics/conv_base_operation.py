@@ -1635,9 +1635,13 @@ def sub_with_mapping(
 @dataclass
 class ConversionOperation:
     regs: (
-        list[tuple[str, TajweedRule] | tuple[str, str, TajweedRule] | tuple[str, str]]
-        | tuple[str, TajweedRule]
-        | tuple[str, str, TajweedRule]
+        list[
+            tuple[str, TajweedRuleType]
+            | tuple[str, str, TajweedRuleType]
+            | tuple[str, str]
+        ]
+        | tuple[str, TajweedRuleType]
+        | tuple[str, str, TajweedRuleType]
         | tuple[str, str]
     )
     """Regex substitution operations applied by :meth:`forward`.
@@ -1706,12 +1710,19 @@ class ConversionOperation:
                     input_reg, out_reg = reg
                 else:
                     assert mappings is not None
-                    mappings = add_tajweed_rule_to_mappings(
-                        mappings=mappings,
-                        pattern=reg[0],
-                        text=text,
-                        tajweed_rule=reg[1],
-                    )
+                    if reg[0].startswith("M:"):
+                        mappings = add_tajweed_rule_with_tagged_pat(
+                            reg[0],
+                            mappings,
+                            reg[1],
+                        )
+                    else:
+                        mappings = add_tajweed_rule_to_mappings(
+                            mappings=mappings,
+                            pattern=reg[0],
+                            text=text,
+                            tajweed_rule=reg[1],
+                        )
                     return text, mappings
                 taj_rule = None
             elif len(reg) == 3:
@@ -1719,9 +1730,17 @@ class ConversionOperation:
             else:
                 raise ValueError("Invalid Input")
 
-            text, mappings = sub_with_mapping(
-                input_reg, out_reg, text, mappings, tajweed_rule=taj_rule
-            )
+            if input_reg.startswith("M:"):
+                text, mappings = sub_with_tagged_mapping(
+                    input_reg,
+                    out_reg,
+                    mappings,
+                    taj_rule,
+                )
+            else:
+                text, mappings = sub_with_mapping(
+                    input_reg, out_reg, text, mappings, tajweed_rule=taj_rule
+                )
         return text, mappings
 
     def apply(
