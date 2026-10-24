@@ -295,11 +295,13 @@ class PhonetizerMappings:
         self._uth_start: int = -1
         self._taj_to_id = {}
         self._taj_parts = TajweedRulePartContainer()
+        self._taj_to_first_to_watch: dict[str, Literal["TAJ", "DEP"]] = {}
 
     def reset(self):
         self._uth_start = -1
         self._prev_pos = (-1, -1)
         self._taj_to_id = {}
+        self._taj_to_first_to_watch = {}
 
     @classmethod
     def init_mappings(cls, text: str):
@@ -515,7 +517,18 @@ class PhonetizerMappings:
 
         if tajweed_rule_type is None:
             return
-        if parsed_taj_rule_tag not in self._taj_to_id:
+
+        # Generating diffrrent id of evey ocuurance of the tajweed rule in the same text
+        if parsed_taj_rule_tag not in self._taj_to_first_to_watch:
+            if dep_idx == -1:
+                self._taj_to_first_to_watch[parsed_taj_rule_tag] = "TAJ"
+            else:
+                self._taj_to_first_to_watch[parsed_taj_rule_tag] = "DEP"
+        if (
+            dep_idx == 0 and self._taj_to_first_to_watch[parsed_taj_rule_tag] == "DEP"
+        ) or (
+            dep_idx == -1 and self._taj_to_first_to_watch[parsed_taj_rule_tag] == "TAJ"
+        ):
             self._taj_to_id[parsed_taj_rule_tag] = str(uuid4())
 
         if insert_tajweed_cond is None:
@@ -1054,6 +1067,57 @@ def sub_with_tagged_mapping(
     mappings.finalize(len(text), len(out_text))
 
     return out_text, mappings
+
+
+def add_tajweed_rule_with_tagged_pat(
+    pat: str,
+    text: str,
+    mappings: PhonetizerMappings,
+    tajweed_rule_type: TajweedRuleType | None = None,
+    insert_tajweed_cond: Callable[[list[TajweedRuleType], TajweedRuleType], bool]
+    | None = None,
+    tajweed_rule_tag: str = "",
+) -> PhonetizerMappings:
+    """Same ruels as the `sub_with_tagged_mapping` but with no `rep`. Just adding tajweed rules to mappings"""
+
+    assert pat.startswith("M:")
+    pat = pat[2:]
+
+    mapped_tags = parse_tags(pat, "")
+    re_pat = ""
+    for m_tag in mapped_tags:
+        re_pat += m_tag.pat
+
+    re_pat = re.compile(re_pat)
+
+    mappings.reset()
+    for match in re_pat.finditer(text):
+        pos = match.start()
+        for m_tag in mapped_tags:
+            # pattern exist not deleted
+            tag_mat = m_tag.compiled_pat.match(
+                text, pos=pos
+            )  # Avoiding catching preious tag patter for example <x:aa><y:aa> we will hit the same match again so we want to have a moving cursor to avoid that
+            assert tag_mat != None
+            tag_pat_text = tag_mat.group()
+            tag_pat_len = len(tag_pat_text)
+
+            if m_tag.tag_tp in {"TAJWEED", "TAJWEED_DEP"}:
+                mappings.insert_tajweed_rule_part(
+                    pos,
+                    pos,
+                    pos + tag_pat_len,
+                    m_tag.taj_tag,  # NOTE: the associated pivot (T) tag so a pivot and its deps share the same id
+                    m_tag.dep_idx,
+                    m_tag.num_deps,
+                    tajweed_rule_type,
+                    insert_tajweed_cond,
+                    tajweed_rule_tag,  # NOTE: `tajweed_rule_tag` here is not the tag name but another thig raelate d to Tajweed rule we might need to rename it for disamiguity
+                )
+
+    mappings.finalize(len(text), len(text))
+
+    return mappings
 
 
 def get_mappings(
