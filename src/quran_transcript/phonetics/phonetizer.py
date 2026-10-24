@@ -6,6 +6,7 @@ from .conv_base_operation import (
     MappingPos,
     init_mappings,
     sub_with_mapping,
+    sub_with_tagged_mapping,
 )
 from .moshaf_attributes import MoshafAttributes
 from .operations import OPERATION_ORDER
@@ -39,12 +40,17 @@ def quran_phonetizer(
     mappings = init_mappings(text)
 
     # cleaning extra scpace
-    text, mappings = sub_with_mapping(
-        r"\s+", rf"{alph.uthmani.space}", text, mappings=mappings
+    # TODO: add many to one mapping as insert + delete
+    text, mappings = sub_with_tagged_mapping(
+        r"M:<r:\s+>", rf"<r:{alph.uthmani.space}>", text, mappings=mappings
     )
-    text, mappings = sub_with_mapping(r"(\s$|^\s)", r"", text, mappings=mappings)
+    text, mappings = sub_with_tagged_mapping(
+        r"M:<r:(\s$|^\s)>", r"", text, mappings=mappings
+    )
+    print("passed")
 
     for op in OPERATION_ORDER:
+        print(f"Appling: {op.arabic_name}")
         text, mappings = op.apply(text, moshaf, mappings, sura_idx=sura_idx)
 
     sifat = process_sifat(

@@ -28,6 +28,7 @@ from .tajweed_rulses import (
     NormalMaddRule,
     Qalqalah,
     TajweedRule,
+    TajweedRuleType,
 )
 
 
@@ -46,107 +47,6 @@ class DisassembleHrofMoqatta(ConversionOperation):
         for word, rep in uth.hrof_moqtaa_disassemble.items():
             text, mappings = sub_with_tagged_mapping(word, rep, text, mappings)
         return text, mappings
-
-    def _process_mappings(
-        self,
-        old_text: str,
-        uth_word: str,
-        rep: str,
-        mappings: MappingListType | None,
-    ) -> MappingListType:
-        if mappings is None:
-            mappings = get_mappings(old_text, old_text)
-
-        # Countring for the Case of replacing
-        # الم الله
-        # with
-        # ألف لام ميمَ الله
-        uth_words = uth_word.split(" ")
-        if len(uth_words) > 1:
-            uth_word = uth_words[0]
-            rep = " ".join(rep.split(" ")[:-1])
-
-        re_outs = [re_o for re_o in re.finditer(uth_word, old_text)]
-        for re_idx, re_out in enumerate(re_outs):
-            disc_map = self._get_single_word_mapping(uth_word=uth_word, rep=rep)
-            # Adding offset in case of multiple disconted letter (rare case but for genrality)
-            # Actually it happed in: `حمٓ عٓسٓقٓ`
-            start_offset = re_out.span()[0] + re_idx * (len(rep) - len(uth_word))
-            start_idx = re_out.span()[0]
-            start_idx = self._get_mapping_idx(start_idx, mappings)
-            # python execlusive indexing
-            end_idx = start_idx + len(uth_word)
-            last_pos = 0
-            # Adding mapping offsets (shifting our uthmani word mapping by offset)
-            ptr = 0
-            for idx in range(start_idx, end_idx):
-                # Avoiding copyiing object by refrence
-                mappings[idx].pos = (
-                    disc_map[ptr].pos[0] + start_offset,
-                    disc_map[ptr].pos[1] + start_offset,
-                )
-                mappings[idx].deleted = disc_map[ptr].deleted
-                last_pos = mappings[idx].pos[1]
-                ptr += 1
-
-            end = (
-                len(mappings)
-                if (re_idx + 1) == len(re_outs)
-                else re_outs[idx + 1].span()[0]
-            )
-            # Shifting the rest of position (other than our word) to the right
-            offset = None
-            for idx in range(end_idx, end):
-                # First Time Only
-                if offset is None:
-                    offset = last_pos - mappings[idx].pos[0]
-                mappings[idx].pos = (
-                    mappings[idx].pos[0] + offset,
-                    mappings[idx].pos[1] + offset,
-                )
-
-        return mappings
-
-    def _get_mapping_idx(self, idx: int, mappings: MappingListType) -> int:
-        """gets the idx of the mappings corresponds to a pos"""
-        last_m_idx = None
-        for m_idx in range(len(mappings)):
-            # we might have [MappingPos(pos=(0, 6), tajweed_rules=None, deleted=False), MappingPos(pos=(6, 6), tajweed_rules=None, deleted=True)]
-            # so we want to return the last index for our case here `1` instead of `0`
-            if idx >= mappings[m_idx].pos[0] and idx <= mappings[m_idx].pos[1]:
-                last_m_idx = m_idx
-
-        if last_m_idx is None:
-            raise ValueError("Can not find mapping index corresponds to input idx")
-        else:
-            return last_m_idx
-
-    def _get_single_word_mapping(self, uth_word: str, rep: str) -> MappingListType:
-        chars_with_madd = re.findall(f"[^{uth.madd}]{uth.madd}?", uth_word)
-        word_parts = rep.split(" ")
-        assert len(word_parts) == len(chars_with_madd)
-
-        mappings = []
-        uth_start = 0
-
-        ph_start = 0
-        ph_end = 0
-        for idx, (chars, word_part) in enumerate(zip(chars_with_madd, word_parts)):
-            ph_end = ph_start + len(word_part)
-            ph_end += 1 if (idx + 1) < len(word_parts) else 0  # accounting for space
-            mappings.append(MappingPos(pos=(ph_start, ph_end)))
-            # Deleting madd sign
-            for c in chars[1:]:
-                mappings.append(
-                    MappingPos(
-                        pos=(mappings[-1].pos[1], mappings[-1].pos[1]), deleted=True
-                    )
-                )
-
-            uth_start += len(chars)
-
-            ph_start = ph_end
-        return mappings
 
 
 @dataclass
@@ -283,8 +183,8 @@ class BeginWithHamzatWasl(ConversionOperation):
 class BeginWithSaken(ConversionOperation):
     arabic_name: str = "البدأ بحرف ساكن"
     regs: tuple[str, str] = (
-        f"(^.){uth.ras_haaa}",
-        f"\\1{uth.kasra}",
+        f"M:<r:(^.){uth.ras_haaa}>",
+        f"<r:\\1{uth.kasra}>",
     )
 
 
@@ -292,33 +192,33 @@ class BeginWithSaken(ConversionOperation):
 class ConvertAlifMaksora(ConversionOperation):
     arabic_name: str = "تحويل الأف المقصورة إله: حضف أو ألف أو ياء"
     regs: list[
-        tuple[str, TajweedRule] | tuple[str, str, TajweedRule] | tuple[str, str]
+        tuple[str, TajweedRuleType] | tuple[str, str, TajweedRuleType] | tuple[str, str]
     ] = field(
         default_factory=lambda: [
             # حذف الأف المقصورة من الاسم المقصور النكرة
             (
-                f"({uth.tanween_fath_modgham}|{uth.tanween_fath_iqlab}|{uth.tanween_fath_mothhar}){uth.alif_maksora}",
-                r"\1",
+                f"M:<r:({uth.tanween_fath_modgham}|{uth.tanween_fath_iqlab}|{uth.tanween_fath_mothhar})>{uth.alif_maksora}",
+                r"<r:\1>",
             ),
             # تحويلا الألف المقصورة المحضوفة وصلا إلى ألف
             (
-                f"({uth.fatha}){uth.alif_maksora}({uth.space}|$)",
-                f"\\1{uth.alif}\\2",
+                f"M:<T:({uth.fatha}){uth.alif_maksora}><D0:({uth.space}|$)>",
+                f"<T:\\1{uth.alif}><D0:\\2>",
             ),
             # تحويل الألف الخنرجية في السم المقصور لألف
             (
-                f"{uth.alif_maksora}{uth.alif_khnjaria}",
-                f"{uth.alif}",
+                f"M:<x:{uth.alif_maksora}><y:{uth.alif_khnjaria}>",
+                f"<y:{uth.alif}>",
             ),
             # تحويلا الألف المقصورة المسبوقة بكسرة إلي ياء
             (
-                f"{uth.kasra}{uth.alif_maksora}",
-                f"{uth.kasra}{uth.yaa}",
+                f"M:<T:{uth.kasra}{uth.alif_maksora}>",
+                f"<T:{uth.kasra}{uth.yaa}>",
             ),
             # ياء
             (
-                f"{uth.alif_maksora}([{uth.harakat_group}{uth.ras_haaa}{uth.shadda}{uth.tanween_dam}{uth.madd}])",
-                f"{uth.yaa}\\1",
+                f"M:<T:{uth.alif_maksora}><D0:([{uth.harakat_group}{uth.ras_haaa}{uth.shadda}{uth.tanween_dam}{uth.madd}])>",
+                f"<T:{uth.yaa}><D0:\\1>",
             ),
         ]
     )

@@ -1014,6 +1014,7 @@ def sub_with_tagged_mapping(
 
     """
 
+    assert mappings is not None
     assert pat.startswith("M:")
     pat = pat[2:]
 
@@ -1711,8 +1712,11 @@ class ConversionOperation:
                 else:
                     assert mappings is not None
                     if reg[0].startswith("M:"):
+                        if isinstance(mappings, list):
+                            mappings = PhonetizerMappings(uth_to_ph=mappings)
                         mappings = add_tajweed_rule_with_tagged_pat(
                             reg[0],
+                            text,
                             mappings,
                             reg[1],
                         )
@@ -1731,9 +1735,12 @@ class ConversionOperation:
                 raise ValueError("Invalid Input")
 
             if input_reg.startswith("M:"):
+                if isinstance(mappings, list):
+                    mappings = PhonetizerMappings(uth_to_ph=mappings)
                 text, mappings = sub_with_tagged_mapping(
                     input_reg,
                     out_reg,
+                    text,
                     mappings,
                     taj_rule,
                 )
