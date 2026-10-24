@@ -158,6 +158,18 @@ class TestParseTags:
         with pytest.raises(MappedTagPrasingError):
             parse_tags(pat, rep)
 
+    def test_repeated_tag_in_rep_error(self):
+        pat = r"<x:a><y:b>"
+        rep = r"<x:a><x:c>"
+        with pytest.raises(MappedTagPrasingError):
+            parse_tags(pat, rep)
+
+    def test_repeated_tag_in_pat_error(self):
+        pat = r"<x:a><x:b>"
+        rep = r"<x:a>"
+        with pytest.raises(MappedTagPrasingError):
+            parse_tags(pat, rep)
+
     def test_compiled_pat_present(self):
         pat = r"<x:a>"
         rep = r"<x:A>"
@@ -813,6 +825,186 @@ class TestSubWithTaggedMappingTajweed:
                     TajweedRuleMetadata(
                         pivot=(0, 2),
                         deps=[],
+                        tag="",
+                        rule_type=TajweedRuleType.LAZIM_MADD,
+                    )
+                ],
+            },
+        )
+
+    def test_tajweed_rule_many_matches(self):
+        in_text = "aba aba"
+        pat = r"M:<T:a>"
+        rep = r"<T:A>"
+        mappings = init_mappings(in_text)
+        out_text, out_mappings = sub_with_tagged_mapping(
+            pat,
+            rep,
+            in_text,
+            mappings,
+            tajweed_rule_type=TajweedRuleType.LAZIM_MADD,
+        )
+        _check_mapping_continuty(out_mappings)
+        assert out_text == "AbA AbA"
+        _assert_mappings(out_mappings, [(i, i + 1) for i in range(len(in_text))])
+        _assert_tajweed_rules(
+            out_mappings,
+            {
+                0: [
+                    TajweedRuleMetadata(
+                        pivot=(0, 1),
+                        deps=[],
+                        tag="",
+                        rule_type=TajweedRuleType.LAZIM_MADD,
+                    )
+                ],
+                2: [
+                    TajweedRuleMetadata(
+                        pivot=(2, 3),
+                        deps=[],
+                        tag="",
+                        rule_type=TajweedRuleType.LAZIM_MADD,
+                    )
+                ],
+                4: [
+                    TajweedRuleMetadata(
+                        pivot=(4, 5),
+                        deps=[],
+                        tag="",
+                        rule_type=TajweedRuleType.LAZIM_MADD,
+                    )
+                ],
+                6: [
+                    TajweedRuleMetadata(
+                        pivot=(6, 7),
+                        deps=[],
+                        tag="",
+                        rule_type=TajweedRuleType.LAZIM_MADD,
+                    )
+                ],
+            },
+        )
+
+    def test_tajweed_rule_many_matches_multiple_tags(self):
+        in_text = "abac abac"
+        pat = r"M:<T:ab><T0:a>"
+        rep = r"<T:AB><T0:A>"
+        mappings = init_mappings(in_text)
+        out_text, out_mappings = sub_with_tagged_mapping(
+            pat,
+            rep,
+            in_text,
+            mappings,
+            tajweed_rule_type=TajweedRuleType.LAZIM_MADD,
+        )
+        _check_mapping_continuty(out_mappings)
+        assert out_text == "ABAc ABAc"
+        _assert_mappings(out_mappings, [(i, i + 1) for i in range(len(in_text))])
+        _assert_tajweed_rules(
+            out_mappings,
+            {
+                0: [
+                    TajweedRuleMetadata(
+                        pivot=(0, 2),
+                        deps=[],
+                        tag="",
+                        rule_type=TajweedRuleType.LAZIM_MADD,
+                    )
+                ],
+                2: [
+                    TajweedRuleMetadata(
+                        pivot=(2, 3),
+                        deps=[],
+                        tag="",
+                        rule_type=TajweedRuleType.LAZIM_MADD,
+                    )
+                ],
+                5: [
+                    TajweedRuleMetadata(
+                        pivot=(5, 7),
+                        deps=[],
+                        tag="",
+                        rule_type=TajweedRuleType.LAZIM_MADD,
+                    )
+                ],
+                7: [
+                    TajweedRuleMetadata(
+                        pivot=(7, 8),
+                        deps=[],
+                        tag="",
+                        rule_type=TajweedRuleType.LAZIM_MADD,
+                    )
+                ],
+            },
+        )
+
+    def test_tajweed_rule_many_matches_with_dep_after(self):
+        in_text = "aba aba"
+        pat = r"M:<T:ab><D0:a>"
+        rep = r"<T:AB><D0:a>"
+        mappings = init_mappings(in_text)
+        out_text, out_mappings = sub_with_tagged_mapping(
+            pat,
+            rep,
+            in_text,
+            mappings,
+            tajweed_rule_type=TajweedRuleType.LAZIM_MADD,
+        )
+        _check_mapping_continuty(out_mappings)
+        assert out_text == "ABa ABa"
+        _assert_mappings(out_mappings, [(i, i + 1) for i in range(len(in_text))])
+        _assert_tajweed_rules(
+            out_mappings,
+            {
+                0: [
+                    TajweedRuleMetadata(
+                        pivot=(0, 2),
+                        deps=[(2, 3)],
+                        tag="",
+                        rule_type=TajweedRuleType.LAZIM_MADD,
+                    )
+                ],
+                4: [
+                    TajweedRuleMetadata(
+                        pivot=(4, 6),
+                        deps=[(6, 7)],
+                        tag="",
+                        rule_type=TajweedRuleType.LAZIM_MADD,
+                    )
+                ],
+            },
+        )
+
+    def test_tajweed_rule_many_matches_with_dep_before(self):
+        in_text = "aba aba"
+        pat = r"M:<D0:a><T:ba>"
+        rep = r"<D0:a><T:BA>"
+        mappings = init_mappings(in_text)
+        out_text, out_mappings = sub_with_tagged_mapping(
+            pat,
+            rep,
+            in_text,
+            mappings,
+            tajweed_rule_type=TajweedRuleType.LAZIM_MADD,
+        )
+        _check_mapping_continuty(out_mappings)
+        assert out_text == "aBA aBA"
+        _assert_mappings(out_mappings, [(i, i + 1) for i in range(len(in_text))])
+        _assert_tajweed_rules(
+            out_mappings,
+            {
+                1: [
+                    TajweedRuleMetadata(
+                        pivot=(1, 3),
+                        deps=[(0, 1)],
+                        tag="",
+                        rule_type=TajweedRuleType.LAZIM_MADD,
+                    )
+                ],
+                5: [
+                    TajweedRuleMetadata(
+                        pivot=(5, 7),
+                        deps=[(4, 5)],
                         tag="",
                         rule_type=TajweedRuleType.LAZIM_MADD,
                     )

@@ -845,7 +845,13 @@ def parse_tags(pat: str, rep: str) -> list[MapTag]:
                 f"out-of-bounds element at position {match.start()}: "
                 f"`{rep[last_idx : match.start()]}`",
             )
-        rep_tag_to_text[match.group(1)] = match.group(2)
+        tag = match.group(1)
+        tag_pat = match.group(2)
+        if tag in rep_tag_to_text:
+            raise MappedTagPrasingError(
+                f"Repeated tag `{tag}` at position `{match.start(1)}` in `rep` pattern. Tag should be used only once in the rep!"
+            )
+        rep_tag_to_text[tag] = tag_pat
         last_idx = match.end()
     if last_idx != len(rep):
         raise MappedTagPrasingError(
@@ -854,11 +860,20 @@ def parse_tags(pat: str, rep: str) -> list[MapTag]:
         )
 
     mapped_tags = []
+    pat_tags = set()
     offset = 0
     last_idx = 0
     for match in _mapped_tags.finditer(str(pat)):
         # non tag pattern
+        tag = match.group(1)
         start = match.start()
+
+        if tag in pat_tags:
+            raise MappedTagPrasingError(
+                f"Repeated tag `{tag}` at position `{match.start(1)}` in `pat` pattern. Tag should be used only once in the pat!"
+            )
+        pat_tags.add(tag)
+
         if start != last_idx:
             mapped_tags.append(
                 MapTag(
@@ -873,7 +888,6 @@ def parse_tags(pat: str, rep: str) -> list[MapTag]:
                     compiled_pat=re.compile(pat[last_idx:start]),
                 )
             )
-        tag = match.group(1)
         start_offset = match.end(1) - match.start(1) + 2
         mapped_tag = MapTag(
             start=match.start(2) - offset - start_offset,
@@ -908,7 +922,6 @@ def parse_tags(pat: str, rep: str) -> list[MapTag]:
         )
 
     # Every tag in the `rep` has to exist in the `pat`
-    pat_tags = {m_tag.tag for m_tag in mapped_tags}
     for rep_tag in rep_tag_to_text:
         if rep_tag not in pat_tags:
             raise MappedTagPrasingError(

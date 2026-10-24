@@ -1,5 +1,6 @@
 from quran_transcript.phonetics.conv_base_operation import (
     PhonetizerMappings,
+    add_tajweed_rule_with_tagged_pat,
     init_mappings,
     sub_with_tagged_mapping,
 )
@@ -40,6 +41,10 @@ def run_case(
     first_taj_rule: TajweedRuleType | None = None,
     mid_taj_rule: TajweedRuleType | None = None,
     mid_insert_taj_cond=None,
+    first_taj_rule_pat: str | None = None,
+    mid_taj_rule_pat: str | None = None,
+    after_first_taj_rule_for_pat: TajweedRuleType | None = None,
+    after_mid_taj_rule_for_pat: TajweedRuleType | None = None,
 ):
     print("#" * 30, pat, "#" * 30)
     mappings = init_mappings(in_text)
@@ -56,6 +61,14 @@ def run_case(
     print(f"IN   text: `{in_text}`")
     print(f"MID  text: `{mid_text}`")
 
+    if first_taj_rule_pat:
+        mappings = add_tajweed_rule_with_tagged_pat(
+            first_taj_rule_pat,
+            mid_text,
+            mappings,
+            after_first_taj_rule_for_pat,
+        )
+
     if mid_pat is not None:
         out_text, out_mappings = sub_with_tagged_mapping(
             mid_pat,
@@ -65,6 +78,15 @@ def run_case(
             tajweed_rule_type=mid_taj_rule,
             insert_tajweed_cond=mid_insert_taj_cond,
         )
+
+        if mid_taj_rule_pat:
+            out_mappings = add_tajweed_rule_with_tagged_pat(
+                mid_taj_rule_pat,
+                out_text,
+                out_mappings,
+                after_mid_taj_rule_for_pat,
+            )
+
         check_mapping_continuty(out_mappings)
         print(f"mid pat: `{mid_pat}`")
         print(f"mid rep: `{mid_rep}`")
@@ -122,6 +144,12 @@ if __name__ == "__main__":
 
     # WARN: Many to many Parsing error
     # run_case("acNdef", r"M:<x:[ab]c>.<r:(def)>", r"<x:ABC><r:\1>")
+
+    # # WARN: Repeated tag in rep error
+    # run_case("abcdedf", r"M:<x:a><y:b>", r"<x:a><x:c>")
+
+    # # WARN: Repeated tag in pat error
+    # run_case("abcdedf", r"M:<x:a><x:b>", r"<x:a>")
 
     # Cascadded: one to many + Delerte + shifting + normal text
     # run_case(
@@ -193,6 +221,38 @@ if __name__ == "__main__":
     #     "abcdef",
     #     r"M:<T:ab>",
     #     r"<T:AB>",
+    #     first_taj_rule=TajweedRuleType.LAZIM_MADD,
+    # )
+
+    # # Simple Case: many matches of tajweed rule
+    # run_case(
+    #     "aba aba",
+    #     r"M:<T:a>",
+    #     r"<T:A>",
+    #     first_taj_rule=TajweedRuleType.LAZIM_MADD,
+    # )
+
+    # # Simple Case: many matches of tajweed rule + dep after
+    # run_case(
+    #     "aba aba",
+    #     r"M:<T:ab><D0:a>",
+    #     r"<T:AB><D0:a>",
+    #     first_taj_rule=TajweedRuleType.LAZIM_MADD,
+    # )
+
+    # # Simple Case: many matches of tajweed rule + dep after
+    # run_case(
+    #     "aba aba",
+    #     r"M:<D0:a><T:ba>",
+    #     r"<D0:a><T:BA>",
+    #     first_taj_rule=TajweedRuleType.LAZIM_MADD,
+    # )
+
+    # # Simple Case: many matches of tajweed rule with multipletags
+    # run_case(
+    #     "abac abac",
+    #     r"M:<T:ab><T0:a>",
+    #     r"<T:AB><T0:A>",
     #     first_taj_rule=TajweedRuleType.LAZIM_MADD,
     # )
 
@@ -321,15 +381,15 @@ if __name__ == "__main__":
     #     # mid_insert_taj_cond=lambda L, x: True,
     # )
 
-    # anomly case
-    run_case(
-        "abcdef",
-        r"M:<T:ab><D0:c>",
-        r"<T:AB><D0:c>",
-        r"M:<T:B>",
-        r"<T:BBBB>",
-        first_taj_rule=TajweedRuleType.LAZIM_MADD,
-        mid_taj_rule=TajweedRuleType.NORMAL_MADD,
-        mid_insert_taj_cond=lambda L, x: TajweedRuleType.LAZIM_MADD not in L,
-        # mid_insert_taj_cond=lambda L, x: True,
-    )
+    # # anomly case
+    # run_case(
+    #     "abcdef",
+    #     r"M:<T:ab><D0:c>",
+    #     r"<T:AB><D0:c>",
+    #     r"M:<T:B>",
+    #     r"<T:BBBB>",
+    #     first_taj_rule=TajweedRuleType.LAZIM_MADD,
+    #     mid_taj_rule=TajweedRuleType.NORMAL_MADD,
+    #     mid_insert_taj_cond=lambda L, x: TajweedRuleType.LAZIM_MADD not in L,
+    #     # mid_insert_taj_cond=lambda L, x: True,
+    # )
