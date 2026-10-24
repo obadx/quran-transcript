@@ -10,6 +10,12 @@ class TajweedRuleType(IntEnum):
     NORMAL_MADD = auto()
     LAZIM_MADD = auto()
 
+    HAMZAT_WASL_DELETE = auto()
+
+    SKOON_MOSTADEER_DELETE = auto()
+    SKOON_MOSTATEEL_MID_DELETE = auto()
+    SKOON_MOSTATEEL_END_ADD = auto()
+
 
 @dataclass
 class TajweedRuleMetadata:

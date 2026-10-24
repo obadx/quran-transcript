@@ -228,8 +228,8 @@ class ConvertAlifMaksora(ConversionOperation):
 class DeleteShaddaAtBeginning(ConversionOperation):
     arabic_name: str = "حذف الشدة من الحرف الأول"
     regs: tuple[str, str] = (
-        f"(^.){uth.shadda}",
-        r"\1",
+        f"M:<T:(^.)>{uth.shadda}",
+        r"<T:\1>",
     )
 
 
@@ -237,8 +237,8 @@ class DeleteShaddaAtBeginning(ConversionOperation):
 class NormalizeHmazat(ConversionOperation):
     arabic_name: str = "توحيد الهمزات"
     regs: tuple[str, str] = (
-        f"[{uth.hamazat_group}]",
-        f"{uth.hamza}",
+        f"M:<T:[{uth.hamazat_group}]>",
+        f"<T:{uth.hamza}>",
     )
 
 
@@ -249,8 +249,8 @@ class IthbatYaaYohie(ConversionOperation):
         default_factory=lambda: [ConvertAlifMaksora(), NormalizeHmazat()]
     )
     regs: tuple[str, str] = (
-        f"([{uth.hamza}{uth.noon}{uth.yaa}{uth.taa_mabsoota}]{uth.dama}{uth.haa_mohmala}{uth.ras_haaa}{uth.yaa}{uth.kasra})({uth.space}|$)",
-        f"\\1{uth.yaa}\\2",
+        f"M:<x:([{uth.hamza}{uth.noon}{uth.yaa}{uth.taa_mabsoota}]{uth.dama}{uth.haa_mohmala}{uth.ras_haaa}{uth.yaa})><y:{uth.kasra}><z:({uth.space}|$)>",
+        f"<x:\\1><y:{uth.kasra}{uth.yaa}><z:\\2>",
     )
 
 
@@ -258,7 +258,7 @@ class IthbatYaaYohie(ConversionOperation):
 class RemoveKasheeda(ConversionOperation):
     arabic_name: str = "حذف الكشيدة"
     regs: tuple[str, str] = (
-        f"{uth.kasheeda}",
+        f"M:{uth.kasheeda}",
         "",
     )
 
@@ -266,18 +266,20 @@ class RemoveKasheeda(ConversionOperation):
 @dataclass
 class RemoveHmzatWaslMiddle(ConversionOperation):
     arabic_name: str = "حذف همزة الوصل وصلا"
-    regs: tuple[str, str] = (
-        f"([^^]){uth.hamzat_wasl}",
-        r"\1",
+    regs: tuple[str, str, TajweedRuleType] = (
+        f"M:<D0:([^^])><T:{uth.hamzat_wasl}>",
+        r"<D0:\1>",
+        TajweedRuleType.HAMZAT_WASL_DELETE,
     )
 
 
 @dataclass
 class RemoveSkoonMostadeer(ConversionOperation):
     arabic_name: str = "حذف الحرف أعلاه سكون مستدير"
-    regs: tuple[str, str] = (
-        f"(.){uth.skoon_mostadeer}",
+    regs: tuple[str, str, TajweedRuleType] = (
+        f"M:.<T:{uth.skoon_mostadeer}>",
         r"",
+        TajweedRuleType.SKOON_MOSTADEER_DELETE,
     )
 
 
@@ -285,18 +287,20 @@ class RemoveSkoonMostadeer(ConversionOperation):
 class SkoonMostateel(ConversionOperation):
     arabic_name: str = "ضبط السكون المستطيل"
     regs: list[
-        tuple[str, TajweedRule] | tuple[str, str, TajweedRule] | tuple[str, str]
+        tuple[str, str, TajweedRuleType] | tuple[str, str] | tuple[str, TajweedRuleType]
     ] = field(
         default_factory=lambda: [
             # remove from the middle
             (
-                f"{uth.alif}{uth.skoon_mostateel}{uth.space}",
-                f"{uth.space}",
+                f"M:<T:{uth.alif}{uth.skoon_mostateel}><r:{uth.space}>",
+                f"<r:{uth.space}>",
+                TajweedRuleType.SKOON_MOSTATEEL_MID_DELETE,
             ),
             # convert to alif at the end
             (
-                f"{uth.alif}{uth.skoon_mostateel}$",
-                f"{uth.alif}",
+                f"M:<T:{uth.alif}><D0:{uth.skoon_mostateel}$>",
+                f"<T:{uth.alif}>",
+                TajweedRuleType.SKOON_MOSTATEEL_END_ADD,
             ),
         ]
     )
