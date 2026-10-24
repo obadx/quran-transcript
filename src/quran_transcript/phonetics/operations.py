@@ -309,15 +309,10 @@ class SkoonMostateel(ConversionOperation):
 @dataclass
 class RemoveTanweenFatahAtEndFromTaaMarboota(ConversionOperation):
     arabic_name: str = "حذف التنوين بالفتح بعد هاء التأنيث وقفا"
-    regs: list[
-        tuple[str, TajweedRule] | tuple[str, str, TajweedRule] | tuple[str, str]
-    ] = field(
-        default_factory=lambda: [
-            (
-                f"({uth.taa_marboota})(?:{uth.tanween_fath_modgham}|{uth.tanween_fath_mothhar})$",
-                r"\1",
-            ),
-        ]
+    regs: tuple[str, str, TajweedRuleType] = (
+        f"M:<T:({uth.taa_marboota})><D0:(?:{uth.tanween_fath_modgham}|{uth.tanween_fath_mothhar})$>",
+        r"<T:\1>",
+        TajweedRuleType.TANWEEN_FATAH_FOR_HAA_TANEETH_PAUSE,
     )
 
 
@@ -326,18 +321,20 @@ class RemoveTanweenFatahAtEndFromTaaMarboota(ConversionOperation):
 class MaddAlewad(ConversionOperation):
     arabic_name: str = "ضبط مد العوض وسطا ووقفا"
     regs: list[
-        tuple[str, TajweedRule] | tuple[str, str, TajweedRule] | tuple[str, str]
+        tuple[str, TajweedRuleType] | tuple[str, str, TajweedRuleType] | tuple[str, str]
     ] = field(
         default_factory=lambda: [
             # remove from the middle
             (
-                f"({uth.tanween_fath_modgham}|{uth.tanween_fath_iqlab}|{uth.tanween_fath_mothhar}){uth.alif}({uth.space}|$)",
-                r"\1\2",
+                f"M:<r0:({uth.tanween_fath_modgham}|{uth.tanween_fath_iqlab}|{uth.tanween_fath_mothhar})><T:{uth.alif}><r1:({uth.space}|$)>",
+                r"<r0:\1><r1:\2>",
+                TajweedRuleType.TANWEEN_FATH_MID_DELETE,
             ),
             # convert to alif at the end
             (
-                f"({uth.tanween_fath_modgham}|{uth.tanween_fath_iqlab}|{uth.tanween_fath_mothhar})$",
-                f"{uth.fatha}{uth.alif}",
+                f"M:<T:{uth.tanween_fath}>[{uth.meem_iqlab}{uth.tanween_idhaam_dterminer}]?<D0:($)>",
+                f"<T:{uth.fatha}{uth.alif}><D0:\\1>",
+                TajweedRuleType.ELEWAD_MADD,
             ),
         ]
     )

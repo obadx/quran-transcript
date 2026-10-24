@@ -9,12 +9,16 @@ from .. import alphabet as alph
 class TajweedRuleType(IntEnum):
     NORMAL_MADD = auto()
     LAZIM_MADD = auto()
+    ELEWAD_MADD = auto()
 
     HAMZAT_WASL_DELETE = auto()
 
     SKOON_MOSTADEER_DELETE = auto()
     SKOON_MOSTATEEL_MID_DELETE = auto()
     SKOON_MOSTATEEL_END_ADD = auto()
+
+    TANWEEN_FATAH_FOR_HAA_TANEETH_PAUSE = auto()
+    TANWEEN_FATH_MID_DELETE = auto()
 
 
 @dataclass
