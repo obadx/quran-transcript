@@ -805,6 +805,43 @@ class TestSubWithTaggedMapping:
         assert out_text == "start"
         _assert_mappings(out_mappings, [(0, 1), (1, 2), (2, 3), (3, 4), (4, 5)])
 
+    # ------------------------------------------------------------------
+    # Zero-width optional characters between tags
+    # ------------------------------------------------------------------
+    def test_zero_width_optional_char_present(self):
+        in_text = "abc"
+        pat = r"M:<x:ab>c?<y:($)>"
+        rep = r"<x:AB><y:\1>"
+        mappings = init_mappings(in_text)
+        out_text, out_mappings = sub_with_tagged_mapping(pat, rep, in_text, mappings)
+        _check_mapping_continuty(out_mappings)
+        assert out_text == "AB"
+        _assert_mappings(
+            out_mappings,
+            [(0, 1), (1, 2), (2, 2)],
+            deleted_idx={2},
+        )
+
+    def test_zero_width_optional_char_absent(self):
+        in_text = "ab"
+        pat = r"M:<x:ab>c?<y:($)>"
+        rep = r"<x:AB><y:\1>"
+        mappings = init_mappings(in_text)
+        out_text, out_mappings = sub_with_tagged_mapping(pat, rep, in_text, mappings)
+        _check_mapping_continuty(out_mappings)
+        assert out_text == "AB"
+        _assert_mappings(out_mappings, [(0, 1), (1, 2)])
+
+    def test_zero_width_optional_char_absent_one_to_many(self):
+        in_text = "a"
+        pat = r"M:<x:a>b?<y:($)>"
+        rep = r"<x:AAAA><y:\1>"
+        mappings = init_mappings(in_text)
+        out_text, out_mappings = sub_with_tagged_mapping(pat, rep, in_text, mappings)
+        _check_mapping_continuty(out_mappings)
+        assert out_text == "AAAA"
+        _assert_mappings(out_mappings, [(0, 4)])
+
 
 # ----------------------------------------------------------------------
 # sub_with_tagged_mapping: Tajweed rules

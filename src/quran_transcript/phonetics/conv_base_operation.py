@@ -1041,6 +1041,7 @@ def sub_with_tagged_mapping(
         in_pos = match.start()
         out_pos += keep_num
         for m_tag in mapped_tags:
+            tag_rep_text = ""
             # pattern exist not deleted
             tag_mat = m_tag.compiled_pat.match(
                 text, pos=in_pos
@@ -1064,7 +1065,8 @@ def sub_with_tagged_mapping(
                     raise MappedTagPrasingCardinalityError(
                         f"Not supporting many to many or many to one mapping you want to map: `{tag_pat_text}` to `{tag_rep_text}` corresponds to tag: `{m_tag}`"
                     )
-            elif m_tag.rep_parts == []:
+            elif m_tag.rep_parts == [] and tag_pat_len > 0:
+                # the tag_pat_len for regs that are zero lenght like `z?`
                 # Deletion
                 shifted = True
                 tag_rep_text = ""
