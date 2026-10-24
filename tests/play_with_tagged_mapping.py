@@ -151,6 +151,9 @@ if __name__ == "__main__":
     # # WARN: Repeated tag in pat error
     # run_case("abcdedf", r"M:<x:a><x:b>", r"<x:a>")
 
+    # # WARN: Tajweed with non indexed dep
+    # run_case("abcdedf", r"M:<T:c><D:d>", r"<T:C><D:d>")
+
     # Cascadded: one to many + Delerte + shifting + normal text
     # run_case(
     #     "aNdef Hello",
@@ -222,6 +225,66 @@ if __name__ == "__main__":
     #     r"M:<T:ab>",
     #     r"<T:AB>",
     #     first_taj_rule=TajweedRuleType.LAZIM_MADD,
+    # )
+
+    # # Simple Case: Tajweed Rule only + pat only Tajweed
+    # run_case(
+    #     "abcdef",
+    #     r"M:<T:ab>",
+    #     r"<T:AB>",
+    #     first_taj_rule_pat=r"M:<T:f>",
+    #     first_taj_rule=TajweedRuleType.LAZIM_MADD,
+    #     after_first_taj_rule_for_pat=TajweedRuleType.NORMAL_MADD,
+    # )
+
+    # # Simple Case: Tajweed Rule only + pat only Tajweed with dep after
+    # run_case(
+    #     "abcdef",
+    #     r"M:<T:ab>",
+    #     r"<T:AB>",
+    #     first_taj_rule_pat=r"M:<T:e><D0:f>",
+    #     first_taj_rule=TajweedRuleType.LAZIM_MADD,
+    #     after_first_taj_rule_for_pat=TajweedRuleType.NORMAL_MADD,
+    # )
+
+    # # Simple Case: Tajweed Rule only + pat only Tajweed with dep after
+    # run_case(
+    #     "abcdef",
+    #     r"M:<T:ab>",
+    #     r"<T:AB>",
+    #     first_taj_rule_pat=r"M:<T:e><D0:f>",
+    #     first_taj_rule=TajweedRuleType.LAZIM_MADD,
+    #     after_first_taj_rule_for_pat=TajweedRuleType.NORMAL_MADD,
+    # )
+
+    # # Simple Case: Tajweed Rule only + pat only Tajweed with dep before
+    # run_case(
+    #     "abcdef",
+    #     r"M:<T:ab>",
+    #     r"<T:AB>",
+    #     first_taj_rule_pat=r"M:<D0:e><T:f>",
+    #     first_taj_rule=TajweedRuleType.LAZIM_MADD,
+    #     after_first_taj_rule_for_pat=TajweedRuleType.NORMAL_MADD,
+    # )
+
+    # # Simple Case: Tajweed Rule only + pat only Tajweed with dep after + more than once
+    # run_case(
+    #     "abcdef ef mn ef",
+    #     r"M:<T:ab>",
+    #     r"<T:AB>",
+    #     first_taj_rule_pat=r"M:<T:e><D0:f>",
+    #     first_taj_rule=TajweedRuleType.LAZIM_MADD,
+    #     after_first_taj_rule_for_pat=TajweedRuleType.NORMAL_MADD,
+    # )
+
+    # # Simple Case: Tajweed Rule only + pat only Tajweed with dep before + more than once
+    # run_case(
+    #     "abcdef ef mn ef",
+    #     r"M:<T:ab>",
+    #     r"<T:AB>",
+    #     first_taj_rule_pat=r"M:<D0:e><T:f>",
+    #     first_taj_rule=TajweedRuleType.LAZIM_MADD,
+    #     after_first_taj_rule_for_pat=TajweedRuleType.NORMAL_MADD,
     # )
 
     # # Simple Case: many matches of tajweed rule
@@ -381,15 +444,87 @@ if __name__ == "__main__":
     #     # mid_insert_taj_cond=lambda L, x: True,
     # )
 
-    # # anomly case
+    # # Cascaded: More than Tajweed Rule  + add tajweed first
     # run_case(
-    #     "abcdef",
+    #     "abcdefgh",
     #     r"M:<T:ab><D0:c>",
     #     r"<T:AB><D0:c>",
     #     r"M:<T:B>",
     #     r"<T:BBBB>",
     #     first_taj_rule=TajweedRuleType.LAZIM_MADD,
     #     mid_taj_rule=TajweedRuleType.NORMAL_MADD,
-    #     mid_insert_taj_cond=lambda L, x: TajweedRuleType.LAZIM_MADD not in L,
-    #     # mid_insert_taj_cond=lambda L, x: True,
+    #     first_taj_rule_pat=r"M:<T:ef>",
+    #     after_first_taj_rule_for_pat=TajweedRuleType.NORMAL_MADD,
     # )
+
+    # # Cascaded: More than Tajweed Rule  + add tajweed first + dep
+    # run_case(
+    #     "abcdefgh",
+    #     r"M:<T:ab><D0:c>",
+    #     r"<T:AB><D0:c>",
+    #     r"M:<T:B>",
+    #     r"<T:BBBB>",
+    #     first_taj_rule=TajweedRuleType.LAZIM_MADD,
+    #     mid_taj_rule=TajweedRuleType.NORMAL_MADD,
+    #     first_taj_rule_pat=r"M:<T:e><D0:f>",
+    #     after_first_taj_rule_for_pat=TajweedRuleType.NORMAL_MADD,
+    # )
+
+    # # WARN: should raise
+    # # Cascaded: More than Tajweed Rule  + add tajweed first + dep
+    # run_case(
+    #     "abcdefgh",
+    #     r"M:<T:ab><D0:c>",
+    #     r"<T:AB><D0:c>",
+    #     r"M:<T:B>",
+    #     r"<T:BBBB>",
+    #     first_taj_rule=TajweedRuleType.LAZIM_MADD,
+    #     mid_taj_rule=TajweedRuleType.NORMAL_MADD,
+    #     first_taj_rule_pat=r"M:<T:e><D:f>",
+    #     after_first_taj_rule_for_pat=TajweedRuleType.NORMAL_MADD,
+    # )
+
+    # # Cascaded: More than Tajweed Rule  + add tajweed first + dep + add tjaweed mid
+    # run_case(
+    #     "abcdefgh",
+    #     r"M:<T:ab><D0:c>",
+    #     r"<T:AB><D0:c>",
+    #     r"M:<T:B>",
+    #     r"<T:BBBB>",
+    #     first_taj_rule=TajweedRuleType.LAZIM_MADD,
+    #     mid_taj_rule=TajweedRuleType.NORMAL_MADD,
+    #     first_taj_rule_pat=r"M:<T:e><D0:f>",
+    #     after_first_taj_rule_for_pat=TajweedRuleType.NORMAL_MADD,
+    #     mid_taj_rule_pat=r"M:<T:g>",
+    #     after_mid_taj_rule_for_pat=TajweedRuleType.NORMAL_MADD,
+    # )
+
+    # # Cascaded: More than Tajweed Rule  + add tajweed first + dep + add tjaweed mid + dep
+    # run_case(
+    #     "abcdefgh",
+    #     r"M:<T:ab><D0:c>",
+    #     r"<T:AB><D0:c>",
+    #     r"M:<T:B>",
+    #     r"<T:BBBB>",
+    #     first_taj_rule=TajweedRuleType.LAZIM_MADD,
+    #     mid_taj_rule=TajweedRuleType.NORMAL_MADD,
+    #     first_taj_rule_pat=r"M:<T:e><D0:f>",
+    #     after_first_taj_rule_for_pat=TajweedRuleType.NORMAL_MADD,
+    #     mid_taj_rule_pat=r"M:<T:g><D0:h>",
+    #     after_mid_taj_rule_for_pat=TajweedRuleType.NORMAL_MADD,
+    # )
+
+    # Cascaded: More than Tajweed Rule  + add tajweed first + dep + add tjaweed mid + dep before
+    run_case(
+        "abcdefgh",
+        r"M:<T:ab><D0:c>",
+        r"<T:AB><D0:c>",
+        r"M:<T:B>",
+        r"<T:BBBB>",
+        first_taj_rule=TajweedRuleType.LAZIM_MADD,
+        mid_taj_rule=TajweedRuleType.NORMAL_MADD,
+        first_taj_rule_pat=r"M:<T:e><D0:f>",
+        after_first_taj_rule_for_pat=TajweedRuleType.NORMAL_MADD,
+        mid_taj_rule_pat=r"M:<D0:g><T:h>",
+        after_mid_taj_rule_for_pat=TajweedRuleType.NORMAL_MADD,
+    )

@@ -623,8 +623,9 @@ _groups = re.compile(
     """,
     re.VERBOSE,
 )
+# `D` is included in the [DTa-z] to be nicly explained in the parser
 _mapped_tags = re.compile(
-    r"<(D[0-9][0-9]|D[0-9]|[Ta-z][0-9]?):((?:\\.|\[(?:\\.|[^\]\\])*\]|\(\?P<\w+>|[^>\\])*)>"
+    r"<(D[0-9][0-9]|D[0-9]|[DTa-z][0-9]?):((?:\\.|\[(?:\\.|[^\]\\])*\]|\(\?P<\w+>|[^>\\])*)>"
 )
 
 
@@ -867,6 +868,11 @@ def parse_tags(pat: str, rep: str) -> list[MapTag]:
         # non tag pattern
         tag = match.group(1)
         start = match.start()
+
+        if tag == "D":
+            raise MappedTagPrasingError(
+                f"Using only `D` to describe Tajweed Rule Dependency is not supported. It has to be followed by an index starting from `0` to `9`. Current tag position is `{match.start(1)}`"
+            )
 
         if tag in pat_tags:
             raise MappedTagPrasingError(
@@ -1135,6 +1141,8 @@ def add_tajweed_rule_with_tagged_pat(
                     insert_tajweed_cond,
                     tajweed_rule_tag,  # NOTE: `tajweed_rule_tag` here is not the tag name but another thig raelate d to Tajweed rule we might need to rename it for disamiguity
                 )
+
+            pos += tag_pat_len
 
     mappings.finalize(len(text), len(text))
 
