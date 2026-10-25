@@ -468,67 +468,63 @@ class PrepareGhonnaIdghamIqlab(ConversionOperation):
     )
     arabic_name: str = "فك الإقلاب والعغنة الإدغام"
     regs: list[
-        tuple[str, TajweedRule] | tuple[str, str, TajweedRule] | tuple[str, str]
+        tuple[str, TajweedRuleType] | tuple[str, str, TajweedRuleType] | tuple[str, str]
     ] = field(
         default_factory=lambda: [
             # النون المقلبة ميمام
             (
-                f"{uth.noon}{uth.meem_iqlab}",
-                f"{uth.meem}",
+                f"M:<T:{uth.noon}>[{uth.meem_iqlab}{uth.tanween_idhaam_dterminer}]<r:({uth.space}?)><D0:{uth.baa}>",
+                f"<T:{uth.meem}><r:\\1><D0:{uth.baa}>",
+                TajweedRuleType.IQLAB_NOON,
             ),
             # تنوين الفتح المقبل ميمام
             (
-                # f"{uth.tanween_fath_iqlab}",
-                # f"{uth.fatha}{uth.meem}",
-                f"{uth.tanween_fath}.({uth.space}{uth.baa})",
-                f"{uth.fatha}{uth.meem}\\1",
+                f"M:<T:{uth.tanween_fath}>.<r:({uth.space})><D0:({uth.baa})>",
+                f"<T:{uth.fatha}{uth.meem}><r:\\1><D0:\\2>",
+                TajweedRuleType.IQLAB_NOON,
             ),
             #  فك تنوين الضم المقلب
             (
-                # f"{uth.tanween_dam_iqlab}",
-                # f"{uth.dama}{uth.meem}",
-                f"{uth.tanween_dam}.({uth.space}{uth.baa})",
-                f"{uth.dama}{uth.meem}\\1",
+                f"M:<T:{uth.tanween_dam}>.<r:({uth.space})><D0:({uth.baa})>",
+                f"<T:{uth.dama}{uth.meem}><r:\\1><D0:\\2>",
+                TajweedRuleType.IQLAB_NOON,
             ),
             #  فك تنوين الكسر المقلب ميما
             (
-                # f"{uth.tanween_kasr_iqlab}",
-                # f"{uth.kasra}{uth.meem}",
-                f"{uth.tanween_kasr}.({uth.space}{uth.baa})",
-                f"{uth.kasra}{uth.meem}\\1",
+                f"M:<T:{uth.tanween_kasr}>.<r:({uth.space})><D0:({uth.baa})>",
+                f"<T:{uth.kasra}{uth.meem}><r:\\1><D0:\\2>",
+                TajweedRuleType.IQLAB_NOON,
             ),
             # فك التنوين المدغم
             (
-                # f"{uth.tanween_fath_modgham}",
-                # f"{uth.fatha}{uth.noon}",
-                f"{uth.tanween_fath}.({uth.space}[{uth.noon_ikhfaa_group}{uth.noon_idgham_group}])",
-                f"{uth.fatha}{uth.noon}\\1",
+                f"M:<T:{uth.tanween_fath}>.<D0:({uth.space}[{uth.noon_ikhfaa_group}{uth.noon_idgham_group}])>",
+                f"<T:{uth.fatha}{uth.noon}><D0:\\1>",
             ),
             (
-                # f"{uth.tanween_dam_modgham}",
-                # f"{uth.dama}{uth.noon}",
-                f"{uth.tanween_dam}.({uth.space}[{uth.noon_ikhfaa_group}{uth.noon_idgham_group}])",
-                f"{uth.dama}{uth.noon}\\1",
+                f"M:<T:{uth.tanween_dam}>.<D0:({uth.space}[{uth.noon_ikhfaa_group}{uth.noon_idgham_group}])>",
+                f"<T:{uth.dama}{uth.noon}><D0:\\1>",
             ),
             (
-                # f"{uth.tanween_kasr_modgham}",
-                # f"{uth.kasra}{uth.noon}",
-                f"{uth.tanween_kasr}.({uth.space}[{uth.noon_ikhfaa_group}{uth.noon_idgham_group}])",
-                f"{uth.kasra}{uth.noon}\\1",
+                f"M:<T:{uth.tanween_kasr}>.<D0:({uth.space}[{uth.noon_ikhfaa_group}{uth.noon_idgham_group}])>",
+                f"<T:{uth.kasra}{uth.noon}><D0:\\1>",
             ),
             # فك التنوين المظهر
             (
-                f"{uth.tanween_fath_mothhar}",
-                f"{uth.fatha}{uth.noon}{uth.ras_haaa}",
+                f"M:<T:{uth.tanween_fath_mothhar}>",
+                f"<T:{uth.fatha}{uth.noon}{uth.ras_haaa}>",
             ),
             (
-                f"{uth.tanween_dam_mothhar}",
-                f"{uth.dama}{uth.noon}{uth.ras_haaa}",
+                f"M:<T:{uth.tanween_dam_mothhar}>",
+                f"<T:{uth.dama}{uth.noon}{uth.ras_haaa}>",
             ),
             (
-                f"{uth.tanween_kasr_mothhar}",
-                f"{uth.kasra}{uth.noon}{uth.ras_haaa}",
+                f"M:<T:{uth.tanween_kasr_mothhar}>",
+                f"<T:{uth.kasra}{uth.noon}{uth.ras_haaa}>",
             ),
+            # (
+            #     f"M:<T:{uth.noon}{uth.ras_haaa}>{uth.space}?<D0:.>",
+            #     TajweedRuleType.IZHAR_NOON,
+            # ),
             # حذف الحرف الأول من الحفران المدغمان
             (
                 f"(?:([{uth.fatha}{uth.dama}]){uth.yaa}|([{uth.fatha}{uth.kasra}]){uth.waw}|[{uth.pure_letters_without_yaa_and_waw_group}]){uth.space}?([{uth.pure_letters_group}]{uth.shadda})",

@@ -17,8 +17,25 @@ class TajweedRuleType(IntEnum):
     SKOON_MOSTATEEL_MID_DELETE = auto()
     SKOON_MOSTATEEL_END_ADD = auto()
 
-    TANWEEN_FATAH_FOR_HAA_TANEETH_PAUSE = auto()
     TANWEEN_FATH_MID_DELETE = auto()
+    TANWEEN_FATAH_FOR_HAA_TANEETH_PAUSE = auto()
+
+    # النون الساكنة والتنوين
+    IZHAR_NOON = auto()
+    IDGHAM_GONNAH_NOON = auto()
+    IQLAB_NOON = auto()
+    IKHFAA_NOON = auto()
+
+    # الميم الساكنة
+    IZHAR_MEEM = auto()
+    IDGHAM_MEEM = auto()
+    IKHFAA_MEEM = auto()
+
+    # النون والميم المشددتين
+    MOSHADAD_NOON = auto()
+    MOSHADAD_MEEM = auto()
+
+    IDGHAM_KAMEL = auto()
 
 
 @dataclass
