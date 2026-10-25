@@ -328,7 +328,6 @@ class MaddAlewad(ConversionOperation):
             (
                 f"M:<r0:({uth.tanween_fath_modgham}|{uth.tanween_fath_iqlab}|{uth.tanween_fath_mothhar})><T:{uth.alif}><r1:({uth.space}|$)>",
                 r"<r0:\1><r1:\2>",
-                TajweedRuleType.TANWEEN_FATH_MID_DELETE,
             ),
             # convert to alif at the end
             (

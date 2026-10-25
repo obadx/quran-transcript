@@ -47,10 +47,8 @@ def quran_phonetizer(
     text, mappings = sub_with_tagged_mapping(
         r"M:<r:(\s$|^\s)>", r"", text, mappings=mappings
     )
-    print("passed")
 
     for op in OPERATION_ORDER:
-        print(f"Appling: {op.arabic_name}")
         text, mappings = op.apply(text, moshaf, mappings, sura_idx=sura_idx)
 
     sifat = process_sifat(

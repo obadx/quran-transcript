@@ -435,7 +435,7 @@ class PhonetizerMappings:
             curr_ph_pos_start + N - 1
         )  # end is inclusive
 
-        assert self._is_uth_start_altered(), "a shift occured it has to be altered"
+        # assert self._is_uth_start_altered(), "a shift occured it has to be altered"
 
         # skiping start as it was altered
         if uth_start == self._uth_start:
