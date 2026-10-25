@@ -316,7 +316,6 @@ class RemoveTanweenFatahAtEndFromTaaMarboota(ConversionOperation):
     )
 
 
-# TODO: Add madd Alewad TajweedRule
 @dataclass
 class MaddAlewad(ConversionOperation):
     arabic_name: str = "ضبط مد العوض وسطا ووقفا"
@@ -343,8 +342,8 @@ class MaddAlewad(ConversionOperation):
 class WawAlsalah(ConversionOperation):
     arabic_name: str = "إبدال واو الصلاة ومثيلاتها ألفا"
     regs: tuple[str, str] = (
-        f"{uth.waw}{uth.alif_khnjaria}",
-        f"{uth.alif}",
+        f"M:{uth.waw}<x:{uth.alif_khnjaria}>",
+        f"<x:{uth.alif}>",
     )
 
 
@@ -354,40 +353,40 @@ class EnlargeSmallLetters(ConversionOperation):
         "تكبير الألف والياء والاو والنون الصغار مع حذف مد الصلة عند الوقف"
     )
     regs: list[
-        tuple[str, TajweedRule] | tuple[str, str, TajweedRule] | tuple[str, str]
+        tuple[str, TajweedRuleType] | tuple[str, str, TajweedRuleType] | tuple[str, str]
     ] = field(
         default_factory=lambda: [
             # small alif
             (
-                uth.alif_khnjaria,
-                uth.alif,
+                f"M:<x:{uth.alif_khnjaria}>",
+                f"<x:{uth.alif}>",
             ),
             # small noon
             (
-                uth.small_noon,
-                uth.noon,
+                f"M:<x:{uth.small_noon}>",
+                f"<x:{uth.noon}>",
             ),
             # small waw
             (
-                f"{uth.haa}{uth.dama}{uth.small_waw}{uth.madd}?$",
-                f"{uth.haa}{uth.dama}",
+                f"M:<x:({uth.haa}{uth.dama})>{uth.small_waw}{uth.madd}?<y:($)>",
+                r"<x:\1><y:\2>",
             ),
             (
-                uth.small_waw,
-                uth.waw,
+                f"M:<x:{uth.small_waw}>",
+                f"<x:{uth.waw}>",
             ),
             # Small yaa
             (
-                uth.small_yaa,
-                uth.small_yaa_sila,
+                f"M:<x:{uth.small_yaa}>",
+                f"<x:{uth.small_yaa_sila}>",
             ),
             (
-                f"{uth.haa}{uth.kasra}{uth.small_yaa_sila}{uth.madd}?$",
-                f"{uth.haa}{uth.kasra}",
+                f"M:<x:({uth.haa}{uth.kasra})>{uth.small_yaa_sila}{uth.madd}?<y:($)>",
+                r"<x:\1><y:\2>",
             ),
             (
-                uth.small_yaa_sila,
-                uth.yaa,
+                f"M:<x:{uth.small_yaa_sila}>",
+                f"<x:{uth.yaa}>",
             ),
         ]
     )
@@ -410,7 +409,7 @@ class CleanEnd(ConversionOperation):
     )
     arabic_name: str = "تسكين حرف الوقف"
     regs: tuple[str, str] = (
-        f"({'|'.join([uth.fatha, uth.dama, uth.kasra, uth.tanween_dam_modgham, uth.tanween_dam_iqlab, uth.tanween_dam_mothhar, uth.tanween_kasr_modgham, uth.tanween_kasr_iqlab, uth.tanween_kasr_mothhar, uth.madd])})$",
+        f"M:({'|'.join([uth.fatha, uth.dama, uth.kasra, uth.tanween_dam_modgham, uth.tanween_dam_iqlab, uth.tanween_dam_mothhar, uth.tanween_kasr_modgham, uth.tanween_kasr_iqlab, uth.tanween_kasr_mothhar, uth.madd])})$",
         r"",
     )
 
@@ -424,11 +423,17 @@ class NormalizeTaa(ConversionOperation):
     )
     arabic_name: str = "تحويب التاء المربطة في الوسط لتاء وفي الآخر لهاء"
     regs: list[
-        tuple[str, TajweedRule] | tuple[str, str, TajweedRule] | tuple[str, str]
+        tuple[str, TajweedRuleType] | tuple[str, str, TajweedRuleType] | tuple[str, str]
     ] = field(
         default_factory=lambda: [
-            (f"{uth.taa_marboota}$", f"{uth.haa}"),
-            (f"{uth.taa_marboota}", f"{uth.taa_mabsoota}"),
+            (
+                f"M:<x:{uth.taa_marboota}>$",
+                f"<x:{uth.haa}>",
+            ),
+            (
+                f"M:<x:{uth.taa_marboota}>",
+                f"<x:{uth.taa_mabsoota}>",
+            ),
         ]
     )
 
@@ -445,8 +450,8 @@ class AddAlifIsmAllah(ConversionOperation):
     regs: tuple[str, str] = (
         # لِّلَّهِ
         # with shadd at both lam
-        f"({uth.lam}(?:{uth.kasra}|{uth.shadda}{uth.kasra})?{uth.lam}{uth.shadda}{uth.fatha})({uth.haa}(?:$|.[^{uth.baa}{uth.waw}]))",
-        f"\\1{uth.alif}\\2",
+        f"M:<r0:({uth.lam}(?:{uth.kasra}|{uth.shadda}{uth.kasra})?{uth.lam}{uth.shadda})><T:{uth.fatha}><r1:({uth.haa}(?:$|.[^{uth.baa}{uth.waw}]))>",
+        f"<r0:\\1><T:{uth.fatha}{uth.alif}><r1:\\2>",
     )
 
 
