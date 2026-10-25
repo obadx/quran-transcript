@@ -145,8 +145,8 @@ if __name__ == "__main__":
     # # zero width char in between
     # run_case("ab", r"M:<x:ab>c?<y:($)>", r"<x:AB><y:\1>")
 
-    # zero width char in between
-    run_case("a", r"M:<x:a>b?<y:($)>", r"<x:AAAA><y:\1>")
+    # # zero width char in between
+    # run_case("a", r"M:<x:a>b?<y:($)>", r"<x:AAAA><y:\1>")
 
     # WARN: Many to one Parsing error
     # run_case("acNdef", r"M:<x:[ab]c>.<r:(def)>", r"<x:A><r:\1>")
@@ -537,3 +537,12 @@ if __name__ == "__main__":
     #     mid_taj_rule_pat=r"M:<D0:g><T:h>",
     #     after_mid_taj_rule_for_pat=TajweedRuleType.NORMAL_MADD,
     # )
+
+    # one to many + delte + shift no op (no need to shift)
+    run_case(
+        "abc",
+        r"M:<x:ab>c",
+        r"<x:ab>",
+        r"M:<x:a>b<y:($)>",
+        r"<x:BB><y:\1>",
+    )

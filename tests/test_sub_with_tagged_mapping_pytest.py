@@ -1518,6 +1518,38 @@ class TestCascadedSubWithTaggedMapping:
             deleted_idx={1},
         )
 
+    def test_cascade_one_to_many_delete_zero_width_noop_shift(self):
+        in_text = "abc"
+        pat = r"M:<x:ab>c"
+        rep = r"<x:ab>"
+        mappings = init_mappings(in_text)
+
+        mid_text, mappings = sub_with_tagged_mapping(pat, rep, in_text, mappings)
+        _prety_print(pat, rep, in_text, mid_text, mappings)
+        _check_mapping_continuty(mappings)
+
+        assert mid_text == "ab"
+        _assert_mappings(
+            mappings,
+            [(0, 1), (1, 2), (2, 2)],
+            deleted_idx={2},
+        )
+
+        mid_pat = r"M:<x:a>b<y:($)>"
+        mid_rep = r"<x:BB><y:\1>"
+        out_text, out_mappings = sub_with_tagged_mapping(
+            mid_pat, mid_rep, mid_text, mappings
+        )
+        _prety_print(mid_pat, mid_rep, in_text, out_text, out_mappings)
+        _check_mapping_continuty(out_mappings)
+
+        assert out_text == "BB"
+        _assert_mappings(
+            out_mappings,
+            [(0, 2), (2, 2), (2, 2)],
+            deleted_idx={1, 2},
+        )
+
     def test_cascade_one_to_many_then_replace_with_fff(self):
         in_text = "aNdef Hello"
         pat = r"M:<x:[ab]>.<r:(def)>"
