@@ -450,8 +450,8 @@ class AddAlifIsmAllah(ConversionOperation):
     regs: tuple[str, str] = (
         # لِّلَّهِ
         # with shadd at both lam
-        f"M:<r0:({uth.lam}(?:{uth.kasra}|{uth.shadda}{uth.kasra})?{uth.lam}{uth.shadda})><T:{uth.fatha}><r1:({uth.haa}(?:$|.[^{uth.baa}{uth.waw}]))>",
-        f"<r0:\\1><T:{uth.fatha}{uth.alif}><r1:\\2>",
+        f"M:<T:({uth.lam}(?:{uth.kasra}|{uth.shadda}{uth.kasra})?{uth.lam}{uth.shadda}{uth.fatha})><r1:({uth.haa}(?:$|.[^{uth.baa}{uth.waw}]))>",
+        f"<T:\\1{uth.alif}><r1:\\2>",
     )
 
 
@@ -570,10 +570,25 @@ class PrepareGhonnaIdghamIqlab(ConversionOperation):
             # ----------------------------------------------------
             # حذف الحرف الأول من الحفران المدغمان
             (
-                f"(?:([{uth.fatha}{uth.dama}]){uth.yaa}|([{uth.fatha}{uth.kasra}]){uth.waw}|[{uth.pure_letters_without_yaa_and_waw_group}]){uth.space}?([{uth.pure_letters_group}]{uth.shadda})",
-                r"\1\2\3",
-                # IdghamKamel(),
+                f"M:<T:[{uth.pure_letters_without_yaa_and_waw_group}]>{uth.space}?<D0:([{uth.pure_letters_group}]{uth.shadda})>",
+                r"<D0:\1>",
+                TajweedRuleType.IDGHAM_KAMEL,
             ),
+            (
+                f"M:<r:([{uth.fatha}{uth.dama}])><T:{uth.yaa}>{uth.space}?<D0:([{uth.pure_letters_group}]{uth.shadda})>",
+                r"<r:\1><D0:\2>",
+                TajweedRuleType.IDGHAM_KAMEL,
+            ),
+            (
+                f"M:<r:([{uth.fatha}{uth.kasra}])><T:{uth.waw}>{uth.space}?<D0:([{uth.pure_letters_group}]{uth.shadda})>",
+                r"<r:\1><D0:\2>",
+                TajweedRuleType.IDGHAM_KAMEL,
+            ),
+            # (
+            #     f"M:<T:(?:([{uth.fatha}{uth.dama}]){uth.yaa}|([{uth.fatha}{uth.kasra}]){uth.waw}|[{uth.pure_letters_without_yaa_and_waw_group}])>{uth.space}?<D0:([{uth.pure_letters_group}]{uth.shadda})>",
+            #     r"<T:\1\2><D0:\3>",
+            #     # IdghamKamel(),
+            # ),
         ]
     )
 

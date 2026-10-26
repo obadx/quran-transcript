@@ -589,16 +589,9 @@ if __name__ == "__main__":
     #     r"<T:ab>",
     # )
 
-    # # many to many with equal parts + delete shift before and after
-    # run_case(
-    #     "ABCabcDEF",
-    #     r"M:C<T:abc>D",
-    #     r"<T:ab>",
-    # )
-
-    # many to many with equal parts + delete shift before + insert befor
+    # many to many with equal parts + delete shift before and after
     run_case(
-        "ABabcDEF",
-        r"M:<x:A>B<T:abc>D",
-        r"<x:AAAA><T:ab>",
+        "ABCabcDEF",
+        r"M:C<T:abc>D",
+        r"<T:ab>",
     )
