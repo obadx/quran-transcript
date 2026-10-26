@@ -844,6 +844,129 @@ class TestSubWithTaggedMapping:
 
 
 # ----------------------------------------------------------------------
+# Many-to-many mappings with a shared prefix (insert/delete)
+# ----------------------------------------------------------------------
+class TestManyToManyWithPrefixInsertDelete:
+    def test_insert(self):
+        in_text = "abc"
+        pat = r"M:<T:abc>"
+        rep = r"<T:abcd>"
+        mappings = init_mappings(in_text)
+        out_text, out_mappings = sub_with_tagged_mapping(pat, rep, in_text, mappings)
+        _check_mapping_continuty(out_mappings)
+        assert out_text == "abcd"
+        _assert_mappings(out_mappings, [(0, 1), (1, 2), (2, 4)])
+
+    def test_insert_with_deleted_prefix(self):
+        in_text = "ABCabc"
+        pat = r"M:C<T:abc>"
+        rep = r"<T:abcd>"
+        mappings = init_mappings(in_text)
+        out_text, out_mappings = sub_with_tagged_mapping(pat, rep, in_text, mappings)
+        _prety_print(pat, rep, in_text, out_text, out_mappings)
+        _check_mapping_continuty(out_mappings)
+        assert out_text == "ABabcd"
+        _assert_mappings(
+            out_mappings,
+            [(0, 1), (1, 2), (2, 2), (2, 3), (3, 4), (4, 6)],
+            deleted_idx={2},
+        )
+
+    def test_insert_with_deleted_prefix_and_suffix(self):
+        in_text = "ABCabcDEF"
+        pat = r"M:C<T:abc>D"
+        rep = r"<T:abcd>"
+        mappings = init_mappings(in_text)
+        out_text, out_mappings = sub_with_tagged_mapping(pat, rep, in_text, mappings)
+        _prety_print(pat, rep, in_text, out_text, out_mappings)
+        _check_mapping_continuty(out_mappings)
+        assert out_text == "ABabcdEF"
+        _assert_mappings(
+            out_mappings,
+            [(0, 1), (1, 2), (2, 2), (2, 3), (3, 4), (4, 6), (6, 6), (6, 7), (7, 8)],
+            deleted_idx={2, 6},
+        )
+
+    def test_insert_after_one_to_many(self):
+        in_text = "AabcDEF"
+        pat = r"M:<x:A><T:abc>D"
+        rep = r"<x:AAAC><T:abcd>"
+        mappings = init_mappings(in_text)
+        out_text, out_mappings = sub_with_tagged_mapping(pat, rep, in_text, mappings)
+        _prety_print(pat, rep, in_text, out_text, out_mappings)
+        _check_mapping_continuty(out_mappings)
+        assert out_text == "AAACabcdEF"
+        _assert_mappings(
+            out_mappings,
+            [(0, 4), (4, 5), (5, 6), (6, 8), (8, 8), (8, 9), (9, 10)],
+            deleted_idx={4},
+        )
+
+    def test_delete(self):
+        in_text = "abc"
+        pat = r"M:<T:abc>"
+        rep = r"<T:ab>"
+        mappings = init_mappings(in_text)
+        out_text, out_mappings = sub_with_tagged_mapping(pat, rep, in_text, mappings)
+        _check_mapping_continuty(out_mappings)
+        assert out_text == "ab"
+        _assert_mappings(out_mappings, [(0, 1), (1, 2), (2, 2)], deleted_idx={2})
+
+    def test_delete_with_deleted_prefix(self):
+        in_text = "ABCabc"
+        pat = r"M:C<T:abc>"
+        rep = r"<T:ab>"
+        mappings = init_mappings(in_text)
+        out_text, out_mappings = sub_with_tagged_mapping(pat, rep, in_text, mappings)
+        _prety_print(pat, rep, in_text, out_text, out_mappings)
+        _check_mapping_continuty(out_mappings)
+        assert out_text == "ABab"
+        _assert_mappings(
+            out_mappings,
+            [(0, 1), (1, 2), (2, 2), (2, 3), (3, 4), (4, 4)],
+            deleted_idx={2, 5},
+        )
+
+    def test_delete_with_deleted_prefix_and_suffix(self):
+        in_text = "ABCabcDEF"
+        pat = r"M:C<T:abc>D"
+        rep = r"<T:ab>"
+        mappings = init_mappings(in_text)
+        out_text, out_mappings = sub_with_tagged_mapping(pat, rep, in_text, mappings)
+        _prety_print(pat, rep, in_text, out_text, out_mappings)
+        _check_mapping_continuty(out_mappings)
+        assert out_text == "ABabEF"
+        _assert_mappings(
+            out_mappings,
+            [(0, 1), (1, 2), (2, 2), (2, 3), (3, 4), (4, 4), (4, 4), (4, 5), (5, 6)],
+            deleted_idx={2, 5, 6},
+        )
+
+    def test_insert_and_delete_with_shifts(self):
+        in_text = "ABabcDEF"
+        pat = r"M:<x:A>B<T:abc>D"
+        rep = r"<x:AAAA><T:ab>"
+        mappings = init_mappings(in_text)
+        out_text, out_mappings = sub_with_tagged_mapping(pat, rep, in_text, mappings)
+        _prety_print(pat, rep, in_text, out_text, out_mappings)
+        _check_mapping_continuty(out_mappings)
+        assert out_text == "AAAAabEF"
+        _assert_mappings(
+            out_mappings,
+            [(0, 4), (4, 4), (4, 5), (5, 6), (6, 6), (6, 6), (6, 7), (7, 8)],
+            deleted_idx={1, 4, 5},
+        )
+
+    def test_unequal_lengths_without_prefix_error(self):
+        in_text = "abc"
+        pat = r"M:<x:abc>"
+        rep = r"<x:ax>"
+        mappings = init_mappings(in_text)
+        with pytest.raises(MappedTagPrasingCardinalityError):
+            sub_with_tagged_mapping(pat, rep, in_text, mappings)
+
+
+# ----------------------------------------------------------------------
 # sub_with_tagged_mapping: Tajweed rules
 # ----------------------------------------------------------------------
 class TestSubWithTaggedMappingTajweed:

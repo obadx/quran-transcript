@@ -538,11 +538,67 @@ if __name__ == "__main__":
     #     after_mid_taj_rule_for_pat=TajweedRuleType.NORMAL_MADD,
     # )
 
-    # one to many + delte + shift no op (no need to shift)
+    # # one to many + delte + shift no op (no need to shift)
+    # run_case(
+    #     "abc",
+    #     r"M:<x:ab>c",
+    #     r"<x:ab>",
+    #     r"M:<x:a>b<y:($)>",
+    #     r"<x:BB><y:\1>",
+    # )
+
+    # # many to many with equal parts + insert
+    # run_case(
+    #     "abc",
+    #     r"M:<T:abc>",
+    #     r"<T:abcd>",
+    # )
+
+    # # many to many with equal parts + insert + delete shift before
+    # run_case(
+    #     "ABCabc",
+    #     r"M:C<T:abc>",
+    #     r"<T:abcd>",
+    # )
+
+    # # many to many with equal parts + insert + delete shift before and after
+    # run_case(
+    #     "ABCabcDEF",
+    #     r"M:C<T:abc>D",
+    #     r"<T:abcd>",
+    # )
+
+    # # many to many with equal parts + insert + insert before
+    # run_case(
+    #     "AabcDEF",
+    #     r"M:<x:A><T:abc>D",
+    #     r"<x:AAAC><T:abcd>",
+    # )
+
+    # # many to many with equal parts + delete
+    # run_case(
+    #     "abc",
+    #     r"M:<T:abc>",
+    #     r"<T:ab>",
+    # )
+
+    # # many to many with equal parts + delete shift before
+    # run_case(
+    #     "ABCabc",
+    #     r"M:C<T:abc>",
+    #     r"<T:ab>",
+    # )
+
+    # # many to many with equal parts + delete shift before and after
+    # run_case(
+    #     "ABCabcDEF",
+    #     r"M:C<T:abc>D",
+    #     r"<T:ab>",
+    # )
+
+    # many to many with equal parts + delete shift before + insert befor
     run_case(
-        "abc",
-        r"M:<x:ab>c",
-        r"<x:ab>",
-        r"M:<x:a>b<y:($)>",
-        r"<x:BB><y:\1>",
+        "ABabcDEF",
+        r"M:<x:A>B<T:abc>D",
+        r"<x:AAAA><T:ab>",
     )

@@ -975,7 +975,21 @@ def sub_with_tagged_mapping(
     EX: pat = r"<x:a><y:b>"
         rep = r"<x:a><x:c>"  # repeated `x` in `rep`
 
-    * the len of `tag pattern` and `tag replacemnt` has either to be euqal in length or one to many (on for `tag pattern` and many for `tag replacemnt`
+    * Tag pattern/replacement length rules:
+      - Equal lengths: normal one-to-one mapping.
+      - Pattern length is 1 and replacement is longer: one-to-many mapping.
+      - Otherwise, if the lengths differ, the shorter tag text must be an exact
+        prefix of the longer tag text:
+        - replacement longer: the extra replacement characters are inserted.
+        - pattern longer: the extra pattern characters are deleted.
+      If the shorter text is not a prefix of the longer one,
+      `MappedTagPrasingCardinalityError` is raised.
+
+    EX: pat = r"<x:abc>"
+        rep = r"<x:abcd>"  # insert `d`
+
+    EX: pat = r"<x:abc>"
+        rep = r"<x:ab>"    # delete `c`
 
     ## Adding Tajweed Rule
     * You can add tajweed rules using Tajweed tag `T` with our wihout numbers from 0 to 9 like `T0`
@@ -1052,15 +1066,39 @@ def sub_with_tagged_mapping(
 
             if m_tag.tag != "" and m_tag.rep_parts != []:
                 tag_rep_text = expand_replacement(m_tag.rep_parts, match)
-                if (tag_pat_len == len(tag_rep_text)) and shifted:
+                tag_rep_len = len(tag_rep_text)
+                min_both_len = min(tag_pat_len, tag_rep_len)
+                if (tag_pat_len == tag_rep_len) and shifted:
                     # equal mapping
                     mappings.shift(in_pos, out_pos, tag_pat_len)
-                elif (tag_pat_len == len(tag_rep_text)) and not shifted:
+                elif (tag_pat_len == tag_rep_len) and not shifted:
                     ...
                 elif tag_pat_len == 1 and (len(tag_rep_text) > 1):
                     shifted = True
                     # one to many
-                    mappings.update_ph_one_to_many(in_pos, out_pos, len(tag_rep_text))
+                    mappings.update_ph_one_to_many(in_pos, out_pos, tag_rep_len)
+                elif tag_pat_text[:min_both_len] == tag_rep_text[:min_both_len]:
+                    if tag_rep_len > tag_pat_len:
+                        # insert
+                        shifted = True
+                        if shifted:
+                            mappings.shift(in_pos, out_pos, min_both_len - 1)
+                        mappings.update_ph_one_to_many(
+                            in_pos + min_both_len - 1,
+                            out_pos + min_both_len - 1,
+                            tag_rep_len - min_both_len + 1,
+                        )
+                    else:
+                        # delete
+                        shifted = True
+                        if shifted:
+                            mappings.shift(in_pos, out_pos, min_both_len)
+                        mappings.delete_shift(
+                            in_pos + min_both_len,
+                            out_pos + min_both_len,
+                            tag_pat_len - tag_rep_len,
+                        )
+
                 else:
                     raise MappedTagPrasingCardinalityError(
                         f"Not supporting many to many or many to one mapping you want to map: `{tag_pat_text}` to `{tag_rep_text}` corresponds to tag: `{m_tag}`"
