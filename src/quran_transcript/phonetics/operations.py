@@ -755,28 +755,6 @@ class Madd(ConversionOperation):
     madd_map: dict = field(
         default_factory=lambda: {
             "fath": MaddPattern(
-                pattern=f"({uth.fatha}){uth.alif}",
-                target=ph.alif,
-                madd=uth.alif,
-                name="alif",
-            ),
-            "dam": MaddPattern(
-                pattern=f"({uth.dama}){uth.waw}",
-                target=ph.waw_madd,
-                madd=uth.waw,
-                name="waw",
-            ),
-            "kasr": MaddPattern(
-                pattern=f"({uth.kasra}){uth.yaa}",
-                target=ph.yaa_madd,
-                madd=uth.yaa,
-                name="yaa",
-            ),
-        }
-    )
-    madd_map2: dict = field(
-        default_factory=lambda: {
-            "fath": MaddPattern(
                 pattern=f"<r:({uth.fatha})><T:{uth.alif}>",
                 target=ph.alif,
                 madd=uth.alif,
@@ -814,7 +792,7 @@ class Madd(ConversionOperation):
             TajweedRuleType.MONFASEL_MADD,
         )
         # normal monfasel
-        for madd_patt in self.madd_map2.values():
+        for madd_patt in self.madd_map.values():
             text, mappings = sub_with_tagged_mapping(
                 f"M:{madd_patt.pattern}{uth.madd}<D0:({uth.space}{uth.hamza})>",
                 f"<r:\\1><T:{moshaf.madd_monfasel_len * madd_patt.target}><D0:\\2>",
@@ -825,7 +803,7 @@ class Madd(ConversionOperation):
 
         # المد المتصل وقفا
         # أقوى السببين
-        for madd_patt in self.madd_map2.values():
+        for madd_patt in self.madd_map.values():
             text, mappings = sub_with_tagged_mapping(
                 f"M:{madd_patt.pattern}{uth.madd}<D0:({uth.hamza}$)>",
                 f"<r:\\1><T:{max(moshaf.madd_mottasel_waqf, moshaf.madd_aared_len) * madd_patt.target}><D0:\\2>",
@@ -835,7 +813,7 @@ class Madd(ConversionOperation):
             )
 
         # المد المتصل
-        for madd_patt in self.madd_map2.values():
+        for madd_patt in self.madd_map.values():
             text, mappings = sub_with_tagged_mapping(
                 f"M:{madd_patt.pattern}{uth.madd}<D0:({uth.hamza})>",
                 f"<r:\\1><T:{moshaf.madd_mottasel_len * madd_patt.target}><D0:\\2>",
@@ -870,7 +848,7 @@ class Madd(ConversionOperation):
             meem_aal_imran_taj_rule,
         )
 
-        for madd_patt in self.madd_map2.values():
+        for madd_patt in self.madd_map.values():
             text, mappings = sub_with_tagged_mapping(
                 # we might have the case where in طس the input is طَا سِيٓن and noon has no skoon letter
                 f"M:{madd_patt.pattern}{uth.madd}<D0:([^{uth.hamza}](?:{uth.shadda}|{uth.ras_haaa}|[{ph.noon}{ph.meem}{ph.noon_mokhfah}]{{2,3}}|$))>",
@@ -881,7 +859,7 @@ class Madd(ConversionOperation):
             )
 
         # المد العارض للسكون
-        for madd_patt in self.madd_map2.values():
+        for madd_patt in self.madd_map.values():
             text, mappings = sub_with_tagged_mapping(
                 f"M:{madd_patt.pattern}<D0:([^{uth.shadda}](?:{uth.ras_haaa}$|$|{ph.sakt}))>",
                 f"<r:\\1><T:{moshaf.madd_aared_len * madd_patt.target}><D0:\\2>",
@@ -900,7 +878,7 @@ class Madd(ConversionOperation):
         )
 
         # المد الطبيعي
-        for madd_patt in self.madd_map2.values():
+        for madd_patt in self.madd_map.values():
             text, mappings = sub_with_tagged_mapping(
                 f"M:{madd_patt.pattern}<r1:([^{madd_patt.madd}{uth.ras_haaa}{uth.shadda}{uth.harakat_group}]|$)>",
                 f"<r:\\1><T:{2 * madd_patt.target}><r1:\\2>",
@@ -915,10 +893,10 @@ class Madd(ConversionOperation):
 @dataclass
 class Qalqla(ConversionOperation):
     arabic_name: str = "إضافة علامة القلقة"
-    regs: tuple[str, str, TajweedRule] = (
-        f"([{uth.qlqla_group}](?:{uth.shadda}$|{uth.ras_haaa}|$))",
-        r"\1" + ph.qlqla,
-        Qalqalah(),
+    regs: tuple[str, str, TajweedRuleType] = (
+        f"M:<T:([{uth.qlqla_group}](?:{uth.shadda}$|{uth.ras_haaa}|$))>",
+        f"<T:\\1{ph.qlqla}>",
+        TajweedRuleType.QALQALAH,
     )
     ops_before: list[ConversionOperation] = field(
         default_factory=lambda: [
@@ -931,17 +909,17 @@ class Qalqla(ConversionOperation):
 class RemoveRasHaaAndShadda(ConversionOperation):
     arabic_name: str = "حذف السكون والشدة م تكرار الحرف المشدد"
     regs: list[
-        tuple[str, TajweedRule] | tuple[str, str, TajweedRule] | tuple[str, str]
+        tuple[str, TajweedRuleType] | tuple[str, str, TajweedRuleType] | tuple[str, str]
     ] = field(
         default_factory=lambda: [
             # shadda
             (
-                f"(.){uth.shadda}",
-                r"\1\1",
+                f"M:<T:(.)><D0:{uth.shadda}>",
+                r"<T:\1\1>",
             ),
             # skoon
             (
-                f"{uth.ras_haaa}",
+                f"M:{uth.ras_haaa}",
                 r"",
             ),
         ]

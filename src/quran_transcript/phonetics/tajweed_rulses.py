@@ -47,6 +47,8 @@ class TajweedRuleType(IntEnum):
 
     TASHEEL = auto()
 
+    QALQALAH = auto()
+
 
 @dataclass
 class TajweedRuleMetadata:
