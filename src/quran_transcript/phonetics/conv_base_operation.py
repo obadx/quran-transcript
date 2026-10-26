@@ -1729,7 +1729,7 @@ class ConversionOperation:
                             text=text,
                             tajweed_rule=reg[1],
                         )
-                    return text, mappings
+                    continue
                 taj_rule = None
             elif len(reg) == 3:
                 input_reg, out_reg, taj_rule = reg

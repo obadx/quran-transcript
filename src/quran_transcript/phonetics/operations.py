@@ -471,6 +471,22 @@ class PrepareGhonnaIdghamIqlab(ConversionOperation):
         tuple[str, TajweedRuleType] | tuple[str, str, TajweedRuleType] | tuple[str, str]
     ] = field(
         default_factory=lambda: [
+            # الميم المدغمة
+            (
+                f"M:<T:{uth.meem}>{uth.space}?<D0:{uth.meem}>",
+                TajweedRuleType.IDGHAM_MEEM,
+            ),
+            # الميم المظهرة
+            (
+                f"M:<T:{uth.meem}{uth.ras_haaa}>{uth.space}?<D0:.>",
+                TajweedRuleType.IZHAR_MEEM,
+            ),
+            # الميم المخفاة
+            (
+                f"M:<T:{uth.meem}>{uth.space}?<D0:{uth.baa}>",
+                TajweedRuleType.IDGHAM_MEEM,
+            ),
+            # ----------------------------------------------------
             # النون المقلبة ميمام
             (
                 f"M:<T:{uth.noon}>[{uth.meem_iqlab}{uth.tanween_idhaam_dterminer}]<r:({uth.space}?)><D0:{uth.baa}>",
@@ -495,6 +511,7 @@ class PrepareGhonnaIdghamIqlab(ConversionOperation):
                 f"<T:{uth.kasra}{uth.meem}><r:\\1><D0:\\2>",
                 TajweedRuleType.IQLAB_NOON,
             ),
+            # ----------------------------------------------------
             # فك التنوين المدغم
             (
                 f"M:<T:{uth.tanween_fath}>.<D0:({uth.space}[{uth.noon_ikhfaa_group}{uth.noon_idgham_group}])>",
@@ -508,6 +525,7 @@ class PrepareGhonnaIdghamIqlab(ConversionOperation):
                 f"M:<T:{uth.tanween_kasr}>.<D0:({uth.space}[{uth.noon_ikhfaa_group}{uth.noon_idgham_group}])>",
                 f"<T:{uth.kasra}{uth.noon}><D0:\\1>",
             ),
+            # ----------------------------------------------------
             # فك التنوين المظهر
             (
                 f"M:<T:{uth.tanween_fath_mothhar}>",
@@ -521,10 +539,35 @@ class PrepareGhonnaIdghamIqlab(ConversionOperation):
                 f"M:<T:{uth.tanween_kasr_mothhar}>",
                 f"<T:{uth.kasra}{uth.noon}{uth.ras_haaa}>",
             ),
-            # (
-            #     f"M:<T:{uth.noon}{uth.ras_haaa}>{uth.space}?<D0:.>",
-            #     TajweedRuleType.IZHAR_NOON,
-            # ),
+            # ----------------------------------------------------
+            # النون  والتنوين المظهرة
+            (
+                f"M:<T:{uth.noon}{uth.ras_haaa}>{uth.space}?<D0:.>",
+                TajweedRuleType.IZHAR_NOON,
+            ),
+            # التنوين التنوين المدغمة
+            (
+                f"M:<T:{uth.noon}>{uth.space}<D0:[{uth.yaa}{uth.noon}{uth.meem}{uth.waw}]>",
+                TajweedRuleType.IDGHAM_GONNAH_NOON,
+            ),
+            # النون المخفاة
+            (
+                f"M:<T:{uth.noon}>{uth.space}?<D0:[{uth.noon_ikhfaa_group}]>",
+                TajweedRuleType.IKHFAA_NOON,
+            ),
+            # ----------------------------------------------------
+            # النون المشددة
+            (
+                f"M:[^{uth.space}{uth.noon}]<T:{uth.noon}{uth.shadda}>",
+                TajweedRuleType.MOSHADAD_NOON,
+            ),
+            # ----------------------------------------------------
+            # الميم المشددة
+            (
+                f"M:[^{uth.space}{uth.noon}{uth.meem}]<T:{uth.meem}{uth.shadda}>",
+                TajweedRuleType.MOSHADAD_MEEM,
+            ),
+            # ----------------------------------------------------
             # حذف الحرف الأول من الحفران المدغمان
             (
                 f"(?:([{uth.fatha}{uth.dama}]){uth.yaa}|([{uth.fatha}{uth.kasra}]){uth.waw}|[{uth.pure_letters_without_yaa_and_waw_group}]){uth.space}?([{uth.pure_letters_group}]{uth.shadda})",
