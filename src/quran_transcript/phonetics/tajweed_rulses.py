@@ -10,6 +10,10 @@ class TajweedRuleType(IntEnum):
     NORMAL_MADD = auto()
     LAZIM_MADD = auto()
     ELEWAD_MADD = auto()
+    MONFASEL_MADD = auto()
+    MOTTASEL_MADD = auto()
+    LEEN_MADD = auto()
+    AARED_MADD = auto()
 
     HAMZAT_WASL_DELETE = auto()
 
@@ -40,6 +44,8 @@ class TajweedRuleType(IntEnum):
     # التقاء الساكنين
     KASR_TANWEEN_ILTIQAA_SAKENAYN = auto()
     DELETE_FIRST_ILTIQAA_SAKENAYN = auto()
+
+    TASHEEL = auto()
 
 
 @dataclass
