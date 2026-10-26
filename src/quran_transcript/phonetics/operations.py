@@ -671,7 +671,7 @@ class Ghonna(ConversionOperation):
 
         # إدغام النون في الياء و الواو
         text, mappings = sub_with_tagged_mapping(
-            f"M:{uth.noon}{uth.space}<T:([{uth.yaa}{uth.waw}])>",
+            f"M:<T:{uth.noon}>{uth.space}([{uth.yaa}{uth.waw}])",
             r"<T:" + r"\1" * (self.idgham_yaa_waw_len + 1) + r">",
             text,
             mappings,
