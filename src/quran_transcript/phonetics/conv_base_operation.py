@@ -1735,9 +1735,9 @@ class ConversionOperation:
         self,
         text,
         moshaf: MoshafAttributes,
-        mappings: MappingListType,
+        mappings: PhonetizerMappings,
         sura_idx: int = 0,
-    ) -> tuple[str, MappingListType]:
+    ) -> tuple[str, PhonetizerMappings]:
         """
         Args:
             sura_idx (int): the sura index from 1 to 114. If zero then there is no sura set.
@@ -1796,11 +1796,11 @@ class ConversionOperation:
         self,
         text: str,
         moshaf: MoshafAttributes,
-        mappings: MappingListType | None,
+        mappings: PhonetizerMappings,
         sura_idx: int = 0,
         discard_ops: list["ConversionOperation"] = [],
         mode: Literal["inference", "test"] = "inference",
-    ) -> tuple[str, MappingListType]:
+    ) -> tuple[str, PhonetizerMappings]:
         """
         Args:
             sura_idx (int): the sura index from 1 to 114. If zero then there is no sura set.

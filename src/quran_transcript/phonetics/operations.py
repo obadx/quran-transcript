@@ -7,6 +7,7 @@ from .conv_base_operation import (
     ConversionOperation,
     MappingListType,
     MappingPos,
+    PhonetizerMappings,
     add_tajweed_rule_to_mappings,
     get_mappings,
     sub_with_mapping,
@@ -602,29 +603,33 @@ class IltiqaaAlsaknan(ConversionOperation):
     )
     arabic_name: str = "التقاء الساكنان وكسر التنوين"
     regs: list[
-        tuple[str, TajweedRule] | tuple[str, str, TajweedRule] | tuple[str, str]
+        tuple[str, TajweedRuleType] | tuple[str, str, TajweedRuleType] | tuple[str, str]
     ] = field(
         default_factory=lambda: [
             # كسر التنوين
             (
-                f"({uth.noon}){uth.ras_haaa}({uth.space}.[{uth.ras_haaa}{uth.shadda}])",
-                f"\\1{uth.kasra}\\2",
+                f"M:<T:({uth.noon})>{uth.ras_haaa}<D0:({uth.space}.[{uth.ras_haaa}{uth.shadda}])>",
+                f"<T:\\1{uth.kasra}><D0:\\2>",
+                TajweedRuleType.KASR_TANWEEN_ILTIQAA_SAKENAYN,
             ),
             # حذف حرف المد الأول لاتقاء الساعكنان
             # alif
             (
-                f"{uth.madd_alif}({uth.space}.[{uth.ras_haaa}{uth.shadda}{uth.pure_letters_without_yaa_and_waw_group}])",
-                f"{uth.fatha}\\1",
+                f"M:<D0:({uth.fatha})><T:{uth.alif}><D1:({uth.space}.[{uth.ras_haaa}{uth.shadda}{uth.pure_letters_without_yaa_and_waw_group}])>",
+                r"<D0:\1><D1:\2>",
+                TajweedRuleType.DELETE_FIRST_ILTIQAA_SAKENAYN,
             ),
             # waw
             (
-                f"{uth.madd_waw}({uth.space}.[{uth.ras_haaa}{uth.shadda}{uth.pure_letters_without_yaa_and_waw_group}])",
-                f"{uth.dama}\\1",
+                f"M:<D0:({uth.dama})><T:{uth.waw}><D1:({uth.space}.[{uth.ras_haaa}{uth.shadda}{uth.pure_letters_without_yaa_and_waw_group}])>",
+                r"<D0:\1><D1:\2>",
+                TajweedRuleType.DELETE_FIRST_ILTIQAA_SAKENAYN,
             ),
             # yaa
             (
-                f"{uth.madd_yaa}({uth.space}.[{uth.ras_haaa}{uth.shadda}{uth.pure_letters_without_yaa_and_waw_group}])",
-                f"{uth.kasra}\\1",
+                f"M:<D0:({uth.kasra})><T:{uth.yaa}><D1:({uth.space}.[{uth.ras_haaa}{uth.shadda}{uth.pure_letters_without_yaa_and_waw_group}])>",
+                r"<D0:\1><D1:\2>",
+                TajweedRuleType.DELETE_FIRST_ILTIQAA_SAKENAYN,
             ),
         ]
     )
@@ -647,9 +652,9 @@ class Ghonna(ConversionOperation):
         self,
         text: str,
         moshaf: MoshafAttributes,
-        mappings: MappingListType | None = None,
+        mappings: PhonetizerMappings,
         sura_idx: int = 0,
-    ) -> tuple[str, MappingListType]:
+    ) -> tuple[str, PhonetizerMappings]:
         # الميم المخفار
         if moshaf.meem_mokhfah == "meem":
             meem_mokhfah = ph.meem
@@ -657,40 +662,40 @@ class Ghonna(ConversionOperation):
             meem_mokhfah = ph.meem_mokhfah
         else:
             raise ValueError()
-        text, mappings = sub_with_mapping(
-            f"{uth.meem}{uth.space}?{uth.baa}",
-            f"{meem_mokhfah * self.ghonna_len}{uth.baa}",
+        text, mappings = sub_with_tagged_mapping(
+            f"M:<T:{uth.meem}>{uth.space}?<D0:{uth.baa}>",
+            f"<T:{meem_mokhfah * self.ghonna_len}><D0:{uth.baa}>",
             text,
             mappings,
         )
 
         # إدغام النون في الياء و الواو
-        text, mappings = sub_with_mapping(
-            f"{uth.noon}{uth.space}([{uth.yaa}{uth.waw}])",
-            r"\1" * (self.idgham_yaa_waw_len + 1),
+        text, mappings = sub_with_tagged_mapping(
+            f"M:{uth.noon}{uth.space}<T:([{uth.yaa}{uth.waw}])>",
+            r"<T:" + r"\1" * (self.idgham_yaa_waw_len + 1) + r">",
             text,
             mappings,
         )
 
         # إخفاء النون
-        text, mappings = sub_with_mapping(
-            f"{uth.noon}{uth.space}?([{uth.noon_ikhfaa_group}])",
-            f"{ph.noon_mokhfah * self.ghonna_len}\\1",
+        text, mappings = sub_with_tagged_mapping(
+            f"M:<T:{uth.noon}>{uth.space}?<D0:([{uth.noon_ikhfaa_group}])>",
+            f"<T:{ph.noon_mokhfah * self.ghonna_len}><D0:\\1>",
             text,
             mappings,
         )
 
         # النون والميم المشددتين
         # العنة المتطرفة
-        text, mappings = sub_with_mapping(
-            f"([{uth.meem}{uth.noon}]){uth.shadda}$",
-            r"\1" * self.ghonna_len,
+        text, mappings = sub_with_tagged_mapping(
+            f"M:<T:([{uth.meem}{uth.noon}])>{uth.shadda}$",
+            r"<T:" + r"\1" * self.ghonna_len + r">",
             text,
             mappings,
         )
-        text, mappings = sub_with_mapping(
-            f"([{uth.meem}{uth.noon}]){uth.shadda}",
-            r"\1" * (self.ghonna_len + 1),
+        text, mappings = sub_with_tagged_mapping(
+            f"M:<T:([{uth.meem}{uth.noon}])>{uth.shadda}",
+            r"<T:" + r"\1" * (self.ghonna_len + 1) + r">",
             text,
             mappings,
         )

@@ -1035,16 +1035,15 @@ class TestMergeMappings:
                 MappingPos(
                     pos=(4, 6),
                     tajweed_rules=[NormalMaddRule(tag="alif")],
+                    deleted=False,
                 ),
                 MappingPos(pos=(6, 7), tajweed_rules=None, deleted=False),
                 MappingPos(pos=(7, 8), tajweed_rules=None, deleted=False),
                 MappingPos(pos=(8, 9), tajweed_rules=None, deleted=False),
-                MappingPos(pos=(9, 12), tajweed_rules=None, deleted=False),
-                MappingPos(
-                    pos=(12, 12), tajweed_rules=None, deleted=True
-                ),  # determiner
-                MappingPos(pos=(12, 12), tajweed_rules=None, deleted=True),  # space
-                MappingPos(pos=(12, 13), tajweed_rules=None, deleted=False),
+                MappingPos(pos=(9, 10), tajweed_rules=None, deleted=False),
+                MappingPos(pos=(10, 10), tajweed_rules=None, deleted=True),
+                MappingPos(pos=(10, 10), tajweed_rules=None, deleted=True),
+                MappingPos(pos=(10, 13), tajweed_rules=None, deleted=False),
                 MappingPos(pos=(13, 14), tajweed_rules=None, deleted=False),
                 MappingPos(pos=(14, 15), tajweed_rules=None, deleted=False),
                 MappingPos(pos=(15, 16), tajweed_rules=None, deleted=False),

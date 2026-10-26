@@ -37,6 +37,10 @@ class TajweedRuleType(IntEnum):
 
     IDGHAM_KAMEL = auto()
 
+    # التقاء الساكنين
+    KASR_TANWEEN_ILTIQAA_SAKENAYN = auto()
+    DELETE_FIRST_ILTIQAA_SAKENAYN = auto()
+
 
 @dataclass
 class TajweedRuleMetadata:

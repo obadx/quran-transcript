@@ -16,10 +16,11 @@ if __name__ == "__main__":
     aya = Aya()
     aya = Aya(1, 1)
     aya = Aya(12, 1)
-    # aya = Aya(2, 1)
-    aya = Aya(19, 1)
-    aya = Aya(75, 27)
-    aya = Aya(28, 4)
+    aya = Aya(2, 1)
+    aya = Aya(36, 1)
+    # aya = Aya(19, 1)
+    # aya = Aya(75, 27)
+    # aya = Aya(28, 4)
     # aya = Aya(2, 6)
     # aya = Aya(2, 7)
     # aya = Aya(27, 62)
@@ -32,7 +33,7 @@ if __name__ == "__main__":
 
     # uth_text = aya.get_by_imlaey_words(start=7, window=2).uthmani
     # uth_text = "لَكُم مَّا"
-    # uth_text = "غِشَـٰوَةٌۭ وَلَهُمْ"
+    uth_text = "غِشَـٰوَةٌۭ وَلَهُمْ"
     # uth_text = "قَلِيلًۭا مِّمَّا"
     # uth_text = "أَمَّن يُجِيبُ"
     # uth_text = "قَرِيبٌ"
@@ -45,7 +46,14 @@ if __name__ == "__main__":
 
     # الإقلاب
     # uth_text = "مِنۢ بَعْدِ"
-    uth_text = "سَمِيعٌۢ بَصِيرٌۭ"
+    # uth_text = "سَمِيعٌۢ بَصِيرٌۭ"
+
+    # مد العوض
+    # uth_text = "قَرِيبًا"
+    # uth_text = "مَسْطُورًۭا"
+
+    # uth_text = "أَنْعَمْتَ"
+    # uth_text = "ٱللَّهُ"
 
     profiler = Profiler()
     profiler.start()
