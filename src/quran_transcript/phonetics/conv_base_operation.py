@@ -722,9 +722,11 @@ def expand_replacement(rep_parts: list[RepPart], match: re.Match) -> str:
             case "STR":
                 out_str += part.text
             case "ID":
-                out_str += match.group(part.grp_id)
+                if match.group(part.grp_id):
+                    out_str += match.group(part.grp_id)
             case "NAME":
-                out_str += match.group(part.grp_name)
+                if match.group(part.grp_name):
+                    out_str += match.group(part.grp_name)
     return out_str
 
 
@@ -1074,13 +1076,12 @@ def sub_with_tagged_mapping(
                 elif (tag_pat_len == tag_rep_len) and not shifted:
                     ...
                 elif tag_pat_len == 1 and (len(tag_rep_text) > 1):
-                    shifted = True
                     # one to many
                     mappings.update_ph_one_to_many(in_pos, out_pos, tag_rep_len)
+                    shifted = True
                 elif tag_pat_text[:min_both_len] == tag_rep_text[:min_both_len]:
                     if tag_rep_len > tag_pat_len:
                         # insert
-                        shifted = True
                         if shifted:
                             mappings.shift(in_pos, out_pos, min_both_len - 1)
                         mappings.update_ph_one_to_many(
@@ -1088,9 +1089,9 @@ def sub_with_tagged_mapping(
                             out_pos + min_both_len - 1,
                             tag_rep_len - min_both_len + 1,
                         )
+                        shifted = True
                     else:
                         # delete
-                        shifted = True
                         if shifted:
                             mappings.shift(in_pos, out_pos, min_both_len)
                         mappings.delete_shift(
@@ -1098,6 +1099,7 @@ def sub_with_tagged_mapping(
                             out_pos + min_both_len,
                             tag_pat_len - tag_rep_len,
                         )
+                        shifted = True
 
                 else:
                     raise MappedTagPrasingCardinalityError(
@@ -1106,9 +1108,9 @@ def sub_with_tagged_mapping(
             elif m_tag.rep_parts == [] and tag_pat_len > 0:
                 # the tag_pat_len for regs that are zero lenght like `z?`
                 # Deletion
-                shifted = True
                 tag_rep_text = ""
                 mappings.delete_shift(in_pos, out_pos, tag_pat_len)
+                shifted = True
 
             if m_tag.tag_tp in {"TAJWEED", "TAJWEED_DEP"}:
                 mappings.insert_tajweed_rule_part(
