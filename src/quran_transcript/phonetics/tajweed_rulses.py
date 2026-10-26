@@ -15,8 +15,6 @@ class TajweedRuleType(IntEnum):
     LEEN_MADD = auto()
     AARED_MADD = auto()
 
-    HAMZAT_WASL_DELETE = auto()
-
     SKOON_MOSTADEER_DELETE = auto()
     SKOON_MOSTATEEL_MID_DELETE = auto()
     SKOON_MOSTATEEL_END_ADD = auto()
@@ -48,6 +46,14 @@ class TajweedRuleType(IntEnum):
     TASHEEL = auto()
 
     QALQALAH = auto()
+
+    HAMZAT_WASL_DELETE = auto()
+    KASR_NOUNS_HAMZAT_WASL = auto()
+    KASR_VERB_HAMZAT_WASL = auto()
+    DAM_VERB_HAMZAT_WASL = auto()
+    FATH_ALL_HAMZAT_WASL = auto()
+    ILTIQAA_HAMZATAN_SECOND_MADD_YAA = auto()
+    ILTIQAA_HAMZATAN_SECOND_MADD_WAW = auto()
 
 
 @dataclass

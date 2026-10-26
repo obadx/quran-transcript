@@ -6,29 +6,13 @@ from ..alphabet import uthmani as uth
 from .conv_base_operation import (
     ConversionOperation,
     MappingListType,
-    MappingPos,
     PhonetizerMappings,
-    add_tajweed_rule_to_mappings,
     get_mappings,
     sub_with_mapping,
     sub_with_tagged_mapping,
 )
 from .moshaf_attributes import MoshafAttributes
 from .tajweed_rulses import (
-    AaredMaddRule,
-    IdghamKamel,
-    IdghamWithGunnah,
-    Ikhfaa,
-    Iqlab,
-    IzharHalqy,
-    LazemMaddRule,
-    LeenMaddRule,
-    MonfaselMaddRule,
-    MottaselMaddPauseRule,
-    MottaselMaddRule,
-    NormalMaddRule,
-    Qalqalah,
-    TajweedRule,
     TajweedRuleType,
 )
 
@@ -42,9 +26,9 @@ class DisassembleHrofMoqatta(ConversionOperation):
         self,
         text: str,
         moshaf: MoshafAttributes,
-        mappings: MappingListType,
+        mappings: PhonetizerMappings,
         sura_idx: int = 0,
-    ) -> tuple[str, MappingListType]:
+    ) -> tuple[str, PhonetizerMappings]:
         for word, rep in uth.hrof_moqtaa_disassemble.items():
             text, mappings = sub_with_tagged_mapping(word, rep, text, mappings)
         return text, mappings
@@ -62,9 +46,9 @@ class SpecialCases(ConversionOperation):
         self,
         text: str,
         moshaf: MoshafAttributes,
-        mappings: MappingListType,
+        mappings: PhonetizerMappings,
         sura_idx: int = 0,
-    ) -> tuple[str, MappingListType]:
+    ) -> tuple[str, PhonetizerMappings]:
         for case in uth.special_patterns:
             if case.sura_idx in {0, sura_idx}:
                 pattern = case.pattern
@@ -84,9 +68,6 @@ class SpecialCases(ConversionOperation):
 
                 text, mappings = sub_with_mapping(pattern, rep_pattern, text, mappings)
 
-        # No change
-        if mappings is None:
-            return text, get_mappings(text, text)
         return text, mappings
 
 
@@ -129,9 +110,9 @@ class BeginWithHamzatWasl(ConversionOperation):
         self,
         text: str,
         moshaf: MoshafAttributes,
-        mappings: MappingListType,
+        mappings: PhonetizerMappings,
         sura_idx: int = 0,
-    ) -> tuple[str, MappingListType]:
+    ) -> tuple[str, PhonetizerMappings]:
         new_text = text
         if re.search(f"^{uth.hamzat_wasl}", text):
             words = text.split(uth.space)
@@ -140,18 +121,28 @@ class BeginWithHamzatWasl(ConversionOperation):
             if (first_word in uth.begin_hamzat_wasl.verbs_nouns_inter) or (
                 first_word in uth.begin_hamzat_wasl.nouns
             ):
-                first_word = re.sub(
-                    f"(^){uth.hamzat_wasl}",
-                    f"\\1{uth.hamza}{uth.kasra}",
-                    first_word,
+                new_text, mappings = sub_with_tagged_mapping(
+                    f"M:<T:^{uth.hamzat_wasl}>",
+                    f"<T:{uth.hamza}{uth.kasra}>",
+                    new_text,
+                    mappings,
+                    TajweedRuleType.KASR_NOUNS_HAMZAT_WASL,
                 )
             # الأفعال
             elif first_word in uth.begin_hamzat_wasl.verbs:
                 third_letter_haraka = self._get_verb_third_letter_haraka(first_word)
-                first_word = re.sub(
-                    f"(^){uth.hamzat_wasl}",
-                    f"\\1{uth.hamza}{third_letter_haraka}",
-                    first_word,
+                rule = TajweedRuleType.KASR_VERB_HAMZAT_WASL
+                iltiqaa_rule = TajweedRuleType.ILTIQAA_HAMZATAN_SECOND_MADD_YAA
+                if third_letter_haraka == uth.dama:
+                    rule = TajweedRuleType.DAM_VERB_HAMZAT_WASL
+                    iltiqaa_rule = TajweedRuleType.ILTIQAA_HAMZATAN_SECOND_MADD_WAW
+
+                new_text, mappings = sub_with_tagged_mapping(
+                    f"M:<T:^{uth.hamzat_wasl}>",
+                    f"<T:{uth.hamza}{third_letter_haraka}>",
+                    new_text,
+                    mappings,
+                    rule,
                 )
 
                 # اجتماع همزتان
@@ -159,24 +150,24 @@ class BeginWithHamzatWasl(ConversionOperation):
                     uth.kasra: uth.yaa,
                     uth.dama: uth.waw,
                 }
-                first_word = re.sub(
-                    f"(^{uth.hamza}.)[{uth.hamazat_group}]{uth.ras_haaa}",
-                    f"\\1{haraka_to_letter_madd[third_letter_haraka]}",
-                    first_word,
+                new_text, mappings = sub_with_tagged_mapping(
+                    f"M:<D0:(^{uth.hamza}.)><T:[{uth.hamazat_group}]><D1:{uth.ras_haaa}>",
+                    f"<D0:\\1><T:{haraka_to_letter_madd[third_letter_haraka]}>",
+                    new_text,
+                    mappings,
+                    iltiqaa_rule,
                 )
 
             # المعرف بأل
             else:
-                first_word = re.sub(
-                    f"(^){uth.hamzat_wasl}",
-                    f"\\1{uth.hamza}{uth.fatha}",
-                    first_word,
+                new_text, mappings = sub_with_tagged_mapping(
+                    f"M:<T:^{uth.hamzat_wasl}>",
+                    f"<T:{uth.hamza}{uth.fatha}>",
+                    new_text,
+                    mappings,
+                    TajweedRuleType.FATH_ALL_HAMZAT_WASL,
                 )
 
-            # joing again
-            new_text = uth.space.join([first_word] + words[1:])
-            # TODO: we need to adjust the exact type of Tajweed Rule
-            mappings = get_mappings(text=text, new_text=new_text)
         return new_text, mappings
 
 
