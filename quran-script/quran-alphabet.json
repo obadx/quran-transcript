@@ -94,118 +94,126 @@
     },
     "special_patterns": [
       {
-        "pattern": "لْـَٔيْكَةِ",
+        "pattern": "M:<r0:ل><r1:(ْ)>ـ<r2:َٔيْكَةِ>",
         "attr_name": null,
         "opts": null,
-        "target_pattern": "ٱلْأَيْكَةِ",
+        "target_pattern": "<r0:ٱل><r1:\\1><r2:أَيْكَةِ>",
         "pos": "start",
         "sura_idx": 0
       },
       {
-        "pattern": "عِوَجَا قَيِّمًۭا",
+        "pattern": "M:<r0:(عِوَج)><r1:(َ)><r2:(ا)><r3:( قَيِّمًۭا)>",
         "attr_name": "sakt_iwaja",
         "opts": {
-          "sakt": "عِوَجَاۜ قَيِّمًۭا",
-          "idraj": "عِوَجًۭا قَيِّمًۭا"
+          "waqf": "<r0:\\\\1><r1:\\\\2><r2:\\\\3><r3:\\\\4>",
+          "sakt": "<r0:\\1><r1:\\2><r2:\\3ۜ><r3:\\4>",
+          "idraj": "<r0:\\1><r1:ًۭ><r2:\\3><r3:\\4>"
         },
         "target_pattern": null,
         "pos": "middle",
         "sura_idx": 0
       },
       {
-        "pattern": "مَّرْقَدِنَا هَـٰذَا",
+        "pattern": "M:<r0:(مَّرْقَدِنَا)><r1:( )><r2:(هَـٰذَا)>",
         "attr_name": "sakt_marqdena",
         "opts": {
-          "sakt": "مَّرْقَدِنَاۜ هَـٰذَا",
-          "idraj": "مَّرْقَدِنَا هَـٰذَا"
+          "sakt": "<r0:\\1ۜ><r1:\\2><r2:\\3>",
+          "idraj": "<r0:\\1><r1:\\2><r2:\\3>",
+          "waqf": "<r0:\\1><r1:\\2><r2:\\3>"
         },
         "target_pattern": null,
         "pos": "middle",
         "sura_idx": 0
       },
       {
-        "pattern": "مَنْ رَاقٍۢ",
+        "pattern": "M:<r0:(مَنْ)><r1:( )><r2:(ر)><r3:(َ)><r4:(اقٍۢ)>",
         "attr_name": "sakt_man_raq",
         "opts": {
-          "sakt": "مَنْۜ رَاقٍۢ",
-          "idraj": "مَن رَّاقٍۢ"
+          "sakt": "<r0:\\1ۜ><r1:\\2><r2:\\3><r3:\\4><r4:\\5>",
+          "idraj": "<r0:مَن><r1:\\2><r2:\\3><r3:ّ\\4><r4:\\5>",
+          "waqf": "<r0:\\1><r1:\\2><r2:\\3><r3:\\4><r4:\\5>"
         },
         "target_pattern": null,
         "pos": "middle",
         "sura_idx": 0
       },
       {
-        "pattern": "بَلْ رَانَ",
+        "pattern": "M:<r0:(بَلْ)><r1:( )><r2:(ر)><r3:(َ)><r4:(انَ)>",
         "attr_name": "sakt_bal_ran",
         "opts": {
-          "sakt": "بَلْۜ رَانَ",
-          "idraj": "بَل رَّانَ"
+          "sakt": "<r0:\\1ۜ><r1:\\2><r2:\\3><r3:\\4><r4:\\5>",
+          "idraj": "<r0:بَل><r1:\\2><r2:\\3><r3:ّ\\4><r4:\\5>",
+          "waqf": "<r0:\\1><r1:\\2><r2:\\3><r3:\\4><r4:\\5>"
         },
         "target_pattern": null,
         "pos": "middle",
         "sura_idx": 0
       },
       {
-        "pattern": "مَالِيَهْ هَلَكَ",
+        "pattern": "M:<r0:(مَالِيَهْ)><r1:( )><r2:(ه)><r3:(َ)><r4:(لَكَ)>",
         "attr_name": "sakt_maleeyah",
         "opts": {
-          "sakt": "مَالِيَهْۜ هَلَكَ",
-          "idgham": "مَالِيَه هَّلَكَ"
+          "sakt": "<r0:\\1ۜ><r1:\\2><r2:\\3><r3:\\4><r4:\\5>",
+          "idgham": "<r0:مَالِيَه><r1:\\2><r2:\\3><r3:ّ\\4><r4:\\5>",
+          "waqf": "<r0:\\1><r1:\\2><r2:\\3><r3:\\4><r4:\\5>"
         },
         "target_pattern": null,
         "pos": "middle",
         "sura_idx": 0
       },
       {
-        "pattern": "عَلِيمٌۢ بَرَآءَةٌۭ",
+        "pattern": "M:<r0:(عَلِي)><r1:(م)><r2:(ٌۢ)><r3:( )><r4:(بَرَآءَةٌۭ)>",
         "attr_name": "between_anfal_and_tawba",
         "opts": {
-          "sakt": "عَلِيمۜ بَرَآءَةٌۭ",
-          "wasl": "عَلِيمٌۢ بَرَآءَةٌۭ"
+          "sakt": "<r0:\\1><r1:\\2ۜ><r3:\\4><r4:\\5>",
+          "wasl": "<r0:\\1><r1:\\2><r2:\\3><r3:\\4><r4:\\5>",
+          "waqf": "<r0:\\1><r1:\\2><r2:\\3><r3:\\4><r4:\\5>"
         },
         "target_pattern": null,
         "pos": "middle",
         "sura_idx": 0
       },
       {
-        "pattern": "يَا سِيٓنْ وَٱلْقُرْءَانِ",
+        "pattern": "M:<r0:(يَا سِيٓنْ)><s:( )><r1:(وَٱلْقُرْءَانِ)>",
         "attr_name": "noon_and_yaseen",
         "opts": {
-          "idgham": "يَا سِيٓن وَٱلْقُرْءَانِ",
-          "izhar": "يَا سِيٓنْ وَٱلْقُرْءَانِ"
+          "idgham": "<r0:يَا سِيٓن><s:\\2><r1:\\3>",
+          "izhar": "<r0:\\1><s:\\2><r1:\\3>"
         },
         "target_pattern": null,
         "pos": "middle",
         "sura_idx": 0
       },
       {
-        "pattern": "نُوٓنْ وَٱلْقَلَمِ",
+        "pattern": "M:<r0:(نُوٓنْ)><s:( )><r1:(وَٱلْقَلَمِ)>",
         "attr_name": "noon_and_yaseen",
         "opts": {
-          "idgham": "نُوٓن وَٱلْقَلَمِ",
-          "izhar": "نُوٓنْ وَٱلْقَلَمِ"
+          "idgham": "<r0:نُوٓن><s:\\2><r1:\\3>",
+          "izhar": "<r0:\\1><s:\\2><r1:\\3>"
         },
         "target_pattern": null,
         "pos": "middle",
         "sura_idx": 0
       },
       {
-        "pattern": "ءَاتَىٰنِۦَ",
+        "pattern": "M:<r:(ءَاتَىٰنِ)><y:(ۦ)><f:(َ)>",
         "attr_name": "yaa_ataan",
         "opts": {
-          "hadhf": "ءَاتَىٰنِ",
-          "ithbat": "ءَاتَىٰنِي"
+          "hadhf": "<r:\\1>",
+          "ithbat": "<r:\\1><y:ي>",
+          "wasl": "<r:\\1><y:\\2><f:\\3>"
         },
         "target_pattern": null,
         "pos": "end",
         "sura_idx": 0
       },
       {
-        "pattern": "ٱلِٱسْمُ",
+        "pattern": "M:<w0:ٱ><l:(لِ)><w1:ٱ><s:(سْمُ)>",
         "attr_name": "start_with_ism",
         "opts": {
-          "lism": "لِسْمُ",
-          "alism": "أَلِسْمُ"
+          "lism": "<l:\\1><s:\\2>",
+          "alism": "<w0:أَ><l:\\1><s:\\2>",
+          "wasl": "<w0:ٱ><l:\\1><w1:ٱ><s:\\2>"
         },
         "target_pattern": null,
         "pos": "start",

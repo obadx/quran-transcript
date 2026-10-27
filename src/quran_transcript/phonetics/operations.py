@@ -52,10 +52,16 @@ class SpecialCases(ConversionOperation):
         for case in uth.special_patterns:
             if case.sura_idx in {0, sura_idx}:
                 pattern = case.pattern
-                if case.pos == "start":
-                    pattern = r"^" + pattern
-                elif case.pos == "end":
-                    pattern = pattern + r"$"
+                if pattern.startswith("M:"):
+                    if case.pos == "start":
+                        pattern = r"M:^" + pattern[2:]
+                    elif case.pos == "end":
+                        pattern = pattern + r"$"
+                else:
+                    if case.pos == "start":
+                        pattern = r"^" + pattern
+                    elif case.pos == "end":
+                        pattern = pattern + r"$"
 
                 if case.attr_name is not None:
                     moshaf_attr = getattr(moshaf, case.attr_name)
@@ -66,7 +72,15 @@ class SpecialCases(ConversionOperation):
                 elif case.target_pattern is not None:
                     rep_pattern = case.target_pattern
 
-                text, mappings = sub_with_mapping(pattern, rep_pattern, text, mappings)
+                if pattern.startswith("M:"):
+                    print(rep_pattern)
+                    text, mappings = sub_with_tagged_mapping(
+                        pattern, rep_pattern, text, mappings
+                    )
+                else:
+                    text, mappings = sub_with_mapping(
+                        pattern, rep_pattern, text, mappings
+                    )
 
         return text, mappings
 

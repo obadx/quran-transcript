@@ -7,6 +7,8 @@ from pathlib import Path
 from quran_transcript import Aya
 from quran_transcript import alphabet as alph
 from quran_transcript.alphabet import BeginHamzatWasl, SpecialPattern, UthmaniAlphabet
+from quran_transcript.alphabet import phonetics as ph
+from quran_transcript.alphabet import uthmani as uth
 from quran_transcript.phonetics.conv_base_operation import (
     init_mappings,
     sub_with_tagged_mapping,
@@ -97,98 +99,168 @@ if __name__ == "__main__":
         print(val)
         sub_with_tagged_mapping(key, val, "", init_mappings(key))
         print("-" * 40)
+
+    # الأيكمة
+    lykah = "لْـَٔيْكَةِ"
+    alykah = "ٱلْأَيْكَةِ"
+    kasheeda_idx = lykah.find(uth.kasheeda)
+
+    # عوجا قيما
+    iwaja = "عِوَجَا"
+    qymaa = "قَيِّمًۭا"
+
+    # مرقدنا هذا
+    marqdna = "مَّرْقَدِنَا"
+    hatha = "هَـٰذَا"
+
+    # من راق
+    man = "مَنْ"
+    raq = "رَاقٍۢ"
+
+    # بل ران
+    bal = "بَلْ"
+    ran = "رَانَ"
+
+    # ماليه هلك
+    maliyah = "مَالِيَهْ"
+    halaka = "هَلَكَ"
+
+    # عليم براءة
+    aliem = "عَلِيمٌۢ"
+    braah = "بَرَآءَةٌۭ"
+
+    # يس والقرآن
+    yassen = "يَا سِيٓنْ"
+    walqraan = "وَٱلْقُرْءَانِ"
+
+    # ن والقلم
+    noon = "نُوٓنْ"
+    walqlam = "وَٱلْقَلَمِ"
+
+    # آتاني
+    atanee = "ءَاتَىٰنِۦَ"
+
+    # السم
+    sim = "سْمُ"
+
+    # يبصط
+    yabsoot = "وَيَبْصُۜطُ"
+    yabsoot_saad = "وَيَبْصُطُ"
+    yabsoot_seen = "وَيَبْسُطُ"
     special_patterns = [
         # SpecialPattern(
         #     pattern=f"{alph.uthmani.lam}({alph.uthmani.kasra})?{alph.uthmani.lam}{alph.uthmani.shadda}{alph.uthmani.fatha}{alph.uthmani.haa}",
         #     target_pattern=f"{alph.uthmani.lam}\\1{alph.uthmani.lam}{alph.uthmani.shadda}{alph.uthmani.fatha}{alph.uthmani.alif}{alph.uthmani.haa}",
         # ),
-        SpecialPattern(pattern="لْـَٔيْكَةِ", target_pattern="ٱلْأَيْكَةِ", pos="start"),
+        # الأيكمة
         SpecialPattern(
-            pattern="عِوَجَا قَيِّمًۭا",
+            pattern=f"M:<r0:{uth.lam}><r1:({uth.ras_haaa})>{lykah[kasheeda_idx]}<r2:{lykah[kasheeda_idx + 1 :]}>",
+            target_pattern=f"<r0:{uth.hamzat_wasl}{uth.lam}><r1:\\1><r2:{alykah[3:]}>",
+            pos="start",
+        ),
+        # عوجا قيما
+        SpecialPattern(
+            pattern=f"M:<r0:({iwaja[:-2]})><r1:({iwaja[-2]})><r2:({iwaja[-1]})><r3:({uth.space}{qymaa})>",
             attr_name="sakt_iwaja",
             opts={
-                "sakt": "عِوَجَا" + alph.phonetics.sakt + alph.uthmani.space + "قَيِّمًۭا",
-                "idraj": f"عِوَج{alph.uthmani.tanween_fath_modgham}ا"
-                + alph.uthmani.space
-                + "قَيِّمًۭا",
+                "waqf": r"<r0:\\1><r1:\\2><r2:\\3><r3:\\4>",
+                "sakt": f"<r0:\\1><r1:\\2><r2:\\3{ph.sakt}><r3:\\4>",
+                "idraj": f"<r0:\\1><r1:{uth.tanween_fath_modgham}><r2:\\3><r3:\\4>",
             },
         ),
+        # مرقدنا هذا
         SpecialPattern(
-            pattern="مَّرْقَدِنَا هَـٰذَا",
+            pattern=f"M:<r0:({marqdna})><r1:({uth.space})><r2:({hatha})>",
             attr_name="sakt_marqdena",
             opts={
-                "sakt": "مَّرْقَدِنَا" + alph.phonetics.sakt + alph.uthmani.space + "هَـٰذَا",
-                "idraj": "مَّرْقَدِنَا هَـٰذَا",
+                "sakt": f"<r0:\\1{ph.sakt}><r1:\\2><r2:\\3>",
+                "idraj": r"<r0:\1><r1:\2><r2:\3>",
+                "waqf": r"<r0:\1><r1:\2><r2:\3>",
             },
         ),
+        # من راق
         SpecialPattern(
-            pattern="مَنْ رَاقٍۢ",
+            pattern=f"M:<r0:({man})><r1:({uth.space})><r2:({raq[0]})><r3:({raq[1]})><r4:({raq[2:]})>",
             attr_name="sakt_man_raq",
             opts={
-                "sakt": "مَنْ" + alph.phonetics.sakt + alph.uthmani.space + "رَاقٍۢ",
-                "idraj": "مَن" + alph.uthmani.space + "رَّاقٍۢ",
+                "sakt": f"<r0:\\1{ph.sakt}><r1:\\2><r2:\\3><r3:\\4><r4:\\5>",
+                "idraj": f"<r0:{man[:-1]}><r1:\\2><r2:\\3><r3:{uth.shadda}\\4><r4:\\5>",
+                "waqf": r"<r0:\1><r1:\2><r2:\3><r3:\4><r4:\5>",
             },
         ),
+        # بل ران
         SpecialPattern(
-            pattern="بَلْ رَانَ",
+            pattern=f"M:<r0:({bal})><r1:({uth.space})><r2:({ran[0]})><r3:({ran[1]})><r4:({ran[2:]})>",
             attr_name="sakt_bal_ran",
             opts={
-                "sakt": "بَلْ" + alph.phonetics.sakt + alph.uthmani.space + "رَانَ",
-                "idraj": "بَل" + alph.uthmani.space + "رَّانَ",
+                "sakt": f"<r0:\\1{ph.sakt}><r1:\\2><r2:\\3><r3:\\4><r4:\\5>",
+                "idraj": f"<r0:{bal[:-1]}><r1:\\2><r2:\\3><r3:{uth.shadda}\\4><r4:\\5>",
+                "waqf": r"<r0:\1><r1:\2><r2:\3><r3:\4><r4:\5>",
             },
         ),
+        # ماليه هلك
         SpecialPattern(
-            pattern="مَالِيَهْ هَلَكَ",
+            pattern=f"M:<r0:({maliyah})><r1:({uth.space})><r2:({halaka[0]})><r3:({halaka[1]})><r4:({halaka[2:]})>",
             attr_name="sakt_maleeyah",
             opts={
-                "sakt": "مَالِيَهْ" + alph.phonetics.sakt + alph.uthmani.space + "هَلَكَ",
-                "idgham": "مَالِيَه" + alph.uthmani.space + "هَّلَكَ",
+                "sakt": f"<r0:\\1{ph.sakt}><r1:\\2><r2:\\3><r3:\\4><r4:\\5>",
+                "idgham": f"<r0:{maliyah[:-1]}><r1:\\2><r2:\\3><r3:{uth.shadda}\\4><r4:\\5>",
+                "waqf": r"<r0:\1><r1:\2><r2:\3><r3:\4><r4:\5>",
             },
         ),
+        # عليم براءة
         SpecialPattern(
-            pattern="عَلِيمٌۢ بَرَآءَةٌۭ",
+            pattern=f"M:<r0:({aliem[:-3]})><r1:({aliem[-3]})><r2:({aliem[-2:]})><r3:({uth.space})><r4:({braah})>",
             attr_name="between_anfal_and_tawba",
             opts={
-                "sakt": "عَلِيم" + alph.phonetics.sakt + alph.uthmani.space + "بَرَآءَةٌۭ",
-                "wasl": "عَلِيمٌۢ بَرَآءَةٌۭ",
+                "sakt": f"<r0:\\1><r1:\\2{ph.sakt}><r3:\\4><r4:\\5>",
+                "wasl": r"<r0:\1><r1:\2><r2:\3><r3:\4><r4:\5>",
+                "waqf": r"<r0:\1><r1:\2><r2:\3><r3:\4><r4:\5>",
             },
         ),
+        # يس والقرآن
         SpecialPattern(
-            pattern="يَا سِيٓنْ وَٱلْقُرْءَانِ",
+            pattern=f"M:<r0:({yassen})><s:({uth.space})><r1:({walqraan})>",
             attr_name="noon_and_yaseen",
             opts={
-                "idgham": "يَا سِيٓن وَٱلْقُرْءَانِ",
-                "izhar": "يَا سِيٓنْ وَٱلْقُرْءَانِ",
+                "idgham": f"<r0:{yassen[:-1]}><s:\\2><r1:\\3>",
+                "izhar": r"<r0:\1><s:\2><r1:\3>",
             },
         ),
+        # ن والقلم
         SpecialPattern(
-            pattern="نُوٓنْ وَٱلْقَلَمِ",
+            pattern=f"M:<r0:({noon})><s:({uth.space})><r1:({walqlam})>",
             attr_name="noon_and_yaseen",
             opts={
-                "idgham": "نُوٓن وَٱلْقَلَمِ",
-                "izhar": "نُوٓنْ وَٱلْقَلَمِ",
+                "idgham": f"<r0:{noon[:-1]}><s:\\2><r1:\\3>",
+                "izhar": r"<r0:\1><s:\2><r1:\3>",
             },
         ),
+        # آتاني
         SpecialPattern(
-            pattern="ءَاتَىٰنِۦَ",
+            pattern=f"M:<r:({atanee[:-2]})><y:({atanee[-2]})><f:({atanee[-1]})>",
             attr_name="yaa_ataan",
             pos="end",
             opts={
-                "hadhf": "ءَاتَىٰنِ",
-                "ithbat": "ءَاتَىٰنِي",
+                "hadhf": r"<r:\1>",
+                "ithbat": f"<r:\\1><y:{uth.yaa}>",
+                "wasl": r"<r:\1><y:\2><f:\3>",
             },
         ),
+        # الاسم
         SpecialPattern(
-            pattern="ٱلِٱسْمُ",
+            pattern=f"M:<w0:{uth.hamzat_wasl}><l:({uth.lam}{uth.kasra})><w1:{uth.hamzat_wasl}><s:({sim})>",
             attr_name="start_with_ism",
             pos="start",
             opts={
-                "lism": "لِسْمُ",
-                "alism": "أَلِسْمُ",
+                "lism": r"<l:\1><s:\2>",
+                "alism": f"<w0:{uth.hamza_above_alif}{uth.fatha}><l:\\1><s:\\2>",
+                "wasl": f"<w0:{uth.hamzat_wasl}><l:\\1><w1:{uth.hamzat_wasl}><s:\\2>",
             },
         ),
+        # يبصط
         SpecialPattern(
-            pattern="وَيَبْصُۜطُ",
+            pattern=f"{yabsoot}",
             attr_name="yabsut",
             opts={
                 "seen": "وَيَبْسُطُ",
