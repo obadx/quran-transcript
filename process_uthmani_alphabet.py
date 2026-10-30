@@ -148,14 +148,33 @@ if __name__ == "__main__":
     yabsoot_saad = "وَيَبْصُطُ"
     yabsoot_seen = "وَيَبْسُطُ"
     yab_small_seen_idx = yabsoot.find(uth.small_seen_above)
+    yabsoot_prefix = yabsoot[:yab_small_seen_idx]
+    yabsoot_suffix = yabsoot[yab_small_seen_idx + 1 :]
 
     # بسطة
     bastah = "بَصْۜطَةًۭ"
     bastah_seen = "بَسْطَةًۭ"
     bastah_saad = "بَصْطَةًۭ"
     bas_small_seen_idx = bastah.find(uth.small_seen_above)
+    bastah_prefix = bastah[:bas_small_seen_idx]
+    bastah_suffix = bastah[bas_small_seen_idx + 1 :]
 
-    print("yab idx", yab_small_seen_idx)
+    # المصيطرون
+    almusaytirun = "ٱلْمُصَۣيْطِرُونَ"
+    almusaytirun_seen = "ٱلْمُسَيْطِرُونَ"
+    almusaytirun_saad = "ٱلْمُصَيْطِرُونَ"
+    almusaytirun_small_seen_idx = almusaytirun.find(uth.small_seen_below)
+    almusaytirun_prefix = almusaytirun[:almusaytirun_small_seen_idx]
+    almusaytirun_suffix = almusaytirun[almusaytirun_small_seen_idx + 1 :]
+
+    # بمصيطر
+    bimusaytir = "بِمُصَيْطِرٍ"
+    bimusaytir_seen = "بِمُسَيْطِرٍ"
+    bimusaytir_saad = "بِمُصَيْطِرٍ"
+    bimusaytir_saad_idx = bimusaytir.find(uth.saad)
+    bimusaytir_prefix = bimusaytir[: bimusaytir_saad_idx + 1]
+    bimusaytir_suffix = bimusaytir[bimusaytir_saad_idx + 1 :]
+
     special_patterns = [
         # SpecialPattern(
         #     pattern=f"{alph.uthmani.lam}({alph.uthmani.kasra})?{alph.uthmani.lam}{alph.uthmani.shadda}{alph.uthmani.fatha}{alph.uthmani.haa}",
@@ -269,44 +288,46 @@ if __name__ == "__main__":
         ),
         # يبصط
         SpecialPattern(
-            pattern=f"M:<a:{yabsoot[:yab_small_seen_idx]}>{yabsoot[yab_small_seen_idx]}<r:({yabsoot[yab_small_seen_idx + 1 :]})>",
+            pattern=f"M:<a:({yabsoot_prefix})><b:({uth.small_seen_above})><r:({yabsoot_suffix})>",
             attr_name="yabsut",
             opts={
-                "seen": f"<a:{yabsoot_seen[:yab_small_seen_idx]}><r:\\1>",
-                "saad": f"<a:{yabsoot_saad[:yab_small_seen_idx]}><r:\\1>",
+                "seen": f"<a:{yabsoot_seen[:yab_small_seen_idx]}><r:\\3>",
+                "saad": f"<a:{yabsoot_saad[:yab_small_seen_idx]}><r:\\3>",
             },
         ),
         # بسطة
         SpecialPattern(
-            pattern=f"M:<a:{bastah[:bas_small_seen_idx]}>{bastah[bas_small_seen_idx]}<r:({bastah[bas_small_seen_idx + 1 :]})>",
+            pattern=f"M:<a:({bastah_prefix})><b:({uth.small_seen_above})><r:({bastah_suffix})>",
             attr_name="bastah",
             opts={
-                "seen": f"<a:{bastah_seen[:bas_small_seen_idx]}><r:\\1>",
-                "saad": f"<a:{bastah_saad[:bas_small_seen_idx]}><r:\\1>",
+                "seen": f"<a:{bastah_seen[:bas_small_seen_idx]}><r:\\3>",
+                "saad": f"<a:{bastah_saad[:bas_small_seen_idx]}><r:\\3>",
             },
         ),
+        # المصيطرون
         SpecialPattern(
-            pattern="ٱلْمُصَۣيْطِرُونَ",
+            pattern=f"M:<a:({almusaytirun_prefix})><b:({uth.small_seen_below})><r:({almusaytirun_suffix})>",
             attr_name="almusaytirun",
             opts={
-                "seen": "ٱلْمُسَيْطِرُونَ",
-                "saad": "ٱلْمُصَيْطِرُونَ",
+                "seen": f"<a:{almusaytirun_seen[:almusaytirun_small_seen_idx]}><r:\\3>",
+                "saad": f"<a:{almusaytirun_saad[:almusaytirun_small_seen_idx]}><r:\\3>",
             },
         ),
+        # بمصيطر
         SpecialPattern(
-            pattern="بِمُصَيْطِرٍ",
+            pattern=f"M:<a:({bimusaytir_prefix})><r:({bimusaytir_suffix})>",
             attr_name="bimusaytir",
             opts={
-                "seen": "بِمُسَيْطِرٍ",
-                "saad": "بِمُصَيْطِرٍ",
+                "seen": f"<a:{bimusaytir_seen[: bimusaytir_saad_idx + 1]}><r:\\2>",
+                "saad": f"<a:{bimusaytir_saad[: bimusaytir_saad_idx + 1]}><r:\\2>",
             },
         ),
         SpecialPattern(
-            pattern=f"{alph.uthmani.hamza}{alph.uthmani.fatha}{alph.uthmani.alif}{alph.uthmani.madd}{alph.uthmani.lam}",
+            pattern=f"M:<T:({alph.uthmani.hamza}{alph.uthmani.fatha}{alph.uthmani.alif}{alph.uthmani.madd})><r:({alph.uthmani.lam})>",
             attr_name="tasheel_or_madd",
             opts={
-                "madd": f"{alph.uthmani.hamza}{alph.uthmani.fatha}{alph.uthmani.alif}{alph.uthmani.madd}{alph.uthmani.lam}",
-                "tasheel": f"{alph.uthmani.hamza}{alph.uthmani.fatha}{alph.uthmani.alif}{alph.uthmani.tasheel_sign}{alph.uthmani.lam}",
+                "madd": r"<T:\1><r:\2>",
+                "tasheel": f"<T:{alph.uthmani.hamza}{alph.uthmani.fatha}{alph.uthmani.alif}{alph.uthmani.tasheel_sign}><r:\\2>",
             },
         ),
         SpecialPattern(

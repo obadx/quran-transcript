@@ -220,55 +220,55 @@
         "sura_idx": 0
       },
       {
-        "pattern": "M:<a:وَيَبْص>ۜ<r:(ُطُ)>",
+        "pattern": "M:<a:(وَيَبْص)><b:(ۜ)><r:(ُطُ)>",
         "attr_name": "yabsut",
         "opts": {
-          "seen": "<a:وَيَبْس><r:\\1>",
-          "saad": "<a:وَيَبْص><r:\\1>"
+          "seen": "<a:وَيَبْس><r:\\3>",
+          "saad": "<a:وَيَبْص><r:\\3>"
         },
         "target_pattern": null,
         "pos": "middle",
         "sura_idx": 0
       },
       {
-        "pattern": "M:<a:بَص>ۜ<r:(ْطَةًۭ)>",
+        "pattern": "M:<a:(بَص)><b:(ۜ)><r:(ْطَةًۭ)>",
         "attr_name": "bastah",
         "opts": {
-          "seen": "<a:بَس><r:\\1>",
-          "saad": "<a:بَص><r:\\1>"
+          "seen": "<a:بَس><r:\\3>",
+          "saad": "<a:بَص><r:\\3>"
         },
         "target_pattern": null,
         "pos": "middle",
         "sura_idx": 0
       },
       {
-        "pattern": "ٱلْمُصَۣيْطِرُونَ",
+        "pattern": "M:<a:(ٱلْمُص)><b:(ۣ)><r:(َيْطِرُونَ)>",
         "attr_name": "almusaytirun",
         "opts": {
-          "seen": "ٱلْمُسَيْطِرُونَ",
-          "saad": "ٱلْمُصَيْطِرُونَ"
+          "seen": "<a:ٱلْمُس><r:\\3>",
+          "saad": "<a:ٱلْمُص><r:\\3>"
         },
         "target_pattern": null,
         "pos": "middle",
         "sura_idx": 0
       },
       {
-        "pattern": "بِمُصَيْطِرٍ",
+        "pattern": "M:<a:(بِمُص)><r:(َيْطِرٍ)>",
         "attr_name": "bimusaytir",
         "opts": {
-          "seen": "بِمُسَيْطِرٍ",
-          "saad": "بِمُصَيْطِرٍ"
+          "seen": "<a:بِمُس><r:\\2>",
+          "saad": "<a:بِمُص><r:\\2>"
         },
         "target_pattern": null,
         "pos": "middle",
         "sura_idx": 0
       },
       {
-        "pattern": "ءَآل",
+        "pattern": "M:<T:(ءَآ)><r:(ل)>",
         "attr_name": "tasheel_or_madd",
         "opts": {
-          "madd": "ءَآل",
-          "tasheel": "ءَا۬ل"
+          "madd": "<T:\\1><r:\\2>",
+          "tasheel": "<T:ءَا۬><r:\\2>"
         },
         "target_pattern": null,
         "pos": "middle",
