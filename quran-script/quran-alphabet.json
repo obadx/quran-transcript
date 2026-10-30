@@ -220,22 +220,22 @@
         "sura_idx": 0
       },
       {
-        "pattern": "وَيَبْصُۜطُ",
+        "pattern": "M:<a:وَيَبْص>ۜ<r:(ُطُ)>",
         "attr_name": "yabsut",
         "opts": {
-          "seen": "وَيَبْسُطُ",
-          "saad": "وَيَبْصُطُ"
+          "seen": "<a:وَيَبْس><r:\\1>",
+          "saad": "<a:وَيَبْص><r:\\1>"
         },
         "target_pattern": null,
         "pos": "middle",
         "sura_idx": 0
       },
       {
-        "pattern": "بَصْۜطَةًۭ",
+        "pattern": "M:<a:بَص>ۜ<r:(ْطَةًۭ)>",
         "attr_name": "bastah",
         "opts": {
-          "seen": "بَسْطَةًۭ",
-          "saad": "بَصْطَةًۭ"
+          "seen": "<a:بَس><r:\\1>",
+          "saad": "<a:بَص><r:\\1>"
         },
         "target_pattern": null,
         "pos": "middle",

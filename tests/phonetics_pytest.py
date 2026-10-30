@@ -1621,11 +1621,12 @@ def test_disassemble_hrof_moqatta(
 def test_special_cases(in_text: str, target_text: str, moshaf: MoshafAttributes):
     op = SpecialCases()
     t_mappings = init_mappings(target_text)
+    print(f"IN Text:\n{in_text}\nTarget Text:\n{target_text}")
     for b_op in op.ops_before:
         target_text, t_mappings = b_op.apply(target_text, moshaf, t_mappings)
     in_mappings = init_mappings(in_text)
     out_text, _ = op.apply(in_text, moshaf, in_mappings, mode="test")
-    print(out_text)
+    print(f"IN Text:\n{in_text}\nOut Text:\n{out_text}\nTarget Text:\n{target_text}")
     assert out_text == target_text
 
 

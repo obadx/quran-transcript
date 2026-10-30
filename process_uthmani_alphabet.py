@@ -147,6 +147,15 @@ if __name__ == "__main__":
     yabsoot = "وَيَبْصُۜطُ"
     yabsoot_saad = "وَيَبْصُطُ"
     yabsoot_seen = "وَيَبْسُطُ"
+    yab_small_seen_idx = yabsoot.find(uth.small_seen_above)
+
+    # بسطة
+    bastah = "بَصْۜطَةًۭ"
+    bastah_seen = "بَسْطَةًۭ"
+    bastah_saad = "بَصْطَةًۭ"
+    bas_small_seen_idx = bastah.find(uth.small_seen_above)
+
+    print("yab idx", yab_small_seen_idx)
     special_patterns = [
         # SpecialPattern(
         #     pattern=f"{alph.uthmani.lam}({alph.uthmani.kasra})?{alph.uthmani.lam}{alph.uthmani.shadda}{alph.uthmani.fatha}{alph.uthmani.haa}",
@@ -260,19 +269,20 @@ if __name__ == "__main__":
         ),
         # يبصط
         SpecialPattern(
-            pattern=f"{yabsoot}",
+            pattern=f"M:<a:{yabsoot[:yab_small_seen_idx]}>{yabsoot[yab_small_seen_idx]}<r:({yabsoot[yab_small_seen_idx + 1 :]})>",
             attr_name="yabsut",
             opts={
-                "seen": "وَيَبْسُطُ",
-                "saad": "وَيَبْصُطُ",
+                "seen": f"<a:{yabsoot_seen[:yab_small_seen_idx]}><r:\\1>",
+                "saad": f"<a:{yabsoot_saad[:yab_small_seen_idx]}><r:\\1>",
             },
         ),
+        # بسطة
         SpecialPattern(
-            pattern="بَصْۜطَةًۭ",
+            pattern=f"M:<a:{bastah[:bas_small_seen_idx]}>{bastah[bas_small_seen_idx]}<r:({bastah[bas_small_seen_idx + 1 :]})>",
             attr_name="bastah",
             opts={
-                "seen": "بَسْطَةًۭ",
-                "saad": "بَصْطَةًۭ",
+                "seen": f"<a:{bastah_seen[:bas_small_seen_idx]}><r:\\1>",
+                "saad": f"<a:{bastah_saad[:bas_small_seen_idx]}><r:\\1>",
             },
         ),
         SpecialPattern(
