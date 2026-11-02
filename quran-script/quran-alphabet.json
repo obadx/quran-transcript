@@ -94,7 +94,7 @@
     },
     "special_patterns": [
       {
-        "pattern": "M:<r0:ل><r1:(ْ)>ـ<r2:َٔيْكَةِ>",
+        "pattern": "M:<r0:ل><r1:(ْ)><k:(ـ)><r2:(َٔيْكَةِ)>",
         "attr_name": null,
         "opts": null,
         "target_pattern": "<r0:ٱل><r1:\\1><r2:أَيْكَةِ>",
@@ -105,7 +105,7 @@
         "pattern": "M:<r0:(عِوَج)><r1:(َ)><r2:(ا)><r3:( قَيِّمًۭا)>",
         "attr_name": "sakt_iwaja",
         "opts": {
-          "waqf": "<r0:\\\\1><r1:\\\\2><r2:\\\\3><r3:\\\\4>",
+          "waqf": "<r0:\\1><r1:\\2><r2:\\3><r3:\\4>",
           "sakt": "<r0:\\1><r1:\\2><r2:\\3ۜ><r3:\\4>",
           "idraj": "<r0:\\1><r1:ًۭ><r2:\\3><r3:\\4>"
         },
@@ -275,87 +275,90 @@
         "sura_idx": 0
       },
       {
-        "pattern": "يَلْهَث ذَّٰلِكَ",
+        "pattern": "M:<a:(يَلْهَث)><s:( )><b:(ذّ)><r:(َٰلِكَ)>",
         "attr_name": "yalhath_dhalik",
         "opts": {
-          "izhar": "يَلْهَثْ ذَٰلِكَ",
-          "idgham": "يَلْهَث ذَّٰلِكَ"
+          "izhar": "<a:يَلْهَثْ><s:\\2><b:ذ><r:\\4>",
+          "idgham": "<a:\\1><s:\\2><b:\\3><r:\\4>",
+          "waqf": "<a:\\1><s:\\2><b:\\3><r:\\4>"
         },
         "target_pattern": null,
         "pos": "middle",
         "sura_idx": 0
       },
       {
-        "pattern": "ٱرْكَب مَّعَنَا",
+        "pattern": "M:<a:(ٱرْكَب)><s:( )><b:(مّ)><r:(َعَنَا)>",
         "attr_name": "irkab_maana",
         "opts": {
-          "izhar": "ٱرْكَبْ مَعَنَا",
-          "idgham": "ٱرْكَب مَّعَنَا"
+          "izhar": "<a:ٱرْكَبْ><s:\\2><b:م><r:\\4>",
+          "idgham": "<a:\\1><s:\\2><b:\\3><r:\\4>",
+          "waqf": "<a:\\1><s:\\2><b:\\3><r:\\4>"
         },
         "target_pattern": null,
         "pos": "middle",
         "sura_idx": 0
       },
       {
-        "pattern": "تَأْمَ۫نَّا",
+        "pattern": "M:<a:(تَأْمَ)><m:(۫)><b:(ن)><c:(ّ)><r:(َا)>",
         "attr_name": "noon_tamnna",
         "opts": {
-          "ishmam": "تَأْمَنَّا",
-          "rawm": "تَأْمَنؙنَا"
+          "ishmam": "<a:\\1><b:\\3><c:\\4><r:\\5>",
+          "rawm": "<a:\\1><m:نؙ><b:\\3><r:\\5>"
         },
         "target_pattern": null,
         "pos": "middle",
         "sura_idx": 0
       },
       {
-        "pattern": "(?:([^ْ].)ضَعْف)|(?:ضَعْف(ٍۢ))",
+        "pattern": "M:<a:(?:(?:([^ْ].)ضَعْف)|(?:ضَعْف(ٍۢ)))>",
         "attr_name": "harakat_daaf",
         "opts": {
-          "fath": "\\1ضَعْف\\2",
-          "dam": "\\1ضُعْف\\2"
+          "fath": "<a:\\1ضَعْف\\2>",
+          "dam": "<a:\\1ضُعْف\\2>"
         },
         "target_pattern": null,
         "pos": "middle",
         "sura_idx": 0
       },
       {
-        "pattern": "ضَعْف",
+        "pattern": "M:<a:(ضَعْف)>",
         "attr_name": "harakat_daaf",
         "opts": {
-          "fath": "ضَعْف",
-          "dam": "ضُعْف"
+          "fath": "<a:\\1>",
+          "dam": "<a:ضُعْف>"
         },
         "target_pattern": null,
         "pos": "start",
         "sura_idx": 30
       },
       {
-        "pattern": "سَلَـٰسِلَا۟",
+        "pattern": "M:<a:(سَلَـٰسِلَ)><b:(ا)><c:(۟)>",
         "attr_name": "alif_salasila",
         "opts": {
-          "hadhf": "سَلَـٰسِلَ",
-          "ithbat": "سَلَـٰسِلَا"
+          "hadhf": "<a:\\1>",
+          "ithbat": "<a:\\1><b:\\2>",
+          "wasl": "<a:\\1><b:\\2><c:\\3>"
         },
         "target_pattern": null,
         "pos": "end",
         "sura_idx": 0
       },
       {
-        "pattern": "نَخْلُقكُّم",
+        "pattern": "M:<a:(نَخْلُقك)><b:(ّ)><r:(ُم)>",
         "attr_name": "idgham_nakhluqkum",
         "opts": {
-          "idgham_kamil": "نَخْلُقكُّم",
-          "idgham_naqis": "نَخْلُقكُم"
+          "idgham_kamil": "<a:\\1><b:\\2><r:\\3>",
+          "idgham_naqis": "<a:\\1><r:\\3>"
         },
         "target_pattern": null,
         "pos": "middle",
         "sura_idx": 0
       },
       {
-        "pattern": "فَٱدَّٰرَْٰٔتُمْ",
+        "pattern": "M:<a:(فَٱدَّٰرَ)><b:(ٰ)><r:(ْٔتُمْ)>",
         "attr_name": null,
         "opts": null,
-        "target_pattern": "فَٱدَّٰرَْٔتُمْ",
+        "target_pattern": "<a:\\1><r:\\3>",
         "pos": "middle",
         "sura_idx": 0
       }

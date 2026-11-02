@@ -175,6 +175,60 @@ if __name__ == "__main__":
     bimusaytir_prefix = bimusaytir[: bimusaytir_saad_idx + 1]
     bimusaytir_suffix = bimusaytir[bimusaytir_saad_idx + 1 :]
 
+    # يلهث ذلك
+    yalhath = "يَلْهَث ذَّٰلِكَ"
+    yalhath_izhar = "يَلْهَثْ ذَٰلِكَ"
+    yalhath_first, yalhath_second = yalhath.split(uth.space)
+    yalhath_izhar_first, yalhath_izhar_second = yalhath_izhar.split(uth.space)
+    yalhath_shadda_idx = yalhath_second.find(uth.shadda)
+    yalhath_second_head = yalhath_second[: yalhath_shadda_idx + 1]
+    yalhath_second_tail = yalhath_second[yalhath_shadda_idx + 1 :]
+    yalhath_izhar_second_head = yalhath_izhar_second[:yalhath_shadda_idx]
+
+    # اركب معنا
+    irkab = "ٱرْكَب مَّعَنَا"
+    irkab_izhar = "ٱرْكَبْ مَعَنَا"
+    irkab_first, irkab_second = irkab.split(uth.space)
+    irkab_izhar_first, irkab_izhar_second = irkab_izhar.split(uth.space)
+    irkab_shadda_idx = irkab_second.find(uth.shadda)
+    irkab_second_head = irkab_second[: irkab_shadda_idx + 1]
+    irkab_second_tail = irkab_second[irkab_shadda_idx + 1 :]
+    irkab_izhar_second_head = irkab_izhar_second[:irkab_shadda_idx]
+
+    # تأمننا
+    tamnna = "تَأْمَ۫نَّا"
+    tamnna_marker = "۫"
+    tamnna_marker_idx = tamnna.find(tamnna_marker)
+    tamnna_prefix = tamnna[:tamnna_marker_idx]
+    tamnna_after_marker = tamnna[tamnna_marker_idx + 1 :]
+    tamnna_shadda_idx = tamnna_after_marker.find(uth.shadda)
+    tamnna_noon = tamnna_after_marker[:tamnna_shadda_idx]
+    tamnna_tail = tamnna_after_marker[tamnna_shadda_idx + 1 :]
+
+    # ضعف
+    daaf_dam = "ضُعْف"
+    daaf_context_pattern = (
+        f"(?:([^{uth.ras_haaa}].){daaf})|(?:{daaf}({uth.tanween_kasr}{uth.meem_iqlab}))"
+    )
+
+    # سلاسلا
+    salasila = "سَلَـٰسِلَا۟"
+    salasila_body = salasila[:-2]
+    salasila_alif = salasila[-2]
+    salasila_marker = salasila[-1]
+
+    # نخلقكم
+    nakhluqkum = "نَخْلُقكُّم"
+    nakhluqkum_shadda_idx = nakhluqkum.find(uth.shadda)
+    nakhluqkum_prefix = nakhluqkum[:nakhluqkum_shadda_idx]
+    nakhluqkum_suffix = nakhluqkum[nakhluqkum_shadda_idx + 1 :]
+
+    # فادرأتم
+    faddaaraatum = "فَٱدَّٰرَْٰٔتُمْ"
+    faddaaraatum_marker_idx = faddaaraatum.rfind(uth.alif_khnjaria)
+    faddaaraatum_prefix = faddaaraatum[:faddaaraatum_marker_idx]
+    faddaaraatum_suffix = faddaaraatum[faddaaraatum_marker_idx + 1 :]
+
     special_patterns = [
         # SpecialPattern(
         #     pattern=f"{alph.uthmani.lam}({alph.uthmani.kasra})?{alph.uthmani.lam}{alph.uthmani.shadda}{alph.uthmani.fatha}{alph.uthmani.haa}",
@@ -182,7 +236,7 @@ if __name__ == "__main__":
         # ),
         # الأيكمة
         SpecialPattern(
-            pattern=f"M:<r0:{uth.lam}><r1:({uth.ras_haaa})>{lykah[kasheeda_idx]}<r2:{lykah[kasheeda_idx + 1 :]}>",
+            pattern=f"M:<r0:{uth.lam}><r1:({uth.ras_haaa})><k:({uth.kasheeda})><r2:({lykah[kasheeda_idx + 1 :]})>",
             target_pattern=f"<r0:{uth.hamzat_wasl}{uth.lam}><r1:\\1><r2:{alykah[3:]}>",
             pos="start",
         ),
@@ -191,7 +245,7 @@ if __name__ == "__main__":
             pattern=f"M:<r0:({iwaja[:-2]})><r1:({iwaja[-2]})><r2:({iwaja[-1]})><r3:({uth.space}{qymaa})>",
             attr_name="sakt_iwaja",
             opts={
-                "waqf": r"<r0:\\1><r1:\\2><r2:\\3><r3:\\4>",
+                "waqf": r"<r0:\1><r1:\2><r2:\3><r3:\4>",
                 "sakt": f"<r0:\\1><r1:\\2><r2:\\3{ph.sakt}><r3:\\4>",
                 "idraj": f"<r0:\\1><r1:{uth.tanween_fath_modgham}><r2:\\3><r3:\\4>",
             },
@@ -330,30 +384,33 @@ if __name__ == "__main__":
                 "tasheel": f"<T:{alph.uthmani.hamza}{alph.uthmani.fatha}{alph.uthmani.alif}{alph.uthmani.tasheel_sign}><r:\\2>",
             },
         ),
+        # يلهث ذلك
         SpecialPattern(
-            pattern="يَلْهَث ذَّٰلِكَ",
+            pattern=f"M:<a:({yalhath_first})><s:({uth.space})><b:({yalhath_second_head})><r:({yalhath_second_tail})>",
             attr_name="yalhath_dhalik",
             opts={
-                "izhar": "يَلْهَثْ ذَٰلِكَ",
-                "idgham": "يَلْهَث ذَّٰلِكَ",
+                "izhar": f"<a:{yalhath_izhar_first}><s:\\2><b:{yalhath_izhar_second_head}><r:\\4>",
+                "idgham": r"<a:\1><s:\2><b:\3><r:\4>",
+                "waqf": r"<a:\1><s:\2><b:\3><r:\4>",
             },
         ),
+        # اركب معنا
         SpecialPattern(
-            pattern="ٱرْكَب مَّعَنَا",
+            pattern=f"M:<a:({irkab_first})><s:({uth.space})><b:({irkab_second_head})><r:({irkab_second_tail})>",
             attr_name="irkab_maana",
             opts={
-                "izhar": "ٱرْكَبْ مَعَنَا",
-                "idgham": "ٱرْكَب مَّعَنَا",
+                "izhar": f"<a:{irkab_izhar_first}><s:\\2><b:{irkab_izhar_second_head}><r:\\4>",
+                "idgham": r"<a:\1><s:\2><b:\3><r:\4>",
+                "waqf": r"<a:\1><s:\2><b:\3><r:\4>",
             },
         ),
+        # تأمننا
         SpecialPattern(
-            pattern="تَأْمَ۫نَّا",
+            pattern=f"M:<a:({tamnna_prefix})><m:({tamnna_marker})><b:({tamnna_noon})><c:({uth.shadda})><r:({tamnna_tail})>",
             attr_name="noon_tamnna",
             opts={
-                "ishmam": "تَأْمَنَّا",
-                "rawm": re.sub(
-                    alph.uthmani.dama, alph.phonetics.dama_mokhtalasa, "تَأْمَنُنَا"
-                ),
+                "ishmam": r"<a:\1><b:\3><c:\4><r:\5>",
+                "rawm": f"<a:\\1><m:{uth.noon}{ph.dama_mokhtalasa}><b:\\3><r:\\5>",
             },
         ),
         # وردت  ضَعْف في القرآن ف 4 مواضع: في الإنفل وثلاث في الروم فهنا نستثني موضع الأنفال
@@ -361,46 +418,51 @@ if __name__ == "__main__":
         # NOTE: Tanzil mixed up alph.uthmani.tanween_idhaam_dterminer with alph.uthmani.meem_iqlab so for surah Alroom
         # Tanweed with Idgham with written witn tanween_kasr + meem_iqlab
         SpecialPattern(
-            pattern=f"(?:([^{alph.uthmani.ras_haaa}].){daaf})|(?:{daaf}({alph.uthmani.tanween_kasr}{alph.uthmani.meem_iqlab}))",
+            pattern=f"M:<a:(?:{daaf_context_pattern})>",
             attr_name="harakat_daaf",
             opts={
-                "fath": r"\1" + "ضَعْف" + r"\2",
-                "dam": r"\1" + "ضُعْف" + r"\2",
+                "fath": r"<a:\1" + daaf + r"\2>",
+                "dam": r"<a:\1" + daaf_dam + r"\2>",
             },
         ),
         SpecialPattern(
-            pattern="ضَعْف",
+            pattern=f"M:<a:({daaf})>",
             attr_name="harakat_daaf",
             opts={
-                "fath": "ضَعْف",
-                "dam": "ضُعْف",
+                "fath": r"<a:\1>",
+                "dam": f"<a:{daaf_dam}>",
             },
             pos="start",
             sura_idx=30,
         ),
+        # سلاسلا
         SpecialPattern(
-            pattern="سَلَـٰسِلَا۟",
+            pattern=f"M:<a:({salasila_body})><b:({salasila_alif})><c:({salasila_marker})>",
             attr_name="alif_salasila",
             pos="end",
             opts={
-                "hadhf": "سَلَـٰسِلَ",
-                "ithbat": "سَلَـٰسِلَا",
+                "hadhf": r"<a:\1>",
+                "ithbat": r"<a:\1><b:\2>",
+                "wasl": r"<a:\1><b:\2><c:\3>",
             },
         ),
+        # نخلقكم
         SpecialPattern(
-            pattern="نَخْلُقكُّم",
+            pattern=f"M:<a:({nakhluqkum_prefix})><b:({uth.shadda})><r:({nakhluqkum_suffix})>",
             attr_name="idgham_nakhluqkum",
             opts={
-                "idgham_kamil": "نَخْلُقكُّم",
-                "idgham_naqis": "نَخْلُقكُم",
+                "idgham_kamil": r"<a:\1><b:\2><r:\3>",
+                "idgham_naqis": r"<a:\1><r:\3>",
             },
         ),
         # special case where khinjaria alif is for rasm not phonetic
         SpecialPattern(
-            pattern="فَٱدَّٰرَْٰٔتُمْ",
-            target_pattern="فَٱدَّٰرَْٔتُمْ",
+            pattern=f"M:<a:({faddaaraatum_prefix})><b:({uth.alif_khnjaria})><r:({faddaaraatum_suffix})>",
+            target_pattern=r"<a:\1><r:\3>",
         ),
     ]
+    assert all(p.pattern.startswith("M:") for p in special_patterns)
+
     madd = Aya(68, 1).get().uthmani[1]
     for k in hrof_moqtta_disassemble:
         hrof_moqtta_disassemble[k] = re.sub("~", madd, hrof_moqtta_disassemble[k])

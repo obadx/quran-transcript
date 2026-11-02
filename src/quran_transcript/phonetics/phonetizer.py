@@ -2,10 +2,8 @@ from dataclasses import dataclass
 
 from .. import alphabet as alph
 from .conv_base_operation import (
-    MappingListType,
-    MappingPos,
+    PhonetizerMappings,
     init_mappings,
-    sub_with_mapping,
     sub_with_tagged_mapping,
 )
 from .moshaf_attributes import MoshafAttributes
@@ -17,7 +15,7 @@ from .sifa import SifaOutput, process_sifat
 class QuranPhoneticScriptOutput:
     phonemes: str
     sifat: list[SifaOutput]
-    mappings: MappingListType  # `None` for deletion
+    mappings: PhonetizerMappings  # `None` for deletion
     # TODO: Add mappings with sifat
 
 
@@ -58,8 +56,8 @@ def quran_phonetizer(
     )
 
     if remove_spaces:
-        text, mappings = sub_with_mapping(
-            alph.uthmani.space, r"", text, mappings=mappings
+        text, mappings = sub_with_tagged_mapping(
+            f"M:{alph.uthmani.space}", r"", text, mappings=mappings
         )
 
     return QuranPhoneticScriptOutput(phonemes=text, sifat=sifat, mappings=mappings)
