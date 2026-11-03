@@ -450,7 +450,8 @@ class PhonetizerMappings:
                 self.uth_to_ph[uth_idx].pos[1] + shift,
             )
         # Updatign our self._uth_start (states)
-        if prev_pos[0] != -1:
+        # avoiding updaing state with new pos
+        if prev_pos[0] != -1 and uth_idx != self._uth_start:
             # A change happend so we need to udpate the:
             # self_uth_start and self._prev_pos
             self._uth_start = uth_idx
@@ -491,9 +492,9 @@ class PhonetizerMappings:
                 self.uth_to_ph[uth_idx].deleted = True
 
         # Updating our self._uth_start (states)
-        if prev_pos[0] != -1:
+        # avoiding updaing state with new pos
+        if prev_pos[0] != -1 and uth_idx != self._uth_start:
             # A change happend so we need to udpate the:
-            # self_uth_start and self._prev_pos
             self._uth_start = uth_idx
             self._prev_pos = prev_pos
 

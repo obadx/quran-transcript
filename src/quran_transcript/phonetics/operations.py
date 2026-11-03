@@ -72,8 +72,8 @@ class SpecialCases(ConversionOperation):
                 elif case.target_pattern is not None:
                     rep_pattern = case.target_pattern
 
+                # TODO:
                 if pattern.startswith("M:"):
-                    print(rep_pattern)
                     text, mappings = sub_with_tagged_mapping(
                         pattern, rep_pattern, text, mappings
                     )
@@ -479,7 +479,7 @@ class PrepareGhonnaIdghamIqlab(ConversionOperation):
         default_factory=lambda: [
             # الميم المدغمة
             (
-                f"M:<T:{uth.meem}>{uth.space}?<D0:{uth.meem}>",
+                f"M:<T:{uth.meem}>{uth.space}?<D0:{uth.meem}{uth.shadda}>",
                 TajweedRuleType.IDGHAM_MEEM,
             ),
             # الميم المظهرة
