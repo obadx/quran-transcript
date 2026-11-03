@@ -1102,6 +1102,67 @@ def add_tajweed_rule_with_tagged_pat(
 
 @dataclass
 class ConversionOperation:
+    """A single phonetic conversion step built from tagged regex operations.
+
+    Subclasses configure their work through :attr:`regs` and may override
+    :meth:`forward` when patterns depend on runtime values such as ``moshaf``
+    or ``sura_idx``. :meth:`apply` runs the operation and returns the new text
+    together with an updated :class:`PhonetizerMappings`, which relates the
+    original Uthmani characters to their spans in the phonetic text and to any
+    attached Tajweed rules.
+
+    For the full rules of the tagged ``M:`` patterns -- tag syntax, mapping and
+    cardinality behavior, and Tajweed ``T``/``D`` tags -- see the ``Rules``
+    section in :func:`sub_with_tagged_mapping`. For rule-only operations
+    without a replacement, see :func:`add_tajweed_rule_with_tagged_pat`.
+
+    ``regs`` forms
+    --------------
+    ``regs`` accepts a single operation tuple or a list of them; a single tuple
+    is normalized to a list in :meth:`__post_init__`. Entries run in order:
+
+    * ``(pat, rep)`` - tagged substitution with no Tajweed rule, applied with
+      :func:`sub_with_tagged_mapping`.
+
+      Example from ``BeginWithSaken``::
+
+          (
+              f"M:<r:(^.){uth.ras_haaa}>",
+              f"<r:\\1{uth.kasra}>",
+          )
+
+    * ``(pat, rep, tajweed_rule_type)`` - tagged substitution that also attaches
+      ``tajweed_rule_type`` to the affected span, applied with
+      :func:`sub_with_tagged_mapping`.
+
+      Example from ``Qalqla``::
+
+          (
+              f"M:<T:([{uth.qlqla_group}](?:{uth.shadda}$|{uth.ras_haaa}|$))>",
+              f"<T:\\1{ph.qlqla}>",
+              TajweedRuleType.QALQALAH,
+          )
+
+    * ``(pat, tajweed_rule_type)`` - rule-only tagging: the text is not changed;
+      ``pat`` is searched and the rule is attached to the affected span.
+      Applied with :func:`add_tajweed_rule_with_tagged_pat`.
+
+      Example from ``PrepareGhonnaIdghamIqlab``::
+
+          (
+              f"M:<T:{uth.meem}>{uth.space}?<D0:{uth.meem}{uth.shadda}>",
+              TajweedRuleType.IDGHAM_MEEM,
+          )
+
+    A rule-only entry may be mixed with substitutions in the same list; the loop
+    continues with the next entry. Any other tuple length raises ``ValueError``.
+
+    ``ops_before`` lists operations run first in ``"test"`` mode; entries whose
+    ``arabic_name`` appears in ``discard_ops`` are skipped. In ``"inference"``
+    mode only :meth:`forward` runs. :meth:`apply` initializes mappings from
+    ``text`` when they are not provided.
+    """
+
     regs: (
         list[
             tuple[str, TajweedRuleType]
@@ -1112,40 +1173,6 @@ class ConversionOperation:
         | tuple[str, str, TajweedRuleType]
         | tuple[str, str]
     )
-    """Regex substitution operations applied by :meth:`forward`.
-
-    `regs` accepts either a single operation tuple or a list of operation
-    tuples. In :meth:`__post_init__` a plain tuple is wrapped in a list, so
-    internally it is always a ``list``. Each entry is one of three forms,
-    executed in order:
-
-    * ``(input_regex, output_regex)`` — Plain substitution. ``input_regex``
-      is the pattern to match in the text and ``output_regex`` is the
-      replacement string (may use backreferences like ``r"\\1"``). No
-      Tajweed rule is attached. Applied via :func:`sub_with_mapping`.
-
-      Example (from ``BeginWithSaken``):
-      ``(f"(^.){uth.ras_haaa}", f"\\1{uth.kasra}")``
-
-    * ``(input_regex, output_regex, tajweed_rule)`` — Substitution that also
-      associates ``tajweed_rule`` with the characters affected by the match.
-      Applied via :func:`sub_with_mapping`.
-
-      Example (from ``Qalqla``):
-      ``(f"([{uth.qlqla_group}])", f"\\1{ph.qlqla}", Qalqalah())``
-
-    * ``(pattern, tajweed_rule)`` — Rule-only tagging. The text is **not**
-      changed; ``pattern`` is searched in the current text and
-      ``tajweed_rule`` is added to the mappings of the captured character
-      (the pattern must contain exactly one group capturing exactly one
-      character). Applied via :func:`add_tajweed_rule_to_mappings`. Because
-      :meth:`forward` returns immediately after this form, it must be the
-      only entry in ``regs``.
-
-      Example: ``(f"({uth.alif}{uth.madd})", NormalMaddRule())``
-
-    Any other tuple length raises ``ValueError``.
-    """
     arabic_name: str
     ops_before: list["ConversionOperation"] | None = None
 
