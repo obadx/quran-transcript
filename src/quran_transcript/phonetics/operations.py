@@ -5,10 +5,7 @@ from ..alphabet import phonetics as ph
 from ..alphabet import uthmani as uth
 from .conv_base_operation import (
     ConversionOperation,
-    MappingListType,
     PhonetizerMappings,
-    get_mappings,
-    sub_with_mapping,
     sub_with_tagged_mapping,
 )
 from .moshaf_attributes import MoshafAttributes
@@ -52,35 +49,20 @@ class SpecialCases(ConversionOperation):
         for case in uth.special_patterns:
             if case.sura_idx in {0, sura_idx}:
                 pattern = case.pattern
-                if pattern.startswith("M:"):
-                    if case.pos == "start":
-                        pattern = r"M:^" + pattern[2:]
-                    elif case.pos == "end":
-                        pattern = pattern + r"$"
-                else:
-                    if case.pos == "start":
-                        pattern = r"^" + pattern
-                    elif case.pos == "end":
-                        pattern = pattern + r"$"
+                if case.pos == "start":
+                    pattern = r"M:^" + pattern[2:]
+                elif case.pos == "end":
+                    pattern = pattern + r"$"
 
                 if case.attr_name is not None:
                     moshaf_attr = getattr(moshaf, case.attr_name)
-                    if moshaf_attr in case.opts:
-                        rep_pattern = case.opts[moshaf_attr]
-                    else:
-                        rep_pattern = case.pattern
+                    rep_pattern = case.opts[moshaf_attr]
                 elif case.target_pattern is not None:
                     rep_pattern = case.target_pattern
 
-                # TODO:
-                if pattern.startswith("M:"):
-                    text, mappings = sub_with_tagged_mapping(
-                        pattern, rep_pattern, text, mappings
-                    )
-                else:
-                    text, mappings = sub_with_mapping(
-                        pattern, rep_pattern, text, mappings
-                    )
+                text, mappings = sub_with_tagged_mapping(
+                    pattern, rep_pattern, text, mappings
+                )
 
         return text, mappings
 
@@ -716,9 +698,10 @@ class Tasheel(ConversionOperation):
             SpecialCases(),
         ]
     )
-    regs: tuple[str, str] = (
-        f"{uth.alif}{uth.tasheel_sign}",
-        f"{ph.hamza_mosahala}",
+    regs: tuple[str, str, TajweedRuleType] = (
+        f"M:<T:{uth.alif}><D0:{uth.tasheel_sign}>",
+        f"<T:{ph.hamza_mosahala}>",
+        TajweedRuleType.TASHEEL,
     )
 
 

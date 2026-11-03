@@ -1,15 +1,13 @@
-from abc import abstractmethod, ABC
-from typing import Literal, Optional
+from abc import ABC, abstractmethod
 from dataclasses import dataclass, replace
+from typing import Literal, Optional
 
-
-from .sifa import chunck_phonemes
-from .. import alphabet as alph
 import Levenshtein as lv
 
-
-from .tajweed_rulses import TajweedRule, NormalMaddRule
-from .conv_base_operation import MappingPos, MappingListType
+from .. import alphabet as alph
+from .conv_base_operation import PhonetizerMappings
+from .sifa import chunck_phonemes
+from .tajweed_rulses import TajweedRule
 
 
 @dataclass
@@ -79,7 +77,7 @@ def align_phonemes_groups(
 
 
 def extract_ref_phonetic_to_uthmani(
-    mappings: MappingListType,
+    mappings: PhonetizerMappings,
 ) -> dict[int, int]:
     ref_ph_to_uthmani = {}
     for idx, map_pos in enumerate(mappings):
@@ -95,7 +93,7 @@ def extract_ref_phonetic_to_uthmani(
 
 def get_ref_phonetic_groups_tajweed_rules(
     ref_ph_groups: list[str],
-    mappings: MappingListType,
+    mappings: PhonetizerMappings,
     ref_ph_to_uthmani: dict[int, int],
 ) -> list[list[TajweedRule]]:
     ref_tajweed_rules: list[TajweedRule] = [[] for _ in range(len(ref_ph_groups))]
@@ -143,7 +141,7 @@ def explain_error(
     uthmani_text: str,
     ref_ph_text: str,
     predicted_ph_text: str,
-    mappings: MappingListType,
+    mappings: PhonetizerMappings,
 ) -> list[ReciterError]:
     """Explain errors in a predicted phonetic transcription compared to the reference.
 

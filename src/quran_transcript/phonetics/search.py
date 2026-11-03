@@ -1,17 +1,18 @@
-import numpy as np
-import re
 import importlib.resources as pkg_resources
-from pathlib import Path
+import re
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Optional
+
+import numpy as np
 from fuzzysearch import find_near_matches
 
+from .. import alphabet as alph
 from ..utils import Aya
+from .conv_base_operation import PhonetizerMappings
+from .moshaf_attributes import MoshafAttributes
 from .phonetizer import quran_phonetizer
 from .sifa import chunck_phonemes
-from .moshaf_attributes import MoshafAttributes
-from .conv_base_operation import MappingListType
-from .. import alphabet as alph
 
 
 def clean_uthmani_spaces(uth_text: str) -> str:
@@ -50,7 +51,7 @@ def normalize_phonetic_groups(ph_groups: list[str]) -> str:
 
 
 def get_uth_word_boundaries_in_ph(
-    uth_text: str, mappings: MappingListType
+    uth_text: str, mappings: PhonetizerMappings
 ) -> list[int]:
     """Get Uthmani word boundary indices in the phonetic script.
 
@@ -75,7 +76,7 @@ def get_uth_word_boundaries_in_ph(
     return boundries
 
 
-def get_phonetic_to_char_uthmani(mappings: MappingListType) -> dict[int, int]:
+def get_phonetic_to_char_uthmani(mappings: PhonetizerMappings) -> dict[int, int]:
     """Create a mapping from phonetic index to Uthmani character index.
 
     For each phonetic position, store the index of the Uthmani character it originated from.
@@ -409,4 +410,3 @@ class PhoneticSearch:
                 aya = aya.step(1)
 
         return alph.uthmani.space.join(out_uth_words)
-

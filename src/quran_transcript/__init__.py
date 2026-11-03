@@ -1,5 +1,5 @@
 from . import alphabet as alphabet
-from .phonetics.conv_base_operation import MappingListType, MappingPos
+from .phonetics.conv_base_operation import MappingPos, PhonetizerMappings
 from .phonetics.error_explainer import ReciterError, explain_error
 from .phonetics.moshaf_attributes import MoshafAttributes
 from .phonetics.phonetizer import QuranPhoneticScriptOutput, quran_phonetizer
@@ -46,7 +46,6 @@ __all__ = [
     "QuranPhoneticScriptOutput",
     "SifaOutput",
     "chunck_phonemes",
-    "MappingListType",
     "MappingPos",
     "PhonemesSearchSpan",
     "PhonmesSearhResult",
@@ -54,4 +53,5 @@ __all__ = [
     "PhoneticSearch",
     "explain_error",
     "ReciterError",
+    "PhonetizerMappings",
 ]
