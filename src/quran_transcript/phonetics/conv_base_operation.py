@@ -35,6 +35,7 @@ class MappingPos:
         >>> mapping.add_tajweed_rule(None)  # Still no rules
     """
 
+    # TODO: fill the uthmani tajweed rules
     pos: tuple[int, int]  # start, (pythonic exlusive end)
     tajweed_rules: list[TajweedRule] | None = None
     deleted: bool = False
@@ -938,7 +939,6 @@ def sub_with_tagged_mapping(
 
     """
 
-    assert mappings is not None
     assert pat.startswith("M:")
     pat = pat[2:]
 
@@ -1098,6 +1098,185 @@ def add_tajweed_rule_with_tagged_pat(
     mappings.finalize(len(text), len(text))
 
     return mappings
+
+
+class QuranREWithMapping:
+    def __init__(
+        self,
+        pat: str,
+        rep: str | None,
+        taj_rule_type: TajweedRuleType | None,
+        insert_taj_cond: Callable[[list[TajweedRuleType], TajweedRuleType], bool]
+        | None = None,
+    ):
+        """Docs"""
+        assert pat.startswith("M:")
+        pat = pat[2:]
+
+        if rep is None:
+            # Add tjaweed only mode
+            self.mapped_tags = parse_tags(pat, "")
+        else:
+            # sub with mapping
+            self.mapped_tags = parse_tags(pat, rep)
+
+        re_pat = ""
+        for m_tag in self.mapped_tags:
+            re_pat += m_tag.pat
+        self.re_pat = re.compile(re_pat)
+
+        self.pat = pat
+        self.rep = rep
+        self.taj_rule_type = taj_rule_type
+        self.insert_taj_cond = insert_taj_cond
+
+    def sub(
+        self,
+        text: str,
+        mappings: PhonetizerMappings,
+        tajweed_rule_tag: str = "",
+    ) -> tuple[str, PhonetizerMappings]:
+
+        assert self.rep is not None, "IN sub mode we `pat` has to be valid not `None`"
+
+        out_text = ""
+
+        in_pos = 0
+        out_pos = 0
+        shifted = False
+        mappings.reset()
+        for match in self.re_pat.finditer(text):
+            out_text += text[in_pos : match.start()]  # text not cpatured by the pat
+
+            keep_num = match.start() - in_pos
+            # shifting mappings
+            if shifted:
+                mappings.shift(in_pos, out_pos, keep_num)
+
+            in_pos = match.start()
+            out_pos += keep_num
+            for m_tag in self.mapped_tags:
+                tag_rep_text = ""
+                # pattern exist not deleted
+                tag_mat = m_tag.compiled_pat.match(
+                    text, pos=in_pos
+                )  # Avoiding catching preious tag patter for example <x:aa><y:aa> we will hit the same match again so we want to have a moving cursor to avoid that
+                assert tag_mat != None
+                tag_pat_text = tag_mat.group()
+                tag_pat_len = len(tag_pat_text)
+
+                if m_tag.tag != "" and m_tag.rep_parts != []:
+                    tag_rep_text = expand_replacement(m_tag.rep_parts, match)
+                    tag_rep_len = len(tag_rep_text)
+                    min_both_len = min(tag_pat_len, tag_rep_len)
+                    if (tag_pat_len == tag_rep_len) and shifted:
+                        # equal mapping
+                        mappings.shift(in_pos, out_pos, tag_pat_len)
+                    elif (tag_pat_len == tag_rep_len) and not shifted:
+                        ...
+                    elif tag_pat_len == 1 and (len(tag_rep_text) > 1):
+                        # one to many
+                        mappings.update_ph_one_to_many(in_pos, out_pos, tag_rep_len)
+                        shifted = True
+                    elif tag_pat_text[:min_both_len] == tag_rep_text[:min_both_len]:
+                        if tag_rep_len > tag_pat_len:
+                            # insert
+                            if shifted:
+                                mappings.shift(in_pos, out_pos, min_both_len - 1)
+                            mappings.update_ph_one_to_many(
+                                in_pos + min_both_len - 1,
+                                out_pos + min_both_len - 1,
+                                tag_rep_len - min_both_len + 1,
+                            )
+                            shifted = True
+                        else:
+                            # delete
+                            if shifted:
+                                mappings.shift(in_pos, out_pos, min_both_len)
+                            mappings.delete_shift(
+                                in_pos + min_both_len,
+                                out_pos + min_both_len,
+                                tag_pat_len - tag_rep_len,
+                            )
+                            shifted = True
+
+                    else:
+                        raise MappedTagPrasingCardinalityError(
+                            f"Not supporting many to many or many to one mapping you want to map: `{tag_pat_text}` to `{tag_rep_text}` corresponds to tag: `{m_tag}`"
+                        )
+                elif m_tag.rep_parts == [] and tag_pat_len > 0:
+                    # the tag_pat_len for regs that are zero lenght like `z?`
+                    # Deletion
+                    tag_rep_text = ""
+                    mappings.delete_shift(in_pos, out_pos, tag_pat_len)
+                    shifted = True
+
+                if m_tag.tag_tp in {"TAJWEED", "TAJWEED_DEP"}:
+                    mappings.insert_tajweed_rule_part(
+                        in_pos,
+                        out_pos,
+                        out_pos + len(tag_rep_text),
+                        m_tag.taj_tag,  # NOTE: the associated pivot (T) tag so a pivot and its deps share the same id
+                        m_tag.dep_idx,
+                        m_tag.num_deps,
+                        self.taj_rule_type,
+                        self.insert_taj_cond,
+                        tajweed_rule_tag,  # NOTE: `tajweed_rule_tag` here is not the tag name but another thig raelate d to Tajweed rule we might need to rename it for disamiguity
+                    )
+
+                in_pos += tag_pat_len
+                out_pos += len(tag_rep_text)
+                out_text += tag_rep_text
+            in_pos = match.end()
+
+        # The rest of positions
+        out_text += text[in_pos:]
+        if shifted and in_pos < len(text):
+            mappings.shift(in_pos, out_pos, len(text) - in_pos)
+        mappings.finalize(len(text), len(out_text))
+
+        return out_text, mappings
+
+    def insert_tajweed(
+        self,
+        text: str,
+        mappings: PhonetizerMappings,
+        tajweed_rule_tag: str = "",
+    ) -> PhonetizerMappings:
+        """Same ruels as the `sub_with_tagged_mapping` but with no `rep`. Just adding tajweed rules to mappings"""
+
+        assert self.rep is None, "IN insert_tajweed mode we `rep` has to be `None`"
+
+        mappings.reset()
+        for match in self.re_pat.finditer(text):
+            pos = match.start()
+            for m_tag in self.mapped_tags:
+                # pattern exist not deleted
+                tag_mat = m_tag.compiled_pat.match(
+                    text, pos=pos
+                )  # Avoiding catching preious tag patter for example <x:aa><y:aa> we will hit the same match again so we want to have a moving cursor to avoid that
+                assert tag_mat != None
+                tag_pat_text = tag_mat.group()
+                tag_pat_len = len(tag_pat_text)
+
+                if m_tag.tag_tp in {"TAJWEED", "TAJWEED_DEP"}:
+                    mappings.insert_tajweed_rule_part(
+                        pos,
+                        pos,
+                        pos + tag_pat_len,
+                        m_tag.taj_tag,  # NOTE: the associated pivot (T) tag so a pivot and its deps share the same id
+                        m_tag.dep_idx,
+                        m_tag.num_deps,
+                        self.taj_rule_type,
+                        self.insert_taj_cond,
+                        tajweed_rule_tag,  # NOTE: `tajweed_rule_tag` here is not the tag name but another thig raelate d to Tajweed rule we might need to rename it for disamiguity
+                    )
+
+                pos += tag_pat_len
+
+        mappings.finalize(len(text), len(text))
+
+        return mappings
 
 
 @dataclass
