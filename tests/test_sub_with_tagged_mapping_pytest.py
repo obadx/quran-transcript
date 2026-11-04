@@ -6,13 +6,12 @@ from quran_transcript.phonetics.conv_base_operation import (
     MappedTagPrasingCardinalityError,
     MappedTagPrasingError,
     PhonetizerMappings,
+    QuranREWithMapping,
     RepPart,
-    add_tajweed_rule_with_tagged_pat,
     expand_replacement,
     init_mappings,
     parse_replacement,
     parse_tags,
-    sub_with_tagged_mapping,
 )
 from quran_transcript.phonetics.tajweed_rulses import (
     TajweedRuleMetadata,
@@ -299,7 +298,7 @@ class TestParseTagsTajweed:
 
 
 # ----------------------------------------------------------------------
-# sub_with_tagged_mapping
+# QuranREWithMapping.sub
 # ----------------------------------------------------------------------
 class TestSubWithTaggedMapping:
     def test_simple(self):
@@ -307,7 +306,10 @@ class TestSubWithTaggedMapping:
         pat = r"M:<x:a>"
         rep = r"<x:A>"
         mappings = init_mappings(in_text)
-        out_text, out_mappings = sub_with_tagged_mapping(pat, rep, in_text, mappings)
+        out_text, out_mappings = QuranREWithMapping(pat, rep, None).sub(
+            in_text,
+            mappings,
+        )
         _check_mapping_continuty(out_mappings)
         assert out_text == "A"
         _assert_mappings(out_mappings, [(0, 1)])
@@ -317,7 +319,10 @@ class TestSubWithTaggedMapping:
         pat = r"M:<x:a><y:b>"
         rep = r"<x:A><y:B>"
         mappings = init_mappings(in_text)
-        out_text, out_mappings = sub_with_tagged_mapping(pat, rep, in_text, mappings)
+        out_text, out_mappings = QuranREWithMapping(pat, rep, None).sub(
+            in_text,
+            mappings,
+        )
         _check_mapping_continuty(out_mappings)
         assert out_text == "AB"
         _assert_mappings(out_mappings, [(0, 1), (1, 2)])
@@ -327,7 +332,10 @@ class TestSubWithTaggedMapping:
         pat = r"M:<x:(a)><y:(b)>"
         rep = r"<x:\1><y:\2>"
         mappings = init_mappings(in_text)
-        out_text, out_mappings = sub_with_tagged_mapping(pat, rep, in_text, mappings)
+        out_text, out_mappings = QuranREWithMapping(pat, rep, None).sub(
+            in_text,
+            mappings,
+        )
         _check_mapping_continuty(out_mappings)
         assert out_text == "ab"
         _assert_mappings(out_mappings, [(0, 1), (1, 2)])
@@ -337,7 +345,10 @@ class TestSubWithTaggedMapping:
         pat = r"M:<x:a>."
         rep = r"<x:A>"
         mappings = init_mappings(in_text)
-        out_text, out_mappings = sub_with_tagged_mapping(pat, rep, in_text, mappings)
+        out_text, out_mappings = QuranREWithMapping(pat, rep, None).sub(
+            in_text,
+            mappings,
+        )
         _check_mapping_continuty(out_mappings)
         assert out_text == "A"
         _assert_mappings(out_mappings, [(0, 1), (1, 1)], deleted_idx={1})
@@ -347,7 +358,10 @@ class TestSubWithTaggedMapping:
         pat = r"M:<x:a>"
         rep = r"<x:ABC>"
         mappings = init_mappings(in_text)
-        out_text, out_mappings = sub_with_tagged_mapping(pat, rep, in_text, mappings)
+        out_text, out_mappings = QuranREWithMapping(pat, rep, None).sub(
+            in_text,
+            mappings,
+        )
         _check_mapping_continuty(out_mappings)
         assert out_text == "ABC"
         _assert_mappings(out_mappings, [(0, 3)])
@@ -357,7 +371,10 @@ class TestSubWithTaggedMapping:
         pat = r"M:<x:a>"
         rep = r"<x:A>"
         mappings = init_mappings(in_text)
-        out_text, out_mappings = sub_with_tagged_mapping(pat, rep, in_text, mappings)
+        out_text, out_mappings = QuranREWithMapping(pat, rep, None).sub(
+            in_text,
+            mappings,
+        )
         _check_mapping_continuty(out_mappings)
         assert out_text == "A A"
         _assert_mappings(out_mappings, [(0, 1), (1, 2), (2, 3)])
@@ -367,7 +384,10 @@ class TestSubWithTaggedMapping:
         pat = r"M:<x:a>"
         rep = r"<x:A>"
         mappings = init_mappings(in_text)
-        out_text, out_mappings = sub_with_tagged_mapping(pat, rep, in_text, mappings)
+        out_text, out_mappings = QuranREWithMapping(pat, rep, None).sub(
+            in_text,
+            mappings,
+        )
         _check_mapping_continuty(out_mappings)
         assert out_text == "zA"
         _assert_mappings(out_mappings, [(0, 1), (1, 2)])
@@ -378,7 +398,7 @@ class TestSubWithTaggedMapping:
         rep = r"<x:ABC>"
         mappings = init_mappings(in_text)
         with pytest.raises(MappedTagPrasingCardinalityError):
-            sub_with_tagged_mapping(pat, rep, in_text, mappings)
+            QuranREWithMapping(pat, rep, None).sub(in_text, mappings)
 
     def test_many_to_one_error(self):
         in_text = "ac"
@@ -386,18 +406,21 @@ class TestSubWithTaggedMapping:
         rep = r"<x:A>"
         mappings = init_mappings(in_text)
         with pytest.raises(MappedTagPrasingCardinalityError):
-            sub_with_tagged_mapping(pat, rep, in_text, mappings)
+            QuranREWithMapping(pat, rep, None).sub(in_text, mappings)
 
     def test_missing_m_prefix(self):
         with pytest.raises(AssertionError):
-            sub_with_tagged_mapping(r"<x:a>", r"<x:A>", "a", init_mappings("a"))
+            QuranREWithMapping(r"<x:a>", r"<x:A>", None).sub("a", init_mappings("a"))
 
     def test_named_group_backref(self):
         in_text = "a"
         pat = r"M:<x:(a)>"
         rep = r"<x:\1>"
         mappings = init_mappings(in_text)
-        out_text, out_mappings = sub_with_tagged_mapping(pat, rep, in_text, mappings)
+        out_text, out_mappings = QuranREWithMapping(pat, rep, None).sub(
+            in_text,
+            mappings,
+        )
         _check_mapping_continuty(out_mappings)
         assert out_text == "a"
         _assert_mappings(out_mappings, [(0, 1)])
@@ -407,7 +430,10 @@ class TestSubWithTaggedMapping:
         pat = r"M:<x:a>"
         rep = r"<x:\\>"
         mappings = init_mappings(in_text)
-        out_text, out_mappings = sub_with_tagged_mapping(pat, rep, in_text, mappings)
+        out_text, out_mappings = QuranREWithMapping(pat, rep, None).sub(
+            in_text,
+            mappings,
+        )
         _check_mapping_continuty(out_mappings)
         assert out_text == "\\"
         _assert_mappings(out_mappings, [(0, 1)])
@@ -417,7 +443,10 @@ class TestSubWithTaggedMapping:
         pat = r"M:<x:(a)(b)>"
         rep = r"<x:\2\1>"
         mappings = init_mappings(in_text)
-        out_text, out_mappings = sub_with_tagged_mapping(pat, rep, in_text, mappings)
+        out_text, out_mappings = QuranREWithMapping(pat, rep, None).sub(
+            in_text,
+            mappings,
+        )
         _check_mapping_continuty(out_mappings)
         assert out_text == "ba"
         _assert_mappings(out_mappings, [(0, 1), (1, 2)])
@@ -427,7 +456,10 @@ class TestSubWithTaggedMapping:
         pat = r"M:abc"
         rep = r""
         mappings = init_mappings(in_text)
-        out_text, out_mappings = sub_with_tagged_mapping(pat, rep, in_text, mappings)
+        out_text, out_mappings = QuranREWithMapping(pat, rep, None).sub(
+            in_text,
+            mappings,
+        )
         _check_mapping_continuty(out_mappings)
         assert out_text == ""
         _assert_mappings(out_mappings, [(0, 0), (0, 0), (0, 0)], deleted_idx={0, 1, 2})
@@ -437,7 +469,10 @@ class TestSubWithTaggedMapping:
         pat = r"M:a<x:X>b<y:Y>c"
         rep = r"<x:A><y:B>"
         mappings = init_mappings(in_text)
-        out_text, out_mappings = sub_with_tagged_mapping(pat, rep, in_text, mappings)
+        out_text, out_mappings = QuranREWithMapping(pat, rep, None).sub(
+            in_text,
+            mappings,
+        )
         _check_mapping_continuty(out_mappings)
         assert out_text == "AB"
         _assert_mappings(
@@ -451,7 +486,10 @@ class TestSubWithTaggedMapping:
         pat = r"M:<x:([a-z])><y:(\d+)>"
         rep = r"<x:\1><y:\2>"
         mappings = init_mappings(in_text)
-        out_text, out_mappings = sub_with_tagged_mapping(pat, rep, in_text, mappings)
+        out_text, out_mappings = QuranREWithMapping(pat, rep, None).sub(
+            in_text,
+            mappings,
+        )
         _check_mapping_continuty(out_mappings)
         assert out_text == "a123"
         _assert_mappings(out_mappings, [(0, 1), (1, 2), (2, 3), (3, 4)])
@@ -465,7 +503,10 @@ class TestSubWithTaggedMapping:
         rep = r"<x:A><r:\1>"
         mappings = init_mappings(in_text)
 
-        out_text, out_mappings = sub_with_tagged_mapping(pat, rep, in_text, mappings)
+        out_text, out_mappings = QuranREWithMapping(pat, rep, None).sub(
+            in_text,
+            mappings,
+        )
         _check_mapping_continuty(out_mappings)
 
         assert out_text == "Ahmed Adef Mahmoud"
@@ -508,7 +549,10 @@ class TestSubWithTaggedMapping:
         pat = r"M:<x:[ab]>."
         rep = r"<x:A>"
         mappings = init_mappings(in_text)
-        out_text, out_mappings = sub_with_tagged_mapping(pat, rep, in_text, mappings)
+        out_text, out_mappings = QuranREWithMapping(pat, rep, None).sub(
+            in_text,
+            mappings,
+        )
         _check_mapping_continuty(out_mappings)
         # no match at all
         assert out_text == "Ahmed"
@@ -519,7 +563,10 @@ class TestSubWithTaggedMapping:
         pat = r"M:<x:[ab]>.<r:(def)>"
         rep = r"<x:A><r:\1>"
         mappings = init_mappings(in_text)
-        out_text, out_mappings = sub_with_tagged_mapping(pat, rep, in_text, mappings)
+        out_text, out_mappings = QuranREWithMapping(pat, rep, None).sub(
+            in_text,
+            mappings,
+        )
         _check_mapping_continuty(out_mappings)
         assert out_text == "AdefX"
         _assert_mappings(
@@ -534,7 +581,10 @@ class TestSubWithTaggedMapping:
         pat = r"M:<x:[ab]>.<r:([bc])>"
         rep = r"<x:X><r:\1>"
         mappings = init_mappings(in_text)
-        out_text, out_mappings = sub_with_tagged_mapping(pat, rep, in_text, mappings)
+        out_text, out_mappings = QuranREWithMapping(pat, rep, None).sub(
+            in_text,
+            mappings,
+        )
         _check_mapping_continuty(out_mappings)
         _prety_print(pat, rep, in_text, out_text, out_mappings)
         # 'aNb' -> 'Xb', 'aNc' -> 'Xc'
@@ -550,7 +600,10 @@ class TestSubWithTaggedMapping:
         pat = r"M:<x:[0-9]>"
         rep = r"<x:D>"
         mappings = init_mappings(in_text)
-        out_text, out_mappings = sub_with_tagged_mapping(pat, rep, in_text, mappings)
+        out_text, out_mappings = QuranREWithMapping(pat, rep, None).sub(
+            in_text,
+            mappings,
+        )
         _check_mapping_continuty(out_mappings)
         assert out_text == in_text
         _assert_mappings(
@@ -563,7 +616,10 @@ class TestSubWithTaggedMapping:
         pat = r"M:<x:a>"
         rep = r"<x:AAA>"
         mappings = init_mappings(in_text)
-        out_text, out_mappings = sub_with_tagged_mapping(pat, rep, in_text, mappings)
+        out_text, out_mappings = QuranREWithMapping(pat, rep, None).sub(
+            in_text,
+            mappings,
+        )
         _check_mapping_continuty(out_mappings)
         _prety_print(pat, rep, in_text, out_text, out_mappings)
         assert out_text == "AAAXY"
@@ -577,7 +633,10 @@ class TestSubWithTaggedMapping:
         pat = r"M:<x:[ab]>.<r:(def)>"
         rep = r"<x:A><r:\1>"
         mappings = init_mappings(in_text)
-        out_text, out_mappings = sub_with_tagged_mapping(pat, rep, in_text, mappings)
+        out_text, out_mappings = QuranREWithMapping(pat, rep, None).sub(
+            in_text,
+            mappings,
+        )
         _check_mapping_continuty(out_mappings)
         assert out_text == "Adef"
         _assert_mappings(
@@ -591,7 +650,10 @@ class TestSubWithTaggedMapping:
         pat = r"M:<x:[ab]>.<r:(def)>"
         rep = r"<x:A><r:\1>"
         mappings = init_mappings(in_text)
-        out_text, out_mappings = sub_with_tagged_mapping(pat, rep, in_text, mappings)
+        out_text, out_mappings = QuranREWithMapping(pat, rep, None).sub(
+            in_text,
+            mappings,
+        )
         _prety_print(pat, rep, in_text, out_text, out_mappings)
         _check_mapping_continuty(out_mappings)
         assert out_text == "Ahmed Adef Mahmoud Adef Hello"
@@ -638,7 +700,10 @@ class TestSubWithTaggedMapping:
         pat = r"M:<x:[ab]>.<r:(def)>"
         rep = r"<x:A><r:\1>"
         mappings = init_mappings(in_text)
-        out_text, out_mappings = sub_with_tagged_mapping(pat, rep, in_text, mappings)
+        out_text, out_mappings = QuranREWithMapping(pat, rep, None).sub(
+            in_text,
+            mappings,
+        )
         _check_mapping_continuty(out_mappings)
         assert out_text == "Ahmed Adef Mahmoud Adef"
         _assert_mappings(
@@ -681,7 +746,10 @@ class TestSubWithTaggedMapping:
         pat = r"M:<x:[ab]><r:(def)>"
         rep = r"<x:A><r:\1>"
         mappings = init_mappings(in_text)
-        out_text, out_mappings = sub_with_tagged_mapping(pat, rep, in_text, mappings)
+        out_text, out_mappings = QuranREWithMapping(pat, rep, None).sub(
+            in_text,
+            mappings,
+        )
         _check_mapping_continuty(out_mappings)
         assert out_text == "Adef"
         _assert_mappings(out_mappings, [(0, 1), (1, 2), (2, 3), (3, 4)])
@@ -691,7 +759,10 @@ class TestSubWithTaggedMapping:
         pat = r"M:<x:[ab]><r:(def)>"
         rep = r"<x:AAAA><r:\1>"
         mappings = init_mappings(in_text)
-        out_text, out_mappings = sub_with_tagged_mapping(pat, rep, in_text, mappings)
+        out_text, out_mappings = QuranREWithMapping(pat, rep, None).sub(
+            in_text,
+            mappings,
+        )
         _check_mapping_continuty(out_mappings)
         assert out_text == "AAAAdef"
         _assert_mappings(out_mappings, [(0, 4), (4, 5), (5, 6), (6, 7)])
@@ -701,7 +772,10 @@ class TestSubWithTaggedMapping:
         pat = r"M:<x:[ab]><r:(def)>"
         rep = r"<x:AAAA><r:\1>"
         mappings = init_mappings(in_text)
-        out_text, out_mappings = sub_with_tagged_mapping(pat, rep, in_text, mappings)
+        out_text, out_mappings = QuranREWithMapping(pat, rep, None).sub(
+            in_text,
+            mappings,
+        )
         _check_mapping_continuty(out_mappings)
         assert out_text == "AAAAdef Hello"
         _assert_mappings(
@@ -725,7 +799,10 @@ class TestSubWithTaggedMapping:
         pat = r"M:<x:[ab]><r:(def)><y:n>"
         rep = r"<x:AAAA><r:\1><y:NNN>"
         mappings = init_mappings(in_text)
-        out_text, out_mappings = sub_with_tagged_mapping(pat, rep, in_text, mappings)
+        out_text, out_mappings = QuranREWithMapping(pat, rep, None).sub(
+            in_text,
+            mappings,
+        )
         _prety_print(pat, rep, in_text, out_text, out_mappings)
         _check_mapping_continuty(out_mappings)
         assert out_text == "AAAAdefNNN Hello"
@@ -754,7 +831,10 @@ class TestSubWithTaggedMapping:
         pat = r"M:<x:(word\b)>"
         rep = r"<x:WORD>"
         mappings = init_mappings(in_text)
-        out_text, out_mappings = sub_with_tagged_mapping(pat, rep, in_text, mappings)
+        out_text, out_mappings = QuranREWithMapping(pat, rep, None).sub(
+            in_text,
+            mappings,
+        )
         _check_mapping_continuty(out_mappings)
         assert out_text == "WORD"
         _assert_mappings(out_mappings, [(i, i + 1) for i in range(len(in_text))])
@@ -764,7 +844,10 @@ class TestSubWithTaggedMapping:
         pat = r"M:<x:(word\b)>"
         rep = r"<x:WORD>"
         mappings = init_mappings(in_text)
-        out_text, out_mappings = sub_with_tagged_mapping(pat, rep, in_text, mappings)
+        out_text, out_mappings = QuranREWithMapping(pat, rep, None).sub(
+            in_text,
+            mappings,
+        )
         _check_mapping_continuty(out_mappings)
         assert out_text == "wordF"
         _assert_mappings(out_mappings, [(i, i + 1) for i in range(len(in_text))])
@@ -777,7 +860,10 @@ class TestSubWithTaggedMapping:
         pat = r"M:<x:(a)><r:(\d+)>"
         rep = r"<x:\1><r:\2>"
         mappings = init_mappings(in_text)
-        out_text, out_mappings = sub_with_tagged_mapping(pat, rep, in_text, mappings)
+        out_text, out_mappings = QuranREWithMapping(pat, rep, None).sub(
+            in_text,
+            mappings,
+        )
         _check_mapping_continuty(out_mappings)
         assert out_text == "a123"
         _assert_mappings(out_mappings, [(i, i + 1) for i in range(len(in_text))])
@@ -790,7 +876,10 @@ class TestSubWithTaggedMapping:
         pat = r"M:<x:END><r:($)>"
         rep = r"<x:end><r:\1>"
         mappings = init_mappings(in_text)
-        out_text, out_mappings = sub_with_tagged_mapping(pat, rep, in_text, mappings)
+        out_text, out_mappings = QuranREWithMapping(pat, rep, None).sub(
+            in_text,
+            mappings,
+        )
         _check_mapping_continuty(out_mappings)
         assert out_text == "end"
         _assert_mappings(out_mappings, [(0, 1), (1, 2), (2, 3)])
@@ -800,7 +889,10 @@ class TestSubWithTaggedMapping:
         pat = r"M:<x:(^)><r:START>"
         rep = r"<x:\1><r:start>"
         mappings = init_mappings(in_text)
-        out_text, out_mappings = sub_with_tagged_mapping(pat, rep, in_text, mappings)
+        out_text, out_mappings = QuranREWithMapping(pat, rep, None).sub(
+            in_text,
+            mappings,
+        )
         _check_mapping_continuty(out_mappings)
         assert out_text == "start"
         _assert_mappings(out_mappings, [(0, 1), (1, 2), (2, 3), (3, 4), (4, 5)])
@@ -813,7 +905,10 @@ class TestSubWithTaggedMapping:
         pat = r"M:<x:ab>c?<y:($)>"
         rep = r"<x:AB><y:\1>"
         mappings = init_mappings(in_text)
-        out_text, out_mappings = sub_with_tagged_mapping(pat, rep, in_text, mappings)
+        out_text, out_mappings = QuranREWithMapping(pat, rep, None).sub(
+            in_text,
+            mappings,
+        )
         _check_mapping_continuty(out_mappings)
         assert out_text == "AB"
         _assert_mappings(
@@ -827,7 +922,10 @@ class TestSubWithTaggedMapping:
         pat = r"M:<x:ab>c?<y:($)>"
         rep = r"<x:AB><y:\1>"
         mappings = init_mappings(in_text)
-        out_text, out_mappings = sub_with_tagged_mapping(pat, rep, in_text, mappings)
+        out_text, out_mappings = QuranREWithMapping(pat, rep, None).sub(
+            in_text,
+            mappings,
+        )
         _check_mapping_continuty(out_mappings)
         assert out_text == "AB"
         _assert_mappings(out_mappings, [(0, 1), (1, 2)])
@@ -837,7 +935,10 @@ class TestSubWithTaggedMapping:
         pat = r"M:<x:a>b?<y:($)>"
         rep = r"<x:AAAA><y:\1>"
         mappings = init_mappings(in_text)
-        out_text, out_mappings = sub_with_tagged_mapping(pat, rep, in_text, mappings)
+        out_text, out_mappings = QuranREWithMapping(pat, rep, None).sub(
+            in_text,
+            mappings,
+        )
         _check_mapping_continuty(out_mappings)
         assert out_text == "AAAA"
         _assert_mappings(out_mappings, [(0, 4)])
@@ -852,7 +953,10 @@ class TestManyToManyWithPrefixInsertDelete:
         pat = r"M:<T:abc>"
         rep = r"<T:abcd>"
         mappings = init_mappings(in_text)
-        out_text, out_mappings = sub_with_tagged_mapping(pat, rep, in_text, mappings)
+        out_text, out_mappings = QuranREWithMapping(pat, rep, None).sub(
+            in_text,
+            mappings,
+        )
         _check_mapping_continuty(out_mappings)
         assert out_text == "abcd"
         _assert_mappings(out_mappings, [(0, 1), (1, 2), (2, 4)])
@@ -862,7 +966,10 @@ class TestManyToManyWithPrefixInsertDelete:
         pat = r"M:C<T:abc>"
         rep = r"<T:abcd>"
         mappings = init_mappings(in_text)
-        out_text, out_mappings = sub_with_tagged_mapping(pat, rep, in_text, mappings)
+        out_text, out_mappings = QuranREWithMapping(pat, rep, None).sub(
+            in_text,
+            mappings,
+        )
         _prety_print(pat, rep, in_text, out_text, out_mappings)
         _check_mapping_continuty(out_mappings)
         assert out_text == "ABabcd"
@@ -877,7 +984,10 @@ class TestManyToManyWithPrefixInsertDelete:
         pat = r"M:C<T:abc>D"
         rep = r"<T:abcd>"
         mappings = init_mappings(in_text)
-        out_text, out_mappings = sub_with_tagged_mapping(pat, rep, in_text, mappings)
+        out_text, out_mappings = QuranREWithMapping(pat, rep, None).sub(
+            in_text,
+            mappings,
+        )
         _prety_print(pat, rep, in_text, out_text, out_mappings)
         _check_mapping_continuty(out_mappings)
         assert out_text == "ABabcdEF"
@@ -892,7 +1002,10 @@ class TestManyToManyWithPrefixInsertDelete:
         pat = r"M:<x:A><T:abc>D"
         rep = r"<x:AAAC><T:abcd>"
         mappings = init_mappings(in_text)
-        out_text, out_mappings = sub_with_tagged_mapping(pat, rep, in_text, mappings)
+        out_text, out_mappings = QuranREWithMapping(pat, rep, None).sub(
+            in_text,
+            mappings,
+        )
         _prety_print(pat, rep, in_text, out_text, out_mappings)
         _check_mapping_continuty(out_mappings)
         assert out_text == "AAACabcdEF"
@@ -907,7 +1020,10 @@ class TestManyToManyWithPrefixInsertDelete:
         pat = r"M:<T:abc>"
         rep = r"<T:ab>"
         mappings = init_mappings(in_text)
-        out_text, out_mappings = sub_with_tagged_mapping(pat, rep, in_text, mappings)
+        out_text, out_mappings = QuranREWithMapping(pat, rep, None).sub(
+            in_text,
+            mappings,
+        )
         _check_mapping_continuty(out_mappings)
         assert out_text == "ab"
         _assert_mappings(out_mappings, [(0, 1), (1, 2), (2, 2)], deleted_idx={2})
@@ -917,7 +1033,10 @@ class TestManyToManyWithPrefixInsertDelete:
         pat = r"M:C<T:abc>"
         rep = r"<T:ab>"
         mappings = init_mappings(in_text)
-        out_text, out_mappings = sub_with_tagged_mapping(pat, rep, in_text, mappings)
+        out_text, out_mappings = QuranREWithMapping(pat, rep, None).sub(
+            in_text,
+            mappings,
+        )
         _prety_print(pat, rep, in_text, out_text, out_mappings)
         _check_mapping_continuty(out_mappings)
         assert out_text == "ABab"
@@ -932,7 +1051,10 @@ class TestManyToManyWithPrefixInsertDelete:
         pat = r"M:C<T:abc>D"
         rep = r"<T:ab>"
         mappings = init_mappings(in_text)
-        out_text, out_mappings = sub_with_tagged_mapping(pat, rep, in_text, mappings)
+        out_text, out_mappings = QuranREWithMapping(pat, rep, None).sub(
+            in_text,
+            mappings,
+        )
         _prety_print(pat, rep, in_text, out_text, out_mappings)
         _check_mapping_continuty(out_mappings)
         assert out_text == "ABabEF"
@@ -947,7 +1069,10 @@ class TestManyToManyWithPrefixInsertDelete:
         pat = r"M:<x:A>B<T:abc>D"
         rep = r"<x:AAAA><T:ab>"
         mappings = init_mappings(in_text)
-        out_text, out_mappings = sub_with_tagged_mapping(pat, rep, in_text, mappings)
+        out_text, out_mappings = QuranREWithMapping(pat, rep, None).sub(
+            in_text,
+            mappings,
+        )
         _prety_print(pat, rep, in_text, out_text, out_mappings)
         _check_mapping_continuty(out_mappings)
         assert out_text == "AAAAabEF"
@@ -963,11 +1088,11 @@ class TestManyToManyWithPrefixInsertDelete:
         rep = r"<x:ax>"
         mappings = init_mappings(in_text)
         with pytest.raises(MappedTagPrasingCardinalityError):
-            sub_with_tagged_mapping(pat, rep, in_text, mappings)
+            QuranREWithMapping(pat, rep, None).sub(in_text, mappings)
 
 
 # ----------------------------------------------------------------------
-# sub_with_tagged_mapping: Tajweed rules
+# QuranREWithMapping.sub: Tajweed rules
 # ----------------------------------------------------------------------
 class TestSubWithTaggedMappingTajweed:
     def test_tajweed_rule_only(self):
@@ -975,13 +1100,11 @@ class TestSubWithTaggedMappingTajweed:
         pat = r"M:<T:ab>"
         rep = r"<T:AB>"
         mappings = init_mappings(in_text)
-        out_text, out_mappings = sub_with_tagged_mapping(
+        out_text, out_mappings = QuranREWithMapping(
             pat,
             rep,
-            in_text,
-            mappings,
-            tajweed_rule_type=TajweedRuleType.LAZIM_MADD,
-        )
+            TajweedRuleType.LAZIM_MADD,
+        ).sub(in_text, mappings)
         _check_mapping_continuty(out_mappings)
         assert out_text == "ABcdef"
         _assert_mappings(out_mappings, [(i, i + 1) for i in range(len(in_text))])
@@ -1004,13 +1127,11 @@ class TestSubWithTaggedMappingTajweed:
         pat = r"M:<T:a>"
         rep = r"<T:A>"
         mappings = init_mappings(in_text)
-        out_text, out_mappings = sub_with_tagged_mapping(
+        out_text, out_mappings = QuranREWithMapping(
             pat,
             rep,
-            in_text,
-            mappings,
-            tajweed_rule_type=TajweedRuleType.LAZIM_MADD,
-        )
+            TajweedRuleType.LAZIM_MADD,
+        ).sub(in_text, mappings)
         _check_mapping_continuty(out_mappings)
         assert out_text == "AbA AbA"
         _assert_mappings(out_mappings, [(i, i + 1) for i in range(len(in_text))])
@@ -1057,13 +1178,11 @@ class TestSubWithTaggedMappingTajweed:
         pat = r"M:<T:ab><T0:a>"
         rep = r"<T:AB><T0:A>"
         mappings = init_mappings(in_text)
-        out_text, out_mappings = sub_with_tagged_mapping(
+        out_text, out_mappings = QuranREWithMapping(
             pat,
             rep,
-            in_text,
-            mappings,
-            tajweed_rule_type=TajweedRuleType.LAZIM_MADD,
-        )
+            TajweedRuleType.LAZIM_MADD,
+        ).sub(in_text, mappings)
         _check_mapping_continuty(out_mappings)
         assert out_text == "ABAc ABAc"
         _assert_mappings(out_mappings, [(i, i + 1) for i in range(len(in_text))])
@@ -1110,13 +1229,11 @@ class TestSubWithTaggedMappingTajweed:
         pat = r"M:<T:ab><D0:a>"
         rep = r"<T:AB><D0:a>"
         mappings = init_mappings(in_text)
-        out_text, out_mappings = sub_with_tagged_mapping(
+        out_text, out_mappings = QuranREWithMapping(
             pat,
             rep,
-            in_text,
-            mappings,
-            tajweed_rule_type=TajweedRuleType.LAZIM_MADD,
-        )
+            TajweedRuleType.LAZIM_MADD,
+        ).sub(in_text, mappings)
         _check_mapping_continuty(out_mappings)
         assert out_text == "ABa ABa"
         _assert_mappings(out_mappings, [(i, i + 1) for i in range(len(in_text))])
@@ -1147,13 +1264,11 @@ class TestSubWithTaggedMappingTajweed:
         pat = r"M:<D0:a><T:ba>"
         rep = r"<D0:a><T:BA>"
         mappings = init_mappings(in_text)
-        out_text, out_mappings = sub_with_tagged_mapping(
+        out_text, out_mappings = QuranREWithMapping(
             pat,
             rep,
-            in_text,
-            mappings,
-            tajweed_rule_type=TajweedRuleType.LAZIM_MADD,
-        )
+            TajweedRuleType.LAZIM_MADD,
+        ).sub(in_text, mappings)
         _check_mapping_continuty(out_mappings)
         assert out_text == "aBA aBA"
         _assert_mappings(out_mappings, [(i, i + 1) for i in range(len(in_text))])
@@ -1184,13 +1299,11 @@ class TestSubWithTaggedMappingTajweed:
         pat = r"M:<T:ef>"
         rep = r""
         mappings = init_mappings(in_text)
-        out_text, out_mappings = sub_with_tagged_mapping(
+        out_text, out_mappings = QuranREWithMapping(
             pat,
             rep,
-            in_text,
-            mappings,
-            tajweed_rule_type=TajweedRuleType.LAZIM_MADD,
-        )
+            TajweedRuleType.LAZIM_MADD,
+        ).sub(in_text, mappings)
         _check_mapping_continuty(out_mappings)
         assert out_text == "abcd"
         _assert_mappings(
@@ -1217,13 +1330,11 @@ class TestSubWithTaggedMappingTajweed:
         pat = r"M:<T:a>"
         rep = r"<T:AAAA>"
         mappings = init_mappings(in_text)
-        out_text, out_mappings = sub_with_tagged_mapping(
+        out_text, out_mappings = QuranREWithMapping(
             pat,
             rep,
-            in_text,
-            mappings,
-            tajweed_rule_type=TajweedRuleType.LAZIM_MADD,
-        )
+            TajweedRuleType.LAZIM_MADD,
+        ).sub(in_text, mappings)
         _check_mapping_continuty(out_mappings)
         assert out_text == "AAAAbcdef"
         _assert_mappings(
@@ -1249,13 +1360,11 @@ class TestSubWithTaggedMappingTajweed:
         pat = r"M:<T:a><r:.>"
         rep = r"<T:AAAA><r:b>"
         mappings = init_mappings(in_text)
-        out_text, out_mappings = sub_with_tagged_mapping(
+        out_text, out_mappings = QuranREWithMapping(
             pat,
             rep,
-            in_text,
-            mappings,
-            tajweed_rule_type=TajweedRuleType.LAZIM_MADD,
-        )
+            TajweedRuleType.LAZIM_MADD,
+        ).sub(in_text, mappings)
         _check_mapping_continuty(out_mappings)
         assert out_text == "AAAAbcdef"
         _assert_mappings(
@@ -1281,13 +1390,11 @@ class TestSubWithTaggedMappingTajweed:
         pat = r"M:<T:a><r:.><D0:c>"
         rep = r"<T:AAAA><r:b><D0:c>"
         mappings = init_mappings(in_text)
-        out_text, out_mappings = sub_with_tagged_mapping(
+        out_text, out_mappings = QuranREWithMapping(
             pat,
             rep,
-            in_text,
-            mappings,
-            tajweed_rule_type=TajweedRuleType.LAZIM_MADD,
-        )
+            TajweedRuleType.LAZIM_MADD,
+        ).sub(in_text, mappings)
         _check_mapping_continuty(out_mappings)
         assert out_text == "AAAAbcdef"
         _assert_mappings(
@@ -1313,13 +1420,11 @@ class TestSubWithTaggedMappingTajweed:
         pat = r"M:<T:a>.<D0:c>"
         rep = r"<T:AAAA><D0:c>"
         mappings = init_mappings(in_text)
-        out_text, out_mappings = sub_with_tagged_mapping(
+        out_text, out_mappings = QuranREWithMapping(
             pat,
             rep,
-            in_text,
-            mappings,
-            tajweed_rule_type=TajweedRuleType.LAZIM_MADD,
-        )
+            TajweedRuleType.LAZIM_MADD,
+        ).sub(in_text, mappings)
         _check_mapping_continuty(out_mappings)
         assert out_text == "AAAAcdef"
         _assert_mappings(
@@ -1343,27 +1448,24 @@ class TestSubWithTaggedMappingTajweed:
 
 
 # ----------------------------------------------------------------------
-# add_tajweed_rule_with_tagged_pat
+# QuranREWithMapping.insert_tajweed
 # ----------------------------------------------------------------------
 class TestAddTajweedRuleWithTaggedPat:
     def test_add_tajweed_rule_only(self):
         in_text = "abcdef"
         mappings = init_mappings(in_text)
-        mid_text, mappings = sub_with_tagged_mapping(
+        mid_text, mappings = QuranREWithMapping(
             r"M:<T:ab>",
             r"<T:AB>",
-            in_text,
-            mappings,
-            tajweed_rule_type=TajweedRuleType.LAZIM_MADD,
-        )
+            TajweedRuleType.LAZIM_MADD,
+        ).sub(in_text, mappings)
         assert mid_text == "ABcdef"
 
-        out_mappings = add_tajweed_rule_with_tagged_pat(
+        out_mappings = QuranREWithMapping(
             r"M:<T:f>",
-            mid_text,
-            mappings,
+            None,
             TajweedRuleType.NORMAL_MADD,
-        )
+        ).insert_tajweed(mid_text, mappings)
         _check_mapping_continuty(out_mappings)
         _assert_mappings(out_mappings, [(i, i + 1) for i in range(len(in_text))])
         _assert_tajweed_rules(
@@ -1391,21 +1493,18 @@ class TestAddTajweedRuleWithTaggedPat:
     def test_add_tajweed_rule_with_dep_after(self):
         in_text = "abcdef"
         mappings = init_mappings(in_text)
-        mid_text, mappings = sub_with_tagged_mapping(
+        mid_text, mappings = QuranREWithMapping(
             r"M:<T:ab>",
             r"<T:AB>",
-            in_text,
-            mappings,
-            tajweed_rule_type=TajweedRuleType.LAZIM_MADD,
-        )
+            TajweedRuleType.LAZIM_MADD,
+        ).sub(in_text, mappings)
         assert mid_text == "ABcdef"
 
-        out_mappings = add_tajweed_rule_with_tagged_pat(
+        out_mappings = QuranREWithMapping(
             r"M:<T:e><D0:f>",
-            mid_text,
-            mappings,
+            None,
             TajweedRuleType.NORMAL_MADD,
-        )
+        ).insert_tajweed(mid_text, mappings)
         _check_mapping_continuty(out_mappings)
         _assert_mappings(out_mappings, [(i, i + 1) for i in range(len(in_text))])
         _assert_tajweed_rules(
@@ -1433,21 +1532,18 @@ class TestAddTajweedRuleWithTaggedPat:
     def test_add_tajweed_rule_with_dep_before(self):
         in_text = "abcdef"
         mappings = init_mappings(in_text)
-        mid_text, mappings = sub_with_tagged_mapping(
+        mid_text, mappings = QuranREWithMapping(
             r"M:<T:ab>",
             r"<T:AB>",
-            in_text,
-            mappings,
-            tajweed_rule_type=TajweedRuleType.LAZIM_MADD,
-        )
+            TajweedRuleType.LAZIM_MADD,
+        ).sub(in_text, mappings)
         assert mid_text == "ABcdef"
 
-        out_mappings = add_tajweed_rule_with_tagged_pat(
+        out_mappings = QuranREWithMapping(
             r"M:<D0:e><T:f>",
-            mid_text,
-            mappings,
+            None,
             TajweedRuleType.NORMAL_MADD,
-        )
+        ).insert_tajweed(mid_text, mappings)
         _check_mapping_continuty(out_mappings)
         _assert_mappings(out_mappings, [(i, i + 1) for i in range(len(in_text))])
         _assert_tajweed_rules(
@@ -1475,21 +1571,18 @@ class TestAddTajweedRuleWithTaggedPat:
     def test_add_tajweed_rule_with_dep_after_multiple_matches(self):
         in_text = "abcdef ef mn ef"
         mappings = init_mappings(in_text)
-        mid_text, mappings = sub_with_tagged_mapping(
+        mid_text, mappings = QuranREWithMapping(
             r"M:<T:ab>",
             r"<T:AB>",
-            in_text,
-            mappings,
-            tajweed_rule_type=TajweedRuleType.LAZIM_MADD,
-        )
+            TajweedRuleType.LAZIM_MADD,
+        ).sub(in_text, mappings)
         assert mid_text == "ABcdef ef mn ef"
 
-        out_mappings = add_tajweed_rule_with_tagged_pat(
+        out_mappings = QuranREWithMapping(
             r"M:<T:e><D0:f>",
-            mid_text,
-            mappings,
+            None,
             TajweedRuleType.NORMAL_MADD,
-        )
+        ).insert_tajweed(mid_text, mappings)
         _check_mapping_continuty(out_mappings)
         _assert_mappings(out_mappings, [(i, i + 1) for i in range(len(in_text))])
         _assert_tajweed_rules(
@@ -1533,21 +1626,18 @@ class TestAddTajweedRuleWithTaggedPat:
     def test_add_tajweed_rule_with_dep_before_multiple_matches(self):
         in_text = "abcdef ef mn ef"
         mappings = init_mappings(in_text)
-        mid_text, mappings = sub_with_tagged_mapping(
+        mid_text, mappings = QuranREWithMapping(
             r"M:<T:ab>",
             r"<T:AB>",
-            in_text,
-            mappings,
-            tajweed_rule_type=TajweedRuleType.LAZIM_MADD,
-        )
+            TajweedRuleType.LAZIM_MADD,
+        ).sub(in_text, mappings)
         assert mid_text == "ABcdef ef mn ef"
 
-        out_mappings = add_tajweed_rule_with_tagged_pat(
+        out_mappings = QuranREWithMapping(
             r"M:<D0:e><T:f>",
-            mid_text,
-            mappings,
+            None,
             TajweedRuleType.NORMAL_MADD,
-        )
+        ).insert_tajweed(mid_text, mappings)
         _check_mapping_continuty(out_mappings)
         _assert_mappings(out_mappings, [(i, i + 1) for i in range(len(in_text))])
         _assert_tajweed_rules(
@@ -1591,12 +1681,11 @@ class TestAddTajweedRuleWithTaggedPat:
     def test_add_tajweed_rule_non_indexed_dep_error(self):
         mappings = init_mappings("abcdefgh")
         with pytest.raises(MappedTagPrasingError):
-            add_tajweed_rule_with_tagged_pat(
+            QuranREWithMapping(
                 r"M:<T:e><D:f>",
-                "abcdefgh",
-                mappings,
+                None,
                 TajweedRuleType.NORMAL_MADD,
-            )
+            ).insert_tajweed("abcdefgh", mappings)
 
 
 # ----------------------------------------------------------------------
@@ -1609,15 +1698,16 @@ class TestCascadedSubWithTaggedMapping:
         rep = r"<x:AAAA><r:\1>"
         mappings = init_mappings(in_text)
 
-        mid_text, mappings = sub_with_tagged_mapping(pat, rep, in_text, mappings)
+        mid_text, mappings = QuranREWithMapping(pat, rep, None).sub(in_text, mappings)
         _prety_print(pat, rep, in_text, mid_text, mappings)
         _check_mapping_continuty(mappings)
         assert mid_text == "AAAAdef Hello"
 
         mid_pat = r"M:<x:A><r:d>"
         mid_rep = r"<x:FFF><r:d>"
-        out_text, out_mappings = sub_with_tagged_mapping(
-            mid_pat, mid_rep, mid_text, mappings
+        out_text, out_mappings = QuranREWithMapping(mid_pat, mid_rep, None).sub(
+            mid_text,
+            mappings,
         )
         _prety_print(mid_pat, mid_rep, in_text, out_text, out_mappings)
         _check_mapping_continuty(out_mappings)
@@ -1647,7 +1737,7 @@ class TestCascadedSubWithTaggedMapping:
         rep = r"<x:ab>"
         mappings = init_mappings(in_text)
 
-        mid_text, mappings = sub_with_tagged_mapping(pat, rep, in_text, mappings)
+        mid_text, mappings = QuranREWithMapping(pat, rep, None).sub(in_text, mappings)
         _prety_print(pat, rep, in_text, mid_text, mappings)
         _check_mapping_continuty(mappings)
 
@@ -1660,8 +1750,9 @@ class TestCascadedSubWithTaggedMapping:
 
         mid_pat = r"M:<x:a>b<y:($)>"
         mid_rep = r"<x:BB><y:\1>"
-        out_text, out_mappings = sub_with_tagged_mapping(
-            mid_pat, mid_rep, mid_text, mappings
+        out_text, out_mappings = QuranREWithMapping(mid_pat, mid_rep, None).sub(
+            mid_text,
+            mappings,
         )
         _prety_print(mid_pat, mid_rep, in_text, out_text, out_mappings)
         _check_mapping_continuty(out_mappings)
@@ -1679,15 +1770,16 @@ class TestCascadedSubWithTaggedMapping:
         rep = r"<x:AAAA><r:\1>"
         mappings = init_mappings(in_text)
 
-        mid_text, mappings = sub_with_tagged_mapping(pat, rep, in_text, mappings)
+        mid_text, mappings = QuranREWithMapping(pat, rep, None).sub(in_text, mappings)
         _prety_print(pat, rep, in_text, mid_text, mappings)
         _check_mapping_continuty(mappings)
         assert mid_text == "AAAAdef Hello"
 
         mid_pat = r"M:<x:A>.<r:(ef)>"
         mid_rep = r"<x:FFF><r:\1>"
-        out_text, out_mappings = sub_with_tagged_mapping(
-            mid_pat, mid_rep, mid_text, mappings
+        out_text, out_mappings = QuranREWithMapping(mid_pat, mid_rep, None).sub(
+            mid_text,
+            mappings,
         )
         _prety_print(mid_pat, mid_rep, in_text, out_text, out_mappings)
         _check_mapping_continuty(out_mappings)
@@ -1717,15 +1809,16 @@ class TestCascadedSubWithTaggedMapping:
         rep = r"<x:AAAA><r:\1>"
         mappings = init_mappings(in_text)
 
-        mid_text, mappings = sub_with_tagged_mapping(pat, rep, in_text, mappings)
+        mid_text, mappings = QuranREWithMapping(pat, rep, None).sub(in_text, mappings)
         _prety_print(pat, rep, in_text, mid_text, mappings)
         _check_mapping_continuty(mappings)
         assert mid_text == "AAAAdef Hello"
 
         mid_pat = r"M:<x:A>.<r:(ef)>"
         mid_rep = r"<r:\1>"
-        out_text, out_mappings = sub_with_tagged_mapping(
-            mid_pat, mid_rep, mid_text, mappings
+        out_text, out_mappings = QuranREWithMapping(mid_pat, mid_rep, None).sub(
+            mid_text,
+            mappings,
         )
         _prety_print(mid_pat, mid_rep, in_text, out_text, out_mappings)
         _check_mapping_continuty(out_mappings)
@@ -1755,15 +1848,16 @@ class TestCascadedSubWithTaggedMapping:
         rep = r"<x:AAAA><r:\1>"
         mappings = init_mappings(in_text)
 
-        mid_text, mappings = sub_with_tagged_mapping(pat, rep, in_text, mappings)
+        mid_text, mappings = QuranREWithMapping(pat, rep, None).sub(in_text, mappings)
         _prety_print(pat, rep, in_text, mid_text, mappings)
         _check_mapping_continuty(mappings)
         assert mid_text == "AAAAdef Hello"
 
         mid_pat = r"M:<x:o$>"
         mid_rep = r""
-        out_text, out_mappings = sub_with_tagged_mapping(
-            mid_pat, mid_rep, mid_text, mappings
+        out_text, out_mappings = QuranREWithMapping(mid_pat, mid_rep, None).sub(
+            mid_text,
+            mappings,
         )
         _prety_print(mid_pat, mid_rep, in_text, out_text, out_mappings)
         _check_mapping_continuty(out_mappings)
@@ -1793,15 +1887,16 @@ class TestCascadedSubWithTaggedMapping:
         rep = r"<x:AAAA><r:\1>"
         mappings = init_mappings(in_text)
 
-        mid_text, mappings = sub_with_tagged_mapping(pat, rep, in_text, mappings)
+        mid_text, mappings = QuranREWithMapping(pat, rep, None).sub(in_text, mappings)
         _prety_print(pat, rep, in_text, mid_text, mappings)
         _check_mapping_continuty(mappings)
         assert mid_text == "AAAAdef"
 
         mid_pat = r"M:<x:A>.<r:(ef)>"
         mid_rep = r"<x:FFF><r:\1>"
-        out_text, out_mappings = sub_with_tagged_mapping(
-            mid_pat, mid_rep, mid_text, mappings
+        out_text, out_mappings = QuranREWithMapping(mid_pat, mid_rep, None).sub(
+            mid_text,
+            mappings,
         )
         _prety_print(mid_pat, mid_rep, in_text, out_text, out_mappings)
         _check_mapping_continuty(out_mappings)
@@ -1831,15 +1926,16 @@ class TestCascadedSubWithTaggedMapping:
         rep = r""
         mappings = init_mappings(in_text)
 
-        mid_text, mappings = sub_with_tagged_mapping(pat, rep, in_text, mappings)
+        mid_text, mappings = QuranREWithMapping(pat, rep, None).sub(in_text, mappings)
         _prety_print(pat, rep, in_text, mid_text, mappings)
         _check_mapping_continuty(mappings)
         assert mid_text == "aNdef"
 
         mid_pat = r"M:<x:f$>"
         mid_rep = r"<x:FFFF>"
-        out_text, out_mappings = sub_with_tagged_mapping(
-            mid_pat, mid_rep, mid_text, mappings
+        out_text, out_mappings = QuranREWithMapping(mid_pat, mid_rep, None).sub(
+            mid_text,
+            mappings,
         )
         _prety_print(mid_pat, mid_rep, in_text, out_text, out_mappings)
         _check_mapping_continuty(out_mappings)
@@ -1874,20 +1970,19 @@ class TestCascadedSubWithTaggedMappingTajweed:
         rep = r"<T:AB><D0:\1>"
         mappings = init_mappings(in_text)
 
-        mid_text, mappings = sub_with_tagged_mapping(
+        mid_text, mappings = QuranREWithMapping(
             pat,
             rep,
-            in_text,
-            mappings,
-            tajweed_rule_type=TajweedRuleType.LAZIM_MADD,
-        )
+            TajweedRuleType.LAZIM_MADD,
+        ).sub(in_text, mappings)
         _check_mapping_continuty(mappings)
         assert mid_text == "ABcdef"
 
         mid_pat = r"M:<x:AB>"
         mid_rep = r"<x:BA>"
-        out_text, out_mappings = sub_with_tagged_mapping(
-            mid_pat, mid_rep, mid_text, mappings
+        out_text, out_mappings = QuranREWithMapping(mid_pat, mid_rep, None).sub(
+            mid_text,
+            mappings,
         )
         _check_mapping_continuty(out_mappings)
 
@@ -1913,20 +2008,19 @@ class TestCascadedSubWithTaggedMappingTajweed:
         rep = r"<T:AB><D0:\1>"
         mappings = init_mappings(in_text)
 
-        mid_text, mappings = sub_with_tagged_mapping(
+        mid_text, mappings = QuranREWithMapping(
             pat,
             rep,
-            in_text,
-            mappings,
-            tajweed_rule_type=TajweedRuleType.LAZIM_MADD,
-        )
+            TajweedRuleType.LAZIM_MADD,
+        ).sub(in_text, mappings)
         _check_mapping_continuty(mappings)
         assert mid_text == "ABcdef"
 
         mid_pat = r"M:<x:AB>"
         mid_rep = r""
-        out_text, out_mappings = sub_with_tagged_mapping(
-            mid_pat, mid_rep, mid_text, mappings
+        out_text, out_mappings = QuranREWithMapping(mid_pat, mid_rep, None).sub(
+            mid_text,
+            mappings,
         )
         _check_mapping_continuty(out_mappings)
 
@@ -1957,25 +2051,21 @@ class TestCascadedSubWithTaggedMappingTajweed:
         rep = r"<T:AB><D0:c>"
         mappings = init_mappings(in_text)
 
-        mid_text, mappings = sub_with_tagged_mapping(
+        mid_text, mappings = QuranREWithMapping(
             pat,
             rep,
-            in_text,
-            mappings,
-            tajweed_rule_type=TajweedRuleType.LAZIM_MADD,
-        )
+            TajweedRuleType.LAZIM_MADD,
+        ).sub(in_text, mappings)
         _check_mapping_continuty(mappings)
         assert mid_text == "ABcdef"
 
         mid_pat = r"M:<T:B>"
         mid_rep = r"<T:BBBB>"
-        out_text, out_mappings = sub_with_tagged_mapping(
+        out_text, out_mappings = QuranREWithMapping(
             mid_pat,
             mid_rep,
-            mid_text,
-            mappings,
-            tajweed_rule_type=TajweedRuleType.NORMAL_MADD,
-        )
+            TajweedRuleType.NORMAL_MADD,
+        ).sub(mid_text, mappings)
         _check_mapping_continuty(out_mappings)
 
         assert out_text == "ABBBBcdef"
@@ -2011,28 +2101,24 @@ class TestCascadedSubWithTaggedMappingTajweed:
         rep = r"<T:AB><D0:c>"
         mappings = init_mappings(in_text)
 
-        mid_text, mappings = sub_with_tagged_mapping(
+        mid_text, mappings = QuranREWithMapping(
             pat,
             rep,
-            in_text,
-            mappings,
-            tajweed_rule_type=TajweedRuleType.LAZIM_MADD,
-        )
+            TajweedRuleType.LAZIM_MADD,
+        ).sub(in_text, mappings)
         _check_mapping_continuty(mappings)
         assert mid_text == "ABcdef"
 
         mid_pat = r"M:<T:B>"
         mid_rep = r"<T:BBBB>"
-        out_text, out_mappings = sub_with_tagged_mapping(
+        out_text, out_mappings = QuranREWithMapping(
             mid_pat,
             mid_rep,
-            mid_text,
-            mappings,
-            tajweed_rule_type=TajweedRuleType.NORMAL_MADD,
-            insert_tajweed_cond=lambda types, rule_type: (
+            TajweedRuleType.NORMAL_MADD,
+            insert_taj_cond=lambda types, rule_type: (
                 TajweedRuleType.LAZIM_MADD not in types
             ),
-        )
+        ).sub(mid_text, mappings)
         _check_mapping_continuty(out_mappings)
 
         assert out_text == "ABBBBcdef"
@@ -2068,25 +2154,21 @@ class TestCascadedSubWithTaggedMappingTajweed:
         rep = r""
         mappings = init_mappings(in_text)
 
-        mid_text, mappings = sub_with_tagged_mapping(
+        mid_text, mappings = QuranREWithMapping(
             pat,
             rep,
-            in_text,
-            mappings,
-            tajweed_rule_type=TajweedRuleType.LAZIM_MADD,
-        )
+            TajweedRuleType.LAZIM_MADD,
+        ).sub(in_text, mappings)
         _check_mapping_continuty(mappings)
         assert mid_text == "abcd"
 
         mid_pat = r"M:<T:cd><D0:($)>"
         mid_rep = r""
-        out_text, out_mappings = sub_with_tagged_mapping(
+        out_text, out_mappings = QuranREWithMapping(
             mid_pat,
             mid_rep,
-            mid_text,
-            mappings,
-            tajweed_rule_type=TajweedRuleType.NORMAL_MADD,
-        )
+            TajweedRuleType.NORMAL_MADD,
+        ).sub(mid_text, mappings)
         _check_mapping_continuty(out_mappings)
 
         assert out_text == "ab"
@@ -2121,25 +2203,21 @@ class TestCascadedSubWithTaggedMappingTajweed:
         rep = r""
         mappings = init_mappings(in_text)
 
-        mid_text, mappings = sub_with_tagged_mapping(
+        mid_text, mappings = QuranREWithMapping(
             pat,
             rep,
-            in_text,
-            mappings,
-            tajweed_rule_type=TajweedRuleType.LAZIM_MADD,
-        )
+            TajweedRuleType.LAZIM_MADD,
+        ).sub(in_text, mappings)
         _check_mapping_continuty(mappings)
         assert mid_text == "Ahmed Mahmoud abcd"
 
         mid_pat = r"M:<T:cd><D0:($)>"
         mid_rep = r""
-        out_text, out_mappings = sub_with_tagged_mapping(
+        out_text, out_mappings = QuranREWithMapping(
             mid_pat,
             mid_rep,
-            mid_text,
-            mappings,
-            tajweed_rule_type=TajweedRuleType.NORMAL_MADD,
-        )
+            TajweedRuleType.NORMAL_MADD,
+        ).sub(mid_text, mappings)
         _check_mapping_continuty(out_mappings)
 
         assert out_text == "Ahmed Mahmoud ab"
@@ -2174,25 +2252,21 @@ class TestCascadedSubWithTaggedMappingTajweed:
         rep = r"<T:AB><D0:c>"
         mappings = init_mappings(in_text)
 
-        mid_text, mappings = sub_with_tagged_mapping(
+        mid_text, mappings = QuranREWithMapping(
             pat,
             rep,
-            in_text,
-            mappings,
-            tajweed_rule_type=TajweedRuleType.LAZIM_MADD,
-        )
+            TajweedRuleType.LAZIM_MADD,
+        ).sub(in_text, mappings)
         _check_mapping_continuty(mappings)
         assert mid_text == "Hello How are you: ABcdef Good "
 
         mid_pat = r"M:<T:B>"
         mid_rep = r"<T:BBBB>"
-        out_text, out_mappings = sub_with_tagged_mapping(
+        out_text, out_mappings = QuranREWithMapping(
             mid_pat,
             mid_rep,
-            mid_text,
-            mappings,
-            tajweed_rule_type=TajweedRuleType.NORMAL_MADD,
-        )
+            TajweedRuleType.NORMAL_MADD,
+        ).sub(mid_text, mappings)
         _check_mapping_continuty(out_mappings)
 
         assert out_text == "Hello How are you: ABBBBcdef Good "
@@ -2230,28 +2304,24 @@ class TestCascadedSubWithTaggedMappingTajweed:
         rep = r"<T:AB><D0:c>"
         mappings = init_mappings(in_text)
 
-        mid_text, mappings = sub_with_tagged_mapping(
+        mid_text, mappings = QuranREWithMapping(
             pat,
             rep,
-            in_text,
-            mappings,
-            tajweed_rule_type=TajweedRuleType.LAZIM_MADD,
-        )
+            TajweedRuleType.LAZIM_MADD,
+        ).sub(in_text, mappings)
         _check_mapping_continuty(mappings)
         assert mid_text == "Hello How are you: ABcdef Good "
 
         mid_pat = r"M:<T:A>"
         mid_rep = r"<T:aaaa>"
-        out_text, out_mappings = sub_with_tagged_mapping(
+        out_text, out_mappings = QuranREWithMapping(
             mid_pat,
             mid_rep,
-            mid_text,
-            mappings,
-            tajweed_rule_type=TajweedRuleType.NORMAL_MADD,
-            insert_tajweed_cond=lambda types, rule_type: (
+            TajweedRuleType.NORMAL_MADD,
+            insert_taj_cond=lambda types, rule_type: (
                 TajweedRuleType.LAZIM_MADD not in types
             ),
-        )
+        ).sub(mid_text, mappings)
         _check_mapping_continuty(out_mappings)
 
         assert out_text == "Hello How are you: aaaaBcdef Good "
@@ -2281,32 +2351,27 @@ class TestCascadedSubWithTaggedMappingTajweed:
         rep = r"<T:AB><D0:c>"
         mappings = init_mappings(in_text)
 
-        mid_text, mappings = sub_with_tagged_mapping(
+        mid_text, mappings = QuranREWithMapping(
             pat,
             rep,
-            in_text,
-            mappings,
-            tajweed_rule_type=TajweedRuleType.LAZIM_MADD,
-        )
+            TajweedRuleType.LAZIM_MADD,
+        ).sub(in_text, mappings)
         _check_mapping_continuty(mappings)
         assert mid_text == "ABcdefgh"
 
-        mappings = add_tajweed_rule_with_tagged_pat(
+        mappings = QuranREWithMapping(
             r"M:<T:ef>",
-            mid_text,
-            mappings,
+            None,
             TajweedRuleType.NORMAL_MADD,
-        )
+        ).insert_tajweed(mid_text, mappings)
 
         mid_pat = r"M:<T:B>"
         mid_rep = r"<T:BBBB>"
-        out_text, out_mappings = sub_with_tagged_mapping(
+        out_text, out_mappings = QuranREWithMapping(
             mid_pat,
             mid_rep,
-            mid_text,
-            mappings,
-            tajweed_rule_type=TajweedRuleType.NORMAL_MADD,
-        )
+            TajweedRuleType.NORMAL_MADD,
+        ).sub(mid_text, mappings)
         _check_mapping_continuty(out_mappings)
 
         assert out_text == "ABBBBcdefgh"
@@ -2350,32 +2415,27 @@ class TestCascadedSubWithTaggedMappingTajweed:
         rep = r"<T:AB><D0:c>"
         mappings = init_mappings(in_text)
 
-        mid_text, mappings = sub_with_tagged_mapping(
+        mid_text, mappings = QuranREWithMapping(
             pat,
             rep,
-            in_text,
-            mappings,
-            tajweed_rule_type=TajweedRuleType.LAZIM_MADD,
-        )
+            TajweedRuleType.LAZIM_MADD,
+        ).sub(in_text, mappings)
         _check_mapping_continuty(mappings)
         assert mid_text == "ABcdefgh"
 
-        mappings = add_tajweed_rule_with_tagged_pat(
+        mappings = QuranREWithMapping(
             r"M:<T:e><D0:f>",
-            mid_text,
-            mappings,
+            None,
             TajweedRuleType.NORMAL_MADD,
-        )
+        ).insert_tajweed(mid_text, mappings)
 
         mid_pat = r"M:<T:B>"
         mid_rep = r"<T:BBBB>"
-        out_text, out_mappings = sub_with_tagged_mapping(
+        out_text, out_mappings = QuranREWithMapping(
             mid_pat,
             mid_rep,
-            mid_text,
-            mappings,
-            tajweed_rule_type=TajweedRuleType.NORMAL_MADD,
-        )
+            TajweedRuleType.NORMAL_MADD,
+        ).sub(mid_text, mappings)
         _check_mapping_continuty(out_mappings)
 
         assert out_text == "ABBBBcdefgh"
@@ -2419,38 +2479,32 @@ class TestCascadedSubWithTaggedMappingTajweed:
         rep = r"<T:AB><D0:c>"
         mappings = init_mappings(in_text)
 
-        mid_text, mappings = sub_with_tagged_mapping(
+        mid_text, mappings = QuranREWithMapping(
             pat,
             rep,
-            in_text,
-            mappings,
-            tajweed_rule_type=TajweedRuleType.LAZIM_MADD,
-        )
+            TajweedRuleType.LAZIM_MADD,
+        ).sub(in_text, mappings)
         _check_mapping_continuty(mappings)
         assert mid_text == "ABcdefgh"
 
-        mappings = add_tajweed_rule_with_tagged_pat(
+        mappings = QuranREWithMapping(
             r"M:<T:e><D0:f>",
-            mid_text,
-            mappings,
+            None,
             TajweedRuleType.NORMAL_MADD,
-        )
+        ).insert_tajweed(mid_text, mappings)
 
         mid_pat = r"M:<T:B>"
         mid_rep = r"<T:BBBB>"
-        out_text, out_mappings = sub_with_tagged_mapping(
+        out_text, out_mappings = QuranREWithMapping(
             mid_pat,
             mid_rep,
-            mid_text,
-            mappings,
-            tajweed_rule_type=TajweedRuleType.NORMAL_MADD,
-        )
-        out_mappings = add_tajweed_rule_with_tagged_pat(
-            r"M:<T:g>",
-            out_text,
-            out_mappings,
             TajweedRuleType.NORMAL_MADD,
-        )
+        ).sub(mid_text, mappings)
+        out_mappings = QuranREWithMapping(
+            r"M:<T:g>",
+            None,
+            TajweedRuleType.NORMAL_MADD,
+        ).insert_tajweed(out_text, out_mappings)
         _check_mapping_continuty(out_mappings)
 
         assert out_text == "ABBBBcdefgh"
@@ -2502,38 +2556,32 @@ class TestCascadedSubWithTaggedMappingTajweed:
         rep = r"<T:AB><D0:c>"
         mappings = init_mappings(in_text)
 
-        mid_text, mappings = sub_with_tagged_mapping(
+        mid_text, mappings = QuranREWithMapping(
             pat,
             rep,
-            in_text,
-            mappings,
-            tajweed_rule_type=TajweedRuleType.LAZIM_MADD,
-        )
+            TajweedRuleType.LAZIM_MADD,
+        ).sub(in_text, mappings)
         _check_mapping_continuty(mappings)
         assert mid_text == "ABcdefgh"
 
-        mappings = add_tajweed_rule_with_tagged_pat(
+        mappings = QuranREWithMapping(
             r"M:<T:e><D0:f>",
-            mid_text,
-            mappings,
+            None,
             TajweedRuleType.NORMAL_MADD,
-        )
+        ).insert_tajweed(mid_text, mappings)
 
         mid_pat = r"M:<T:B>"
         mid_rep = r"<T:BBBB>"
-        out_text, out_mappings = sub_with_tagged_mapping(
+        out_text, out_mappings = QuranREWithMapping(
             mid_pat,
             mid_rep,
-            mid_text,
-            mappings,
-            tajweed_rule_type=TajweedRuleType.NORMAL_MADD,
-        )
-        out_mappings = add_tajweed_rule_with_tagged_pat(
-            r"M:<T:g><D0:h>",
-            out_text,
-            out_mappings,
             TajweedRuleType.NORMAL_MADD,
-        )
+        ).sub(mid_text, mappings)
+        out_mappings = QuranREWithMapping(
+            r"M:<T:g><D0:h>",
+            None,
+            TajweedRuleType.NORMAL_MADD,
+        ).insert_tajweed(out_text, out_mappings)
         _check_mapping_continuty(out_mappings)
 
         assert out_text == "ABBBBcdefgh"
@@ -2585,38 +2633,32 @@ class TestCascadedSubWithTaggedMappingTajweed:
         rep = r"<T:AB><D0:c>"
         mappings = init_mappings(in_text)
 
-        mid_text, mappings = sub_with_tagged_mapping(
+        mid_text, mappings = QuranREWithMapping(
             pat,
             rep,
-            in_text,
-            mappings,
-            tajweed_rule_type=TajweedRuleType.LAZIM_MADD,
-        )
+            TajweedRuleType.LAZIM_MADD,
+        ).sub(in_text, mappings)
         _check_mapping_continuty(mappings)
         assert mid_text == "ABcdefgh"
 
-        mappings = add_tajweed_rule_with_tagged_pat(
+        mappings = QuranREWithMapping(
             r"M:<T:e><D0:f>",
-            mid_text,
-            mappings,
+            None,
             TajweedRuleType.NORMAL_MADD,
-        )
+        ).insert_tajweed(mid_text, mappings)
 
         mid_pat = r"M:<T:B>"
         mid_rep = r"<T:BBBB>"
-        out_text, out_mappings = sub_with_tagged_mapping(
+        out_text, out_mappings = QuranREWithMapping(
             mid_pat,
             mid_rep,
-            mid_text,
-            mappings,
-            tajweed_rule_type=TajweedRuleType.NORMAL_MADD,
-        )
-        out_mappings = add_tajweed_rule_with_tagged_pat(
-            r"M:<D0:g><T:h>",
-            out_text,
-            out_mappings,
             TajweedRuleType.NORMAL_MADD,
-        )
+        ).sub(mid_text, mappings)
+        out_mappings = QuranREWithMapping(
+            r"M:<D0:g><T:h>",
+            None,
+            TajweedRuleType.NORMAL_MADD,
+        ).insert_tajweed(out_text, out_mappings)
         _check_mapping_continuty(out_mappings)
 
         assert out_text == "ABBBBcdefgh"

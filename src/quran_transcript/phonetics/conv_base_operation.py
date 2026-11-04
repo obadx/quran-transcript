@@ -1130,6 +1130,11 @@ class QuranREWithMapping:
         self.taj_rule_type = taj_rule_type
         self.insert_taj_cond = insert_taj_cond
 
+    def get_mode(self) -> Literal["SUB", "INS_TAJ"]:
+        if self.rep is None:
+            return "INS_TAJ"
+        return "SUB"
+
     def sub(
         self,
         text: str,
@@ -1137,7 +1142,9 @@ class QuranREWithMapping:
         tajweed_rule_tag: str = "",
     ) -> tuple[str, PhonetizerMappings]:
 
-        assert self.rep is not None, "IN sub mode we `pat` has to be valid not `None`"
+        assert self.get_mode() == "SUB", (
+            "IN sub mode we `pat` has to be valid not `None`"
+        )
 
         out_text = ""
 
@@ -1245,7 +1252,9 @@ class QuranREWithMapping:
     ) -> PhonetizerMappings:
         """Same ruels as the `sub_with_tagged_mapping` but with no `rep`. Just adding tajweed rules to mappings"""
 
-        assert self.rep is None, "IN insert_tajweed mode we `rep` has to be `None`"
+        assert self.get_mode() == "INS_TAJ", (
+            "IN insert_tajweed mode we `rep` has to be `None`"
+        )
 
         mappings.reset()
         for match in self.re_pat.finditer(text):
@@ -1342,21 +1351,12 @@ class ConversionOperation:
     ``text`` when they are not provided.
     """
 
-    regs: (
-        list[
-            tuple[str, TajweedRuleType]
-            | tuple[str, str, TajweedRuleType]
-            | tuple[str, str]
-        ]
-        | tuple[str, TajweedRuleType]
-        | tuple[str, str, TajweedRuleType]
-        | tuple[str, str]
-    )
+    regs: QuranREWithMapping | list[QuranREWithMapping]
     arabic_name: str
     ops_before: list["ConversionOperation"] | None = None
 
     def __post_init__(self):
-        if type(self.regs) is tuple:
+        if type(self.regs) is QuranREWithMapping:
             self.regs = [self.regs]
 
         if self.ops_before is None:
@@ -1379,23 +1379,11 @@ class ConversionOperation:
         """
 
         for reg in self.regs:
-            if len(reg) == 2:
-                if type(reg[1]) is str:
-                    input_reg, out_reg = reg
-                else:
-                    mappings = add_tajweed_rule_with_tagged_pat(
-                        reg[0], text, mappings, reg[1]
-                    )
-                    continue
-                taj_rule = None
-            elif len(reg) == 3:
-                input_reg, out_reg, taj_rule = reg
-            else:
-                raise ValueError("Invalid Input")
-
-            text, mappings = sub_with_tagged_mapping(
-                input_reg, out_reg, text, mappings, taj_rule
-            )
+            match reg.get_mode():
+                case "SUB":
+                    text, mappings = reg.sub(text, mappings)
+                case "INS_TAJ":
+                    mappings = reg.insert_tajweed(text, mappings)
         return text, mappings
 
     def apply(
@@ -1415,10 +1403,6 @@ class ConversionOperation:
                 is from surah Alroom so we have two ways with damma or fatha; or from surah AlAnfal so we only
                 pronounce it with fatha.
         """
-        # TODO: only using mappinsg no None
-        if mappings is None:
-            mappings = init_mappings(text)
-
         if mode == "test":
             discard_ops_names = {o.arabic_name for o in discard_ops}
             for op in self.ops_before:
@@ -1434,7 +1418,6 @@ class ConversionOperation:
                     )
 
         if mode in {"inference", "test"}:
-            # TODO: Add real mapping
             new_text, new_mappings = self.forward(
                 text, moshaf, mappings, sura_idx=sura_idx
             )
