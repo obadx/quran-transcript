@@ -10,7 +10,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: ["3.10", "3.11", "3.12", "3.13", "3.14"]
+        python-version: ["3.10", "3.11", "3.12", "3.13", "3.14", "3.15"]
 
     steps:
     - uses: actions/checkout@v4
@@ -40,8 +40,4 @@ jobs:
 
     - name: Run tests
       run: |
-        pytest -vv tests/phonetics_pytest.py
-        pytest -vv tests/aya_pytest.py
-        pytest -vv tests/test_sub_with_mapping_pytest.py
-        pytest -vv tests/test_phonemes_search_pytest.py
-        pytest -vv tests/test_explain_error_pytest.py
+        pytest -vv

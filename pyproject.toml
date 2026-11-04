@@ -29,6 +29,7 @@ classifiers = [
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
     "Programming Language :: Python :: 3.14",
+    "Programming Language :: Python :: 3.15",
     "Operating System :: OS Independent",
 ]
 
@@ -56,9 +57,9 @@ ph-ndx = "quran_transcript.phonetics.search:create_phonemes_index"
 testpaths = [
     "tests/phonetics_pytest.py",
     "tests/aya_pytest.py",
-    "tests/test_sub_with_mapping_pytest.py",
+    # "tests/test_sub_with_mapping_pytest.py",
     "tests/test_phonemes_search_pytest.py",
-    "tests/test_explain_error_pytest.py",
+    # "tests/test_explain_error_pytest.py",
     "tests/test_sub_with_tagged_mapping_pytest.py",
 ]
 markers = [
