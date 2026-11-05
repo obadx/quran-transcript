@@ -103,15 +103,70 @@ class BeginWithHamzatWasl(ConversionOperation):
         ]
     )
 
+    def __post_init__(self):
+        super().__post_init__()
+        letters = f"{uth.pure_letters_group}{uth.hamazat_group}"
+        self.third_letter_haraka_regs = re.compile(
+            f"^{uth.hamzat_wasl}(?:{uth.noon}[{uth.noon_ikhfaa_group}]|[{letters}]{uth.shadda}|(?:{uth.noon}{uth.meem_iqlab}|[{letters}][{uth.harakat_group}{uth.ras_haaa}])[{letters}])(.)"
+        )
+
+        self.has_hmzat_wasl_regs = re.compile(f"^{uth.hamzat_wasl}")
+
+        # الأسماء
+        self.asmaa_quran_re = QuranREWithMapping(
+            f"M:<T:^{uth.hamzat_wasl}>",
+            f"<T:{uth.hamza}{uth.kasra}>",
+            TajweedRuleType.KASR_NOUNS_HAMZAT_WASL,
+        )
+
+        # الافعال
+        self.verbs_quran_re = {
+            third_haraka: QuranREWithMapping(
+                f"M:<T:^{uth.hamzat_wasl}>",
+                f"<T:{uth.hamza}{third_haraka}>",
+                rule,
+            )
+            for third_haraka, rule in zip(
+                [uth.kasra, uth.dama],
+                [
+                    TajweedRuleType.KASR_VERB_HAMZAT_WASL,
+                    TajweedRuleType.DAM_VERB_HAMZAT_WASL,
+                ],
+            )
+        }
+
+        # التقاء همزنات ففي فعل
+        haraka_to_letter_madd = {
+            uth.kasra: uth.yaa,
+            uth.dama: uth.waw,
+        }
+        self.verb_two_hamza_quran_re = {
+            third_haraka: QuranREWithMapping(
+                f"M:<D0:(^{uth.hamza}.)><T:[{uth.hamazat_group}]><D1:{uth.ras_haaa}>",
+                f"<D0:\\1><T:{haraka_to_letter_madd[third_haraka]}>",
+                rule,
+            )
+            for third_haraka, rule in zip(
+                [uth.kasra, uth.dama],
+                [
+                    TajweedRuleType.ILTIQAA_HAMZATAN_SECOND_MADD_YAA,
+                    TajweedRuleType.ILTIQAA_HAMZATAN_SECOND_MADD_WAW,
+                ],
+            )
+        }
+
+        # المعرف بال
+        self.with_all_quran_re = QuranREWithMapping(
+            f"M:<T:^{uth.hamzat_wasl}>",
+            f"<T:{uth.hamza}{uth.fatha}>",
+            TajweedRuleType.FATH_ALL_HAMZAT_WASL,
+        )
+
     def _get_verb_third_letter_haraka(self, verb: str):
         if verb in uth.begin_hamzat_wasl.damma_aarida_verbs:
             return uth.kasra
 
-        letters = f"{uth.pure_letters_group}{uth.hamazat_group}"
-        match = re.search(
-            f"^{uth.hamzat_wasl}(?:{uth.noon}[{uth.noon_ikhfaa_group}]|[{letters}]{uth.shadda}|(?:{uth.noon}{uth.meem_iqlab}|[{letters}][{uth.harakat_group}{uth.ras_haaa}])[{letters}])(.)",
-            verb,
-        )
+        match = self.third_letter_haraka_regs.search(verb)
         if match:
             haraka = match.group(1)
             if haraka == uth.dama:
@@ -133,58 +188,39 @@ class BeginWithHamzatWasl(ConversionOperation):
         sura_idx: int = 0,
     ) -> tuple[str, PhonetizerMappings]:
         new_text = text
-        if re.search(f"^{uth.hamzat_wasl}", text):
+        if self.has_hmzat_wasl_regs.search(text):
             words = text.split(uth.space)
             first_word = words[0]
             # الأسماء
             if (first_word in uth.begin_hamzat_wasl.verbs_nouns_inter) or (
                 first_word in uth.begin_hamzat_wasl.nouns
             ):
-                new_text, mappings = sub_with_tagged_mapping(
-                    f"M:<T:^{uth.hamzat_wasl}>",
-                    f"<T:{uth.hamza}{uth.kasra}>",
+                new_text, mappings = self.asmaa_quran_re.sub(
                     new_text,
                     mappings,
-                    TajweedRuleType.KASR_NOUNS_HAMZAT_WASL,
                 )
             # الأفعال
             elif first_word in uth.begin_hamzat_wasl.verbs:
                 third_letter_haraka = self._get_verb_third_letter_haraka(first_word)
-                rule = TajweedRuleType.KASR_VERB_HAMZAT_WASL
-                iltiqaa_rule = TajweedRuleType.ILTIQAA_HAMZATAN_SECOND_MADD_YAA
-                if third_letter_haraka == uth.dama:
-                    rule = TajweedRuleType.DAM_VERB_HAMZAT_WASL
-                    iltiqaa_rule = TajweedRuleType.ILTIQAA_HAMZATAN_SECOND_MADD_WAW
 
-                new_text, mappings = sub_with_tagged_mapping(
-                    f"M:<T:^{uth.hamzat_wasl}>",
-                    f"<T:{uth.hamza}{third_letter_haraka}>",
+                new_text, mappings = self.verbs_quran_re[third_letter_haraka].sub(
                     new_text,
                     mappings,
-                    rule,
                 )
 
                 # اجتماع همزتان
-                haraka_to_letter_madd = {
-                    uth.kasra: uth.yaa,
-                    uth.dama: uth.waw,
-                }
-                new_text, mappings = sub_with_tagged_mapping(
-                    f"M:<D0:(^{uth.hamza}.)><T:[{uth.hamazat_group}]><D1:{uth.ras_haaa}>",
-                    f"<D0:\\1><T:{haraka_to_letter_madd[third_letter_haraka]}>",
+                new_text, mappings = self.verb_two_hamza_quran_re[
+                    third_letter_haraka
+                ].sub(
                     new_text,
                     mappings,
-                    iltiqaa_rule,
                 )
 
             # المعرف بأل
             else:
-                new_text, mappings = sub_with_tagged_mapping(
-                    f"M:<T:^{uth.hamzat_wasl}>",
-                    f"<T:{uth.hamza}{uth.fatha}>",
+                new_text, mappings = self.with_all_quran_re.sub(
                     new_text,
                     mappings,
-                    TajweedRuleType.FATH_ALL_HAMZAT_WASL,
                 )
 
         return new_text, mappings
