@@ -1224,7 +1224,7 @@ class QuranPhonemesPhonetizer:
         for quran_re in self.single_space_ops:
             text, mappings = quran_re.sub(text, mappings)
 
-        for op in OPERATION_ORDER:
+        for op in self.ops:
             text, mappings = op.apply(text, moshaf, mappings, sura_idx=sura_idx)
 
         return text, mappings
