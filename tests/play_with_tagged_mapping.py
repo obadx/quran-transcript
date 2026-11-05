@@ -1,8 +1,7 @@
 from quran_transcript.phonetics.conv_base_operation import (
     PhonetizerMappings,
-    add_tajweed_rule_with_tagged_pat,
+    QuranREWithMapping,
     init_mappings,
-    sub_with_tagged_mapping,
 )
 from quran_transcript.phonetics.tajweed_rulses import TajweedRuleType
 
@@ -48,12 +47,9 @@ def run_case(
 ):
     print("#" * 30, pat, "#" * 30)
     mappings = init_mappings(in_text)
-    mid_text, mappings = sub_with_tagged_mapping(
-        pat,
-        rep,
+    mid_text, mappings = QuranREWithMapping(pat, rep, first_taj_rule).sub(
         in_text,
         mappings,
-        tajweed_rule_type=first_taj_rule,
     )
     check_mapping_continuty(mappings)
     print(f"in  pat: `{pat}`")
@@ -62,30 +58,26 @@ def run_case(
     print(f"MID  text: `{mid_text}`")
 
     if first_taj_rule_pat:
-        mappings = add_tajweed_rule_with_tagged_pat(
+        mappings = QuranREWithMapping(
             first_taj_rule_pat,
-            mid_text,
-            mappings,
+            None,
             after_first_taj_rule_for_pat,
-        )
+        ).insert_tajweed(mid_text, mappings)
 
     if mid_pat is not None:
-        out_text, out_mappings = sub_with_tagged_mapping(
+        out_text, out_mappings = QuranREWithMapping(
             mid_pat,
             mid_rep,
-            mid_text,
-            mappings,
-            tajweed_rule_type=mid_taj_rule,
-            insert_tajweed_cond=mid_insert_taj_cond,
-        )
+            mid_taj_rule,
+            insert_taj_cond=mid_insert_taj_cond,
+        ).sub(mid_text, mappings)
 
         if mid_taj_rule_pat:
-            out_mappings = add_tajweed_rule_with_tagged_pat(
+            out_mappings = QuranREWithMapping(
                 mid_taj_rule_pat,
-                out_text,
-                out_mappings,
+                None,
                 after_mid_taj_rule_for_pat,
-            )
+            ).insert_tajweed(out_text, out_mappings)
 
         check_mapping_continuty(out_mappings)
         print(f"mid pat: `{mid_pat}`")
@@ -589,9 +581,18 @@ if __name__ == "__main__":
     #     r"<T:ab>",
     # )
 
-    # many to many with equal parts + delete shift before and after
+    # # many to many with equal parts + delete shift before and after
+    # run_case(
+    #     "ABCabcDEF",
+    #     r"M:C<T:abc>D",
+    #     r"<T:ab>",
+    # )
+
+    # buggy case
     run_case(
-        "ABCabcDEF",
-        r"M:C<T:abc>D",
-        r"<T:ab>",
+        "n ab",
+        r"M:<x:a><y:b>",
+        r"<x:AAAA ><y:sBBBB>",
+        r"M:<T:A>\s?<y:sB>",
+        r"<y:sB>",
     )

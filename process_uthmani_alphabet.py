@@ -1,8 +1,6 @@
 import json
 import re
 from dataclasses import asdict
-from hashlib import new
-from pathlib import Path
 
 from quran_transcript import Aya
 from quran_transcript import alphabet as alph
@@ -10,8 +8,8 @@ from quran_transcript.alphabet import BeginHamzatWasl, SpecialPattern, UthmaniAl
 from quran_transcript.alphabet import phonetics as ph
 from quran_transcript.alphabet import uthmani as uth
 from quran_transcript.phonetics.conv_base_operation import (
+    QuranREWithMapping,
     init_mappings,
-    sub_with_tagged_mapping,
 )
 
 
@@ -97,7 +95,7 @@ if __name__ == "__main__":
     for key, val in hrof_moqtta_disassemble.items():
         print(key)
         print(val)
-        sub_with_tagged_mapping(key, val, "", init_mappings(key))
+        _, _ = QuranREWithMapping(key, val, None).sub("", init_mappings(key))
         print("-" * 40)
 
     # الأيكمة
