@@ -26,6 +26,12 @@ class DisassembleHrofMoqatta(ConversionOperation):
             self.regs.append(QuranREWithMapping(word, rep, None))
 
 
+@dataclass(frozen=True)
+class SpecialCaseQuranRE:
+    reg: QuranREWithMapping | None
+    attr_to_reg: dict[str, QuranREWithMapping] | None
+
+
 @dataclass
 class SpecialCases(ConversionOperation):
     arabic_name: str = "فك الحالات الخاصة"
@@ -36,6 +42,29 @@ class SpecialCases(ConversionOperation):
 
     def __post_init__(self):
         super().__post_init__()
+        self.special_regs: list[SpecialCaseQuranRE] = []
+        for case in uth.special_patterns:
+            pattern = case.pattern
+            if case.pos == "start":
+                pattern = r"M:^" + pattern[2:]
+            elif case.pos == "end":
+                pattern = pattern + r"$"
+
+            if case.attr_name is not None:
+                assert case.opts is not None
+                d = {}
+                for moshaf_attr, rep_pattern in case.opts.items():
+                    d[moshaf_attr] = QuranREWithMapping(pattern, rep_pattern, None)
+                self.special_regs.append(SpecialCaseQuranRE(reg=None, attr_to_reg=d))
+            elif case.target_pattern is not None:
+                self.special_regs.append(
+                    SpecialCaseQuranRE(
+                        reg=QuranREWithMapping(pattern, case.target_pattern, None),
+                        attr_to_reg=None,
+                    )
+                )
+            else:
+                raise ValueError()
 
     def forward(
         self,
@@ -44,25 +73,19 @@ class SpecialCases(ConversionOperation):
         mappings: PhonetizerMappings,
         sura_idx: int = 0,
     ) -> tuple[str, PhonetizerMappings]:
-        for case in uth.special_patterns:
+        for case, special_reg in zip(uth.special_patterns, self.special_regs):
             if case.sura_idx in {0, sura_idx}:
-                pattern = case.pattern
-                if case.pos == "start":
-                    pattern = r"M:^" + pattern[2:]
-                elif case.pos == "end":
-                    pattern = pattern + r"$"
-
                 if case.attr_name is not None:
+                    assert special_reg.attr_to_reg is not None
                     moshaf_attr = getattr(moshaf, case.attr_name)
-                    rep_pattern = case.opts[moshaf_attr]
+                    reg = special_reg.attr_to_reg[moshaf_attr]
                 elif case.target_pattern is not None:
-                    rep_pattern = case.target_pattern
+                    assert special_reg.reg is not None
+                    reg = special_reg.reg
                 else:
                     raise ValueError()
 
-                text, mappings = sub_with_tagged_mapping(
-                    pattern, rep_pattern, text, mappings
-                )
+                text, mappings = reg.sub(text, mappings)
 
         return text, mappings
 
