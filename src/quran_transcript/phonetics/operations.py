@@ -1146,37 +1146,6 @@ class RemoveRasHaaAndShadda(ConversionOperation):
     )
 
 
-OPERATION_ORDER = [
-    DisassembleHrofMoqatta(),
-    SpecialCases(),
-    BeginWithHamzatWasl(),
-    BeginWithSaken(),
-    ConvertAlifMaksora(),
-    NormalizeHmazat(),
-    IthbatYaaYohie(),
-    RemoveKasheeda(),
-    RemoveHmzatWaslMiddle(),
-    RemoveSkoonMostadeer(),
-    SkoonMostateel(),
-    RemoveTanweenFatahAtEndFromTaaMarboota(),
-    MaddAlewad(),
-    WawAlsalah(),
-    EnlargeSmallLetters(),
-    CleanEnd(),
-    NormalizeTaa(),
-    AddAlifIsmAllah(),
-    PrepareGhonnaIdghamIqlab(),
-    IltiqaaAlsaknan(),
-    DeleteShaddaAtBeginning(),
-    Ghonna(),
-    Tasheel(),
-    Imala(),
-    Madd(),
-    Qalqla(),
-    RemoveRasHaaAndShadda(),
-]
-
-
 class QuranPhonemesPhonetizer:
     def __init__(self):
         self.single_space_ops = [
