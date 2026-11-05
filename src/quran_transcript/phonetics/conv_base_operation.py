@@ -1351,12 +1351,12 @@ class ConversionOperation:
     ``text`` when they are not provided.
     """
 
-    regs: QuranREWithMapping | list[QuranREWithMapping]
+    regs: list[QuranREWithMapping]
     arabic_name: str
     ops_before: list["ConversionOperation"] | None = None
 
     def __post_init__(self):
-        if type(self.regs) is QuranREWithMapping:
+        if type(self.regs) is not list:
             self.regs = [self.regs]
 
         if self.ops_before is None:
@@ -1379,11 +1379,32 @@ class ConversionOperation:
         """
 
         for reg in self.regs:
-            match reg.get_mode():
-                case "SUB":
-                    text, mappings = reg.sub(text, mappings)
-                case "INS_TAJ":
-                    mappings = reg.insert_tajweed(text, mappings)
+            if type(reg) is QuranREWithMapping:
+                match reg.get_mode():
+                    case "SUB":
+                        text, mappings = reg.sub(text, mappings)
+                        continue
+                    case "INS_TAJ":
+                        mappings = reg.insert_tajweed(text, mappings)
+                        continue
+
+            if len(reg) == 2:
+                if type(reg[1]) is str:
+                    input_reg, out_reg = reg
+                else:
+                    mappings = add_tajweed_rule_with_tagged_pat(
+                        reg[0], text, mappings, reg[1]
+                    )
+                    continue
+                taj_rule = None
+            elif len(reg) == 3:
+                input_reg, out_reg, taj_rule = reg
+            else:
+                raise ValueError("Invalid Input")
+
+            text, mappings = sub_with_tagged_mapping(
+                input_reg, out_reg, text, mappings, taj_rule
+            )
         return text, mappings
 
     def apply(
@@ -1403,6 +1424,10 @@ class ConversionOperation:
                 is from surah Alroom so we have two ways with damma or fatha; or from surah AlAnfal so we only
                 pronounce it with fatha.
         """
+
+        if mappings is None:
+            mappings = init_mappings(text)
+
         if mode == "test":
             discard_ops_names = {o.arabic_name for o in discard_ops}
             for op in self.ops_before:
@@ -1418,6 +1443,7 @@ class ConversionOperation:
                     )
 
         if mode in {"inference", "test"}:
+            # TODO: Add real mapping
             new_text, new_mappings = self.forward(
                 text, moshaf, mappings, sura_idx=sura_idx
             )
