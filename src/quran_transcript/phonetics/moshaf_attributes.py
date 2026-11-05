@@ -8,7 +8,7 @@ if sys.version_info >= (3, 11):
 else:
     from typing_extensions import Self
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import BaseModel, Field, model_validator
 from pydantic.fields import FieldInfo, PydanticUndefined
 
 

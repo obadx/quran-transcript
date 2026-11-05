@@ -1,13 +1,8 @@
 from dataclasses import dataclass
 
-from .. import alphabet as alph
-from .conv_base_operation import (
-    PhonetizerMappings,
-    init_mappings,
-    sub_with_tagged_mapping,
-)
+from .conv_base_operation import PhonetizerMappings
 from .moshaf_attributes import MoshafAttributes
-from .operations import OPERATION_ORDER
+from .operations import QuranPhonemesPhonetizer
 from .sifa import SifaOutput, process_sifat
 
 
@@ -15,12 +10,15 @@ from .sifa import SifaOutput, process_sifat
 class QuranPhoneticScriptOutput:
     phonemes: str
     sifat: list[SifaOutput]
-    mappings: PhonetizerMappings  # `None` for deletion
+    mappings: PhonetizerMappings
     # TODO: Add mappings with sifat
 
 
+_QURAN_PHONEMES_PHONETIZER = QuranPhonemesPhonetizer()
+
+
 def quran_phonetizer(
-    uhtmani_text: str,
+    uthmani_text: str,
     moshaf: MoshafAttributes,
     remove_spaces=False,
     sura_idx: int = 0,
@@ -34,30 +32,17 @@ def quran_phonetizer(
             pronounce it with fatha.
 
     """
-    text = uhtmani_text
-    mappings = init_mappings(text)
-
-    # cleaning extra scpace
-    # TODO: add many to one mapping as insert + delete
-    text, mappings = sub_with_tagged_mapping(
-        r"M:<r:\s+>", rf"<r:{alph.uthmani.space}>", text, mappings=mappings
+    text, mappings = _QURAN_PHONEMES_PHONETIZER.process(
+        uthmani_text, moshaf, sura_idx=sura_idx
     )
-    text, mappings = sub_with_tagged_mapping(
-        r"M:<r:(\s$|^\s)>", r"", text, mappings=mappings
-    )
-
-    for op in OPERATION_ORDER:
-        text, mappings = op.apply(text, moshaf, mappings, sura_idx=sura_idx)
 
     sifat = process_sifat(
-        uthmani_script=uhtmani_text,
+        uthmani_script=uthmani_text,
         phonetic_script=text,
         moshaf=moshaf,
     )
 
     if remove_spaces:
-        text, mappings = sub_with_tagged_mapping(
-            f"M:{alph.uthmani.space}", r"", text, mappings=mappings
-        )
+        text, mappings = _QURAN_PHONEMES_PHONETIZER.remove_spaces(text, mappings)
 
     return QuranPhoneticScriptOutput(phonemes=text, sifat=sifat, mappings=mappings)

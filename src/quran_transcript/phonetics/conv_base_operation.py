@@ -861,82 +861,9 @@ def sub_with_tagged_mapping(
     | None = None,
     tajweed_rule_tag: str = "",
 ) -> tuple[str, PhonetizerMappings]:
-    """
-    Rules:
-    * This a modified re.sub the defines explicit mapping from `pat` to `rep`
-    * `pat` should start with `M:`
-    * EX: pat = r"<x:abc>D<y1:(def)>"
-          rep = r"<x:ABC><y1:\1>"
-    <x:abc>
-    ^^    ^
-    -^----- This is called a `tag` These brackets holds the pattern and is no rleated to re gropus.
-     ^
-     ^ `x` is called  the tag name and composed only of a single charcter and it can followed by a number like `x`
-     `abc` is called `tag pattern`
+    """Backward-compatible helper around `QuranREWithMapping.sub`.
 
-    * for the rep <x:ABC> `ABC` is called `tag replacement`
-    * rep patterns Have to be connected like r"<x:ABC><y1:\1>" but not r"<x:ABC>N<y1:\1>" (N) is not mapped
-    * if a group of patterns is existis in the `pat` and does not exist in the `rep` it will be deleted like `D` in the example
-    * a tag in the `rep` has to exist in the `pat` as well otherwise a parsing error is raised
-    * tag names have to be unique in both `pat` and `rep`; repeating a tag raises
-      `MappedTagPrasingError`
-    EX: pat = r"<x:a><x:b>"  # repeated `x` in `pat`
-        rep = r"<x:a>"
-
-    EX: pat = r"<x:a><y:b>"
-        rep = r"<x:a><x:c>"  # repeated `x` in `rep`
-
-    * Tag pattern/replacement length rules:
-      - Equal lengths: normal one-to-one mapping.
-      - Pattern length is 1 and replacement is longer: one-to-many mapping.
-      - Otherwise, if the lengths differ, the shorter tag text must be an exact
-        prefix of the longer tag text:
-        - replacement longer: the extra replacement characters are inserted.
-        - pattern longer: the extra pattern characters are deleted.
-      If the shorter text is not a prefix of the longer one,
-      `MappedTagPrasingCardinalityError` is raised.
-
-    EX: pat = r"<x:abc>"
-        rep = r"<x:abcd>"  # insert `d`
-
-    EX: pat = r"<x:abc>"
-        rep = r"<x:ab>"    # delete `c`
-
-    ## Adding Tajweed Rule
-    * You can add tajweed rules using Tajweed tag `T` with our wihout numbers from 0 to 9 like `T0`
-    * Also you can annoated depedencies which the Tajweed Rule relies on. Using `D` tag followed by a single digit number or two.
-    * If you you used `T` tag only without any number digit you can you use `D` followed by a single digit either before the Tajweed Rule or after it like:
-    EX: pat = r"<D0:ab><T:cd><D1:ef>"
-        rep = r"<D0:ab><T:CD><D1:ef>"
-    * If you used a Tajweed tag `T` followed by a single digit like `T1`, Tajweed dpedencies has to have two digits like `D10`. The first digit corrresponds to the digit following the Tajweed tag and the second on is the Depdency index
-    EX: pat = r"<T0:ab><D00:cd><T1:ef><D10:gh>"
-        rep = r"<T0:AB><D00:cd><T1:EF><D10:gh>"
-    * Depdeny order matters, increments with one and have to start from 0 like:
-    EX: pat = r"<D0:ab><T:cd><D1:ef>"
-        rep = r"<D0:ab><T:CD><D1:ef>"
-
-
-    ### What is not Allowed with Tajweed Tags
-    * Using a single digit depenceis like `D0` with a Tajweed Tag with a digit `T1`
-    * Using a two digit depdency like `D12` with no digit Tajweed tag like: `T`
-    * Out of order depencies or increment more than one or start with non zero depdency index like:
-    EX: pat = r"<D5:ab><T:cd><D3:ef>"
-        rep = r"<D5:ab><T:CD><D3:ef>"
-
-    EX: pat = r"<D2:ab><T:cd><D4:ef>"
-        rep = r"<D2:ab><T:CD><D4:ef>"
-
-
-    EX: pat = r"<D2:ab><T:cd><D3:ef>"
-        rep = r"<D2:ab><T:CD><D3:ef>"
-
-
-
-    Limitation:
-    * not supporting named group followed by the end of tag brackets in `rep` like this: `r"<x:X><r:\\g<c>>"`
-                                           -------------------------------------------------------------^
-    Because the parser will think that the end of named group is the group name closing
-
+    See `QuranREWithMapping.__init__` for the tagged pattern rules.
     """
 
     assert pat.startswith("M:")
@@ -1056,7 +983,10 @@ def add_tajweed_rule_with_tagged_pat(
     | None = None,
     tajweed_rule_tag: str = "",
 ) -> PhonetizerMappings:
-    """Same ruels as the `sub_with_tagged_mapping` but with no `rep`. Just adding tajweed rules to mappings"""
+    """Rule-only equivalent of :meth:`QuranREWithMapping.insert_tajweed`.
+
+    Searches ``pat`` and adds Tajweed rules without changing the text.
+    """
 
     assert pat.startswith("M:")
     pat = pat[2:]
@@ -1101,6 +1031,104 @@ def add_tajweed_rule_with_tagged_pat(
 
 
 class QuranREWithMapping:
+    """A minimal layer on top of ``re`` that defines an explicit mapping from
+    ``pat`` to ``rep``, with optional Tajweed rule insertion.
+
+    The pattern and replacement are parsed and compiled once when the object is
+    created. The instance then works in one of two modes:
+
+    * ``SUB`` when ``rep`` is provided: apply the substitution with :meth:`sub`.
+    * ``INS_TAJ`` when ``rep`` is ``None``: insert Tajweed rules only with
+      :meth:`insert_tajweed`.
+
+    Attributes:
+        pat: The pattern with the leading ``M:`` prefix removed.
+        rep: The replacement template. ``None`` means rule-only insertion mode.
+        mapped_tags: The parsed :class:`MapTag` objects containing the pattern
+            segments, tag metadata, replacement parts, and compiled patterns.
+        re_pat: The full compiled regex built from all mapped tag patterns.
+        taj_rule_type: The default Tajweed rule type attached to matches, or
+            ``None`` when the operation only performs substitution.
+        insert_taj_cond: Optional callback that decides whether a Tajweed rule
+            should be inserted based on the existing rules and the new rule.
+
+
+        Rules:
+        * This a modified re.sub the defines explicit mapping from `pat` to `rep`
+        * `pat` should start with `M:`
+        * EX: pat = r"<x:abc>D<y1:(def)>"
+              rep = r"<x:ABC><y1:\1>"
+        <x:abc>
+        ^^    ^
+        -^----- This is called a `tag` These brackets holds the pattern and is no rleated to re gropus.
+         ^
+         ^ `x` is called  the tag name and composed only of a single charcter and it can followed by a number like `x`
+         `abc` is called `tag pattern`
+
+        * for the rep <x:ABC> `ABC` is called `tag replacement`
+        * rep patterns Have to be connected like r"<x:ABC><y1:\1>" but not r"<x:ABC>N<y1:\1>" (N) is not mapped
+        * if a group of patterns is existis in the `pat` and does not exist in the `rep` it will be deleted like `D` in the example
+        * a tag in the `rep` has to exist in the `pat` as well otherwise a parsing error is raised
+        * tag names have to be unique in both `pat` and `rep`; repeating a tag raises
+          `MappedTagPrasingError`
+        EX: pat = r"<x:a><x:b>"  # repeated `x` in `pat`
+            rep = r"<x:a>"
+
+        EX: pat = r"<x:a><y:b>"
+            rep = r"<x:a><x:c>"  # repeated `x` in `rep`
+
+        * Tag pattern/replacement length rules:
+          - Equal lengths: normal one-to-one mapping.
+          - Pattern length is 1 and replacement is longer: one-to-many mapping.
+          - Otherwise, if the lengths differ, the shorter tag text must be an exact
+            prefix of the longer tag text:
+            - replacement longer: the extra replacement characters are inserted.
+            - pattern longer: the extra pattern characters are deleted.
+          If the shorter text is not a prefix of the longer one,
+          `MappedTagPrasingCardinalityError` is raised.
+
+        EX: pat = r"<x:abc>"
+            rep = r"<x:abcd>"  # insert `d`
+
+        EX: pat = r"<x:abc>"
+            rep = r"<x:ab>"    # delete `c`
+
+        ## Adding Tajweed Rule
+        * You can add tajweed rules using Tajweed tag `T` with our wihout numbers from 0 to 9 like `T0`
+        * Also you can annoated depedencies which the Tajweed Rule relies on. Using `D` tag followed by a single digit number or two.
+        * If you you used `T` tag only without any number digit you can you use `D` followed by a single digit either before the Tajweed Rule or after it like:
+        EX: pat = r"<D0:ab><T:cd><D1:ef>"
+            rep = r"<D0:ab><T:CD><D1:ef>"
+        * If you used a Tajweed tag `T` followed by a single digit like `T1`, Tajweed dpedencies has to have two digits like `D10`. The first digit corrresponds to the digit following the Tajweed tag and the second on is the Depdency index
+        EX: pat = r"<T0:ab><D00:cd><T1:ef><D10:gh>"
+            rep = r"<T0:AB><D00:cd><T1:EF><D10:gh>"
+        * Depdeny order matters, increments with one and have to start from 0 like:
+        EX: pat = r"<D0:ab><T:cd><D1:ef>"
+            rep = r"<D0:ab><T:CD><D1:ef>"
+
+
+        ### What is not Allowed with Tajweed Tags
+        * Using a single digit depenceis like `D0` with a Tajweed Tag with a digit `T1`
+        * Using a two digit depdency like `D12` with no digit Tajweed tag like: `T`
+        * Out of order depencies or increment more than one or start with non zero depdency index like:
+        EX: pat = r"<D5:ab><T:cd><D3:ef>"
+            rep = r"<D5:ab><T:CD><D3:ef>"
+
+        EX: pat = r"<D2:ab><T:cd><D4:ef>"
+            rep = r"<D2:ab><T:CD><D4:ef>"
+
+
+        EX: pat = r"<D2:ab><T:cd><D3:ef>"
+            rep = r"<D2:ab><T:CD><D3:ef>"
+
+
+
+        Limitation:
+        * not supporting named group followed by the end of tag brackets in `rep` like this: `r"<x:X><r:\\g<c>>"`
+                                               -------------------------------------------------------------^
+        Because the parser will think that the end of named group is the group name closing
+    """
+
     def __init__(
         self,
         pat: str,
@@ -1109,7 +1137,6 @@ class QuranREWithMapping:
         insert_taj_cond: Callable[[list[TajweedRuleType], TajweedRuleType], bool]
         | None = None,
     ):
-        """Docs"""
         assert pat.startswith("M:")
         pat = pat[2:]
 
@@ -1141,6 +1168,28 @@ class QuranREWithMapping:
         mappings: PhonetizerMappings,
         tajweed_rule_tag: str = "",
     ) -> tuple[str, PhonetizerMappings]:
+        """Apply the compiled pattern/replacement to ``text``.
+
+        The substitution does not mutate ``text`` in place. It returns the newly
+        transformed text and must be used by the caller. ``mappings`` is updated
+        to relate the original characters to their new spans in the output text
+        and to any inserted Tajweed rule parts.
+
+        Args:
+            text: Input text to apply the substitution to.
+            mappings: Mappings to update and return.
+            tajweed_rule_tag: Optional tag attached to the created Tajweed rule
+                parts. This is not the same as the ``T`` tag name.
+
+        Returns:
+            A tuple of ``(out_text, mappings)``.
+
+        Raises:
+            AssertionError: If this instance was created with ``rep=None`` and is
+                therefore in ``INS_TAJ`` mode.
+            MappedTagPrasingCardinalityError: If a tag mapping has unsupported
+                many-to-many or many-to-one cardinality.
+        """
 
         assert self.get_mode() == "SUB", (
             "IN sub mode we `pat` has to be valid not `None`"
@@ -1250,7 +1299,25 @@ class QuranREWithMapping:
         mappings: PhonetizerMappings,
         tajweed_rule_tag: str = "",
     ) -> PhonetizerMappings:
-        """Same ruels as the `sub_with_tagged_mapping` but with no `rep`. Just adding tajweed rules to mappings"""
+        """Attach Tajweed rules to ``mappings`` without changing ``text``.
+
+        This is the rule-only mode. The compiled pattern is searched in ``text``
+        and the affected spans are recorded in ``mappings``; no replacement text
+        is produced.
+
+        Args:
+            text: Input text to search for Tajweed rule patterns.
+            mappings: Mappings to update and return.
+            tajweed_rule_tag: Optional tag attached to the created Tajweed rule
+                parts. This is not the same as the ``T`` tag name.
+
+        Returns:
+            The updated :class:`PhonetizerMappings`.
+
+        Raises:
+            AssertionError: If this instance was created with a replacement
+                (``rep`` is not ``None``) and is therefore in ``SUB`` mode.
+        """
 
         assert self.get_mode() == "INS_TAJ", (
             "IN insert_tajweed mode we `rep` has to be `None`"
@@ -1290,7 +1357,7 @@ class QuranREWithMapping:
 
 @dataclass
 class ConversionOperation:
-    """A single phonetic conversion step built from tagged regex operations.
+    """A single phonetic conversion step built from precompiled tagged regex operations.
 
     Subclasses configure their work through :attr:`regs` and may override
     :meth:`forward` when patterns depend on runtime values such as ``moshaf``
@@ -1300,50 +1367,51 @@ class ConversionOperation:
     attached Tajweed rules.
 
     For the full rules of the tagged ``M:`` patterns -- tag syntax, mapping and
-    cardinality behavior, and Tajweed ``T``/``D`` tags -- see the ``Rules``
-    section in :func:`sub_with_tagged_mapping`. For rule-only operations
-    without a replacement, see :func:`add_tajweed_rule_with_tagged_pat`.
+    cardinality behavior, and Tajweed ``T``/``D`` tags -- see
+    :meth:`QuranREWithMapping.__init__`.
 
     ``regs`` forms
     --------------
-    ``regs`` accepts a single operation tuple or a list of them; a single tuple
-    is normalized to a list in :meth:`__post_init__`. Entries run in order:
+    ``regs`` accepts a single :class:`QuranREWithMapping` or a list of them; a
+    single object is normalized to a list in :meth:`__post_init__`. Entries run
+    in order. Each entry dispatches according to its mode:
 
-    * ``(pat, rep)`` - tagged substitution with no Tajweed rule, applied with
-      :func:`sub_with_tagged_mapping`.
+    * ``QuranREWithMapping(pat, rep, tajweed_rule_type)`` - tagged substitution
+      with an optional Tajweed rule, applied with
+      :meth:`QuranREWithMapping.sub`.
 
       Example from ``BeginWithSaken``::
 
-          (
+          QuranREWithMapping(
               f"M:<r:(^.){uth.ras_haaa}>",
               f"<r:\\1{uth.kasra}>",
+              None,
           )
-
-    * ``(pat, rep, tajweed_rule_type)`` - tagged substitution that also attaches
-      ``tajweed_rule_type`` to the affected span, applied with
-      :func:`sub_with_tagged_mapping`.
 
       Example from ``Qalqla``::
 
-          (
+          QuranREWithMapping(
               f"M:<T:([{uth.qlqla_group}](?:{uth.shadda}$|{uth.ras_haaa}|$))>",
               f"<T:\\1{ph.qlqla}>",
               TajweedRuleType.QALQALAH,
           )
 
-    * ``(pat, tajweed_rule_type)`` - rule-only tagging: the text is not changed;
-      ``pat`` is searched and the rule is attached to the affected span.
-      Applied with :func:`add_tajweed_rule_with_tagged_pat`.
+    * ``QuranREWithMapping(pat, None, tajweed_rule_type)`` - rule-only tagging:
+      the text is not changed; ``pat`` is searched and the rule is attached to
+      the affected span. Applied with
+      :meth:`QuranREWithMapping.insert_tajweed`.
 
       Example from ``PrepareGhonnaIdghamIqlab``::
 
-          (
+          QuranREWithMapping(
               f"M:<T:{uth.meem}>{uth.space}?<D0:{uth.meem}{uth.shadda}>",
+              None,
               TajweedRuleType.IDGHAM_MEEM,
           )
 
     A rule-only entry may be mixed with substitutions in the same list; the loop
-    continues with the next entry. Any other tuple length raises ``ValueError``.
+    continues with the next entry. :meth:`forward` dispatches each entry using
+    :meth:`QuranREWithMapping.get_mode`.
 
     ``ops_before`` lists operations run first in ``"test"`` mode; entries whose
     ``arabic_name`` appears in ``discard_ops`` are skipped. In ``"inference"``
@@ -1369,42 +1437,36 @@ class ConversionOperation:
         mappings: PhonetizerMappings,
         sura_idx: int = 0,
     ) -> tuple[str, PhonetizerMappings]:
-        """
+        """Apply each precompiled :class:`QuranREWithMapping` in ``regs``.
+
+        Entries are applied in order. Substitution entries are run with
+        :meth:`QuranREWithMapping.sub`; rule-only entries (``rep=None``) are run
+        with :meth:`QuranREWithMapping.insert_tajweed`.
+
+        Subclasses override this method when their patterns or replacements
+        depend on runtime values such as ``moshaf`` or ``sura_idx``.
+
         Args:
+            text: Input text to transform.
+            moshaf: Recitation options used by runtime-dependent operations.
+            mappings: Mappings to update and return.
             sura_idx (int): the sura index from 1 to 114. If zero then there is no sura set.
                 Used when a specific rule is tied to a specific sura.
                 This is used particularly if the user pronounced ONLY `ضَعْفًا` so we cannot infer whether this
                 is from surah Alroom so we have two ways with damma or fatha; or from surah AlAnfal so we only
                 pronounce it with fatha.
+
+        Returns:
+            A tuple of ``(text, mappings)``.
         """
 
         for reg in self.regs:
-            if type(reg) is QuranREWithMapping:
-                match reg.get_mode():
-                    case "SUB":
-                        text, mappings = reg.sub(text, mappings)
-                        continue
-                    case "INS_TAJ":
-                        mappings = reg.insert_tajweed(text, mappings)
-                        continue
+            match reg.get_mode():
+                case "SUB":
+                    text, mappings = reg.sub(text, mappings)
+                case "INS_TAJ":
+                    mappings = reg.insert_tajweed(text, mappings)
 
-            if len(reg) == 2:
-                if type(reg[1]) is str:
-                    input_reg, out_reg = reg
-                else:
-                    mappings = add_tajweed_rule_with_tagged_pat(
-                        reg[0], text, mappings, reg[1]
-                    )
-                    continue
-                taj_rule = None
-            elif len(reg) == 3:
-                input_reg, out_reg, taj_rule = reg
-            else:
-                raise ValueError("Invalid Input")
-
-            text, mappings = sub_with_tagged_mapping(
-                input_reg, out_reg, text, mappings, taj_rule
-            )
         return text, mappings
 
     def apply(
@@ -1416,13 +1478,31 @@ class ConversionOperation:
         discard_ops: list["ConversionOperation"] = [],
         mode: Literal["inference", "test"] = "inference",
     ) -> tuple[str, PhonetizerMappings]:
-        """
+        """Run this operation and return the transformed text with mappings.
+
+        In ``"test"`` mode, ``ops_before`` operations are applied first, except
+        those whose ``arabic_name`` appears in ``discard_ops``. In both
+        ``"inference"`` and ``"test"`` modes, :meth:`forward` is then applied.
+
         Args:
+            text: Input text to transform.
+            moshaf: Recitation options used by runtime-dependent operations.
+            mappings: Mappings to update. If ``None``, they are initialized
+                from ``text``.
             sura_idx (int): the sura index from 1 to 114. If zero then there is no sura set.
                 Used when a specific rule is tied to a specific sura.
                 This is used particularly if the user pronounced ONLY `ضَعْفًا` so we cannot infer whether this
                 is from surah Alroom so we have two ways with damma or fatha; or from surah AlAnfal so we only
                 pronounce it with fatha.
+            discard_ops: Operations in ``ops_before`` to skip in ``"test"``
+                mode, matched by ``arabic_name``.
+            mode: ``"inference"`` or ``"test"``.
+
+        Returns:
+            A tuple of ``(text, mappings)``.
+
+        Raises:
+            ValueError: If ``mode`` is neither ``"inference"`` nor ``"test"``.
         """
 
         if mappings is None:

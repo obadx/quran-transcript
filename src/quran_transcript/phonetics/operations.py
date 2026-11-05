@@ -7,6 +7,7 @@ from .conv_base_operation import (
     ConversionOperation,
     PhonetizerMappings,
     QuranREWithMapping,
+    init_mappings,
 )
 from .moshaf_attributes import MoshafAttributes, get_moshaf_literal_values
 from .tajweed_rulses import (
@@ -1174,3 +1175,61 @@ OPERATION_ORDER = [
     Qalqla(),
     RemoveRasHaaAndShadda(),
 ]
+
+
+class QuranPhonemesPhonetizer:
+    def __init__(self):
+        self.single_space_ops = [
+            QuranREWithMapping(r"M:<r:\s+>", rf"<r:{uth.space}>", None),
+            QuranREWithMapping(r"M:<r:(\s$|^\s)>", r"", None),
+        ]
+
+        self.ops = [
+            DisassembleHrofMoqatta(),
+            SpecialCases(),
+            BeginWithHamzatWasl(),
+            BeginWithSaken(),
+            ConvertAlifMaksora(),
+            NormalizeHmazat(),
+            IthbatYaaYohie(),
+            RemoveKasheeda(),
+            RemoveHmzatWaslMiddle(),
+            RemoveSkoonMostadeer(),
+            SkoonMostateel(),
+            RemoveTanweenFatahAtEndFromTaaMarboota(),
+            MaddAlewad(),
+            WawAlsalah(),
+            EnlargeSmallLetters(),
+            CleanEnd(),
+            NormalizeTaa(),
+            AddAlifIsmAllah(),
+            PrepareGhonnaIdghamIqlab(),
+            IltiqaaAlsaknan(),
+            DeleteShaddaAtBeginning(),
+            Ghonna(),
+            Tasheel(),
+            Imala(),
+            Madd(),
+            Qalqla(),
+            RemoveRasHaaAndShadda(),
+        ]
+
+        self.rm_spaces_quran_re = QuranREWithMapping(f"M:{uth.space}", r"", None)
+
+    def process(
+        self, text: str, moshaf: MoshafAttributes, sura_idx: int = 0
+    ) -> tuple[str, PhonetizerMappings]:
+        mappings = init_mappings(text)
+
+        for quran_re in self.single_space_ops:
+            text, mappings = quran_re.sub(text, mappings)
+
+        for op in OPERATION_ORDER:
+            text, mappings = op.apply(text, moshaf, mappings, sura_idx=sura_idx)
+
+        return text, mappings
+
+    def remove_spaces(
+        self, text: str, mappings: PhonetizerMappings
+    ) -> tuple[str, PhonetizerMappings]:
+        return self.rm_spaces_quran_re.sub(text, mappings)
