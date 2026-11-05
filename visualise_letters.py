@@ -30,7 +30,7 @@ from quran_transcript.phonetics.operations import (
     Tasheel,
     Imala,
 )
-from quran_transcript.phonetics.operations import OPERATION_ORDER
+from quran_transcript.phonetics.operations import QuranPhonemesPhonetizer
 from quran_transcript.phonetics.moshaf_attributes import MoshafAttributes
 
 
@@ -348,7 +348,7 @@ if __name__ == "__main__":
     # # اسم الله بعد إجراء كل العمليات
     # get_occurance(
     #     f"{alph.phonetics.lam}{{2}}{alph.phonetics.fatha}{alph.phonetics.alif}{{2}}{alph.phonetics.haa}",
-    #     operations=OPERATION_ORDER,
+    #     operations=QuranPhonemesPhonetizer().ops,
     # )
 
     # المد الطبيعي
@@ -384,11 +384,11 @@ if __name__ == "__main__":
     # # اسم الله بعد إجراء كل العمليات
     # get_occurance(
     #     f"(?<!{ph.jeem})(?<!{ph.daal})(?<!{ph.taa}{ph.fatha}{ph.waw})(.){uth.space}?{ph.lam}{{2}}{ph.fatha}{ph.alif}{{2,6}}{ph.haa}(?!{ph.dama}{ph.meem}(?!{ph.meem}))",
-    #     operations=OPERATION_ORDER,
+    #     operations=QuranPhonemesPhonetizer().ops,
     # )
 
     # حرف الراء
     get_occurance(
         f"{uth.raa}{uth.space}{uth.raa}{uth.shadda}"
-        # operations=OPERATION_ORDER,
+        # operations=QuranPhonemesPhonetizer().ops,
     )

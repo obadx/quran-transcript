@@ -46,11 +46,8 @@ from quran_transcript.phonetics.phonetizer import (
 )
 from quran_transcript.phonetics.sifa import (
     PHONEME_WITH_LAAM_ALLH_REG,
+    QuranSifatProcessor,
     SifaOutput,
-    alif_tafkheem_tarqeeq_finder,
-    lam_tafkheem_tarqeeq_finder,
-    process_sifat,
-    raa_tafkheem_tarqeeq_finder,
 )
 from tests.conftest import QuranSegment
 
@@ -5556,7 +5553,7 @@ def test_process_sifat(
 ):
     phoneme_script = quran_phonetizer(in_text, moshaf).phonemes
     print(f"phonized text Text:\n'{phoneme_script}'")
-    sifa_outputs = process_sifat(in_text, phoneme_script, moshaf)
+    sifa_outputs = QuranSifatProcessor().process_sifat(in_text, phoneme_script, moshaf)
 
     assert len(ex_sifa_outputs) == len(sifa_outputs)
     for out, target in zip(sifa_outputs, ex_sifa_outputs):
@@ -5734,7 +5731,7 @@ def test_lam_tafkheem_tarqeeq_finder(
     moshaf: MoshafAttributes,
 ):
     ph_script = quran_phonetizer(uth_text, moshaf).phonemes
-    outputs = lam_tafkheem_tarqeeq_finder(ph_script)
+    outputs = QuranSifatProcessor().lam_tafkheem_tarqeeq_finder(ph_script)
     print(uth_text)
     print(f"Ouputs: {outputs}")
     print(f"Ex Ouputs: {ex_outs}")
@@ -5864,7 +5861,7 @@ def test_alif_tafkheem_tarqeeq_finder(
     moshaf: MoshafAttributes,
 ):
     ph_script = quran_phonetizer(uth_text, moshaf).phonemes
-    outputs = alif_tafkheem_tarqeeq_finder(ph_script)
+    outputs = QuranSifatProcessor().alif_tafkheem_tarqeeq_finder(ph_script)
     print(uth_text)
     print(ph_script)
     print(f"Ouputs: {outputs}")
@@ -6344,7 +6341,7 @@ def test_raa_tafkheem_tarqeeq_finder(
     ex_outs: list[Literal["mofakham", "moraqaq"]],
     moshaf: MoshafAttributes,
 ):
-    outputs = raa_tafkheem_tarqeeq_finder(uth_text, moshaf)
+    outputs = QuranSifatProcessor().raa_tafkheem_tarqeeq_finder(uth_text, moshaf)
     print(uth_text)
     print(f"Ouputs: {outputs}")
     print(f"Ex Ouputs: {ex_outs}")
