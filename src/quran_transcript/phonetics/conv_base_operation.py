@@ -283,6 +283,8 @@ class PhonetizerMappings:
                 or (start == end and (curr_ph_pos_idx + 1) == start)
             ):
                 found_uth_idx = uth_idx
+            elif start > curr_ph_pos_idx:
+                break
 
         if found_uth_idx == -1:
             raise ValueError("Can not find uth_idx")

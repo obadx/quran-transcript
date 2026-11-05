@@ -44,6 +44,10 @@ class SifaOutput(BaseModel):
     ghonna: Literal["maghnoon", "not_maghnoon"]
 
 
+_CORE_GROUP = "|".join([f"{c}+" for c in phg.core])
+_CHUNK_PHONMES_RE = re.compile(f"((?:{_CORE_GROUP})[{phg.residuals}]?)")
+
+
 def chunck_phonemes(phonetic_script: str) -> list[str]:
     """Chunk phonemes into groups
     Example:
@@ -53,8 +57,7 @@ def chunck_phonemes(phonetic_script: str) -> list[str]:
     اا
     لَ
     """
-    core_group = "|".join([f"{c}+" for c in phg.core])
-    return re.findall(f"((?:{core_group})[{phg.residuals}]?)", phonetic_script)
+    return _CHUNK_PHONMES_RE.findall(phonetic_script)
 
 
 ISM_ALLAH_REG_SPACE_OR_START = "|".join(
