@@ -577,3 +577,28 @@ class MoshafAttributes(BaseModel):
             md_table += "\n"
 
         return md_table
+
+
+def get_moshaf_literal_values(fieldname: str) -> tuple[Any, ...]:
+    """Return the allowed values of a `Literal` moshaf field.
+
+    Optional Literal fields (e.g. `madd_alleen_len`) are supported:
+    `None` is discarded and only the Literal values are returned.
+    """
+    annotation = MoshafAttributes.model_fields[fieldname].annotation
+
+    if get_origin(annotation) is Literal:
+        return get_args(annotation)
+
+    # Optional / Union: extract only the Literal branch and drop `None`
+    values: list[Any] = []
+    for arg in get_args(annotation):
+        if get_origin(arg) is Literal:
+            values.extend(get_args(arg))
+
+    if not values:
+        raise TypeError(
+            f"Moshaf field `{fieldname}` is not a `Literal`: {annotation!r}"
+        )
+
+    return tuple(values)

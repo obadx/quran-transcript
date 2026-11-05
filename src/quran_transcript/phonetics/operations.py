@@ -7,9 +7,8 @@ from .conv_base_operation import (
     ConversionOperation,
     PhonetizerMappings,
     QuranREWithMapping,
-    sub_with_tagged_mapping,
 )
-from .moshaf_attributes import MoshafAttributes
+from .moshaf_attributes import MoshafAttributes, get_moshaf_literal_values
 from .tajweed_rulses import (
     TajweedRuleType,
 )
@@ -762,6 +761,50 @@ class Ghonna(ConversionOperation):
     ghonna_len: int = 3
     idgham_yaa_waw_len: int = 2
 
+    def __post_init__(self):
+        super().__post_init__()
+
+        # الميم المخفار
+        meem_mokhfah_reps = {
+            "meem": ph.meem,
+            "ikhfaa": ph.meem_mokhfah,
+        }
+        self.meem_mokhfah_regs: dict[str, QuranREWithMapping] = {
+            mode: QuranREWithMapping(
+                f"M:<T:{uth.meem}>{uth.space}?<D0:{uth.baa}>",
+                f"<T:{meem_mokhfah_reps[mode] * self.ghonna_len}><D0:{uth.baa}>",
+                None,
+            )
+            for mode in get_moshaf_literal_values("meem_mokhfah")
+        }
+
+        # إدغام النون في الياء و الواو
+        self.idgham_yaa_waw_reg = QuranREWithMapping(
+            f"M:<T:{uth.noon}>{uth.space}([{uth.yaa}{uth.waw}])",
+            r"<T:" + r"\1" * (self.idgham_yaa_waw_len + 1) + r">",
+            None,
+        )
+
+        # إخفاء النون
+        self.noon_ikhfaa_reg = QuranREWithMapping(
+            f"M:<T:{uth.noon}>{uth.space}?<D0:([{uth.noon_ikhfaa_group}])>",
+            f"<T:{ph.noon_mokhfah * self.ghonna_len}><D0:\\1>",
+            None,
+        )
+
+        # النون والميم المشددتين
+        # العنة المتطرفة
+        self.moshadada_end_reg = QuranREWithMapping(
+            f"M:<T:([{uth.meem}{uth.noon}])>{uth.shadda}$",
+            r"<T:" + r"\1" * self.ghonna_len + r">",
+            None,
+        )
+        self.moshadada_reg = QuranREWithMapping(
+            f"M:<T:([{uth.meem}{uth.noon}])>{uth.shadda}",
+            r"<T:" + r"\1" * (self.ghonna_len + 1) + r">",
+            None,
+        )
+
     def forward(
         self,
         text: str,
@@ -770,49 +813,21 @@ class Ghonna(ConversionOperation):
         sura_idx: int = 0,
     ) -> tuple[str, PhonetizerMappings]:
         # الميم المخفار
-        if moshaf.meem_mokhfah == "meem":
-            meem_mokhfah = ph.meem
-        elif moshaf.meem_mokhfah == "ikhfaa":
-            meem_mokhfah = ph.meem_mokhfah
-        else:
-            raise ValueError()
-        text, mappings = sub_with_tagged_mapping(
-            f"M:<T:{uth.meem}>{uth.space}?<D0:{uth.baa}>",
-            f"<T:{meem_mokhfah * self.ghonna_len}><D0:{uth.baa}>",
+        text, mappings = self.meem_mokhfah_regs[moshaf.meem_mokhfah].sub(
             text,
             mappings,
         )
 
         # إدغام النون في الياء و الواو
-        text, mappings = sub_with_tagged_mapping(
-            f"M:<T:{uth.noon}>{uth.space}([{uth.yaa}{uth.waw}])",
-            r"<T:" + r"\1" * (self.idgham_yaa_waw_len + 1) + r">",
-            text,
-            mappings,
-        )
+        text, mappings = self.idgham_yaa_waw_reg.sub(text, mappings)
 
         # إخفاء النون
-        text, mappings = sub_with_tagged_mapping(
-            f"M:<T:{uth.noon}>{uth.space}?<D0:([{uth.noon_ikhfaa_group}])>",
-            f"<T:{ph.noon_mokhfah * self.ghonna_len}><D0:\\1>",
-            text,
-            mappings,
-        )
+        text, mappings = self.noon_ikhfaa_reg.sub(text, mappings)
 
         # النون والميم المشددتين
         # العنة المتطرفة
-        text, mappings = sub_with_tagged_mapping(
-            f"M:<T:([{uth.meem}{uth.noon}])>{uth.shadda}$",
-            r"<T:" + r"\1" * self.ghonna_len + r">",
-            text,
-            mappings,
-        )
-        text, mappings = sub_with_tagged_mapping(
-            f"M:<T:([{uth.meem}{uth.noon}])>{uth.shadda}",
-            r"<T:" + r"\1" * (self.ghonna_len + 1) + r">",
-            text,
-            mappings,
-        )
+        text, mappings = self.moshadada_end_reg.sub(text, mappings)
+        text, mappings = self.moshadada_reg.sub(text, mappings)
 
         return text, mappings
 
@@ -898,6 +913,138 @@ class Madd(ConversionOperation):
         }
     )
 
+    def __post_init__(self):
+        super().__post_init__()
+
+        monfasel_lengths = get_moshaf_literal_values("madd_monfasel_len")
+        mottasel_lengths = get_moshaf_literal_values("madd_mottasel_len")
+        aared_lengths = get_moshaf_literal_values("madd_aared_len")
+
+        # المد المنفصل
+        # ها ويا التنبيه
+        self.monfasel_tanbih_regs = {
+            length: QuranREWithMapping(
+                f"M:<r:((?:^|{uth.space}|(?:(?:^|{uth.space})[{uth.faa}{uth.waw}{uth.hamza}]{uth.fatha}))[{uth.yaa}{uth.haa}]{uth.fatha})><T:{uth.alif}>{uth.madd}<D0:({uth.hamza}.[^{uth.space}])>",
+                f"<r:\\1><T:{ph.alif * length}><D0:\\2>",
+                TajweedRuleType.MONFASEL_MADD,
+            )
+            for length in monfasel_lengths
+        }
+
+        # normal monfasel
+        self.monfasel_regs = {
+            length: [
+                QuranREWithMapping(
+                    f"M:{madd_patt.pattern}{uth.madd}<D0:({uth.space}{uth.hamza})>",
+                    f"<r:\\1><T:{length * madd_patt.target}><D0:\\2>",
+                    TajweedRuleType.MONFASEL_MADD,
+                )
+                for madd_patt in self.madd_map.values()
+            ]
+            for length in monfasel_lengths
+        }
+
+        # المد المتصل وقفا
+        # أقوى السببين
+        mottasel_waqf_lengths = {
+            max(mottasel_waqf_length, aared_length)
+            for mottasel_waqf_length in get_moshaf_literal_values("madd_mottasel_waqf")
+            for aared_length in aared_lengths
+        }
+        self.mottasel_waqf_regs = {
+            length: [
+                QuranREWithMapping(
+                    f"M:{madd_patt.pattern}{uth.madd}<D0:({uth.hamza}$)>",
+                    f"<r:\\1><T:{length * madd_patt.target}><D0:\\2>",
+                    TajweedRuleType.MOTTASEL_MADD,
+                )
+                for madd_patt in self.madd_map.values()
+            ]
+            for length in mottasel_waqf_lengths
+        }
+
+        # المد المتصل
+        self.mottasel_regs = {
+            length: [
+                QuranREWithMapping(
+                    f"M:{madd_patt.pattern}{uth.madd}<D0:({uth.hamza})>",
+                    f"<r:\\1><T:{length * madd_patt.target}><D0:\\2>",
+                    TajweedRuleType.MOTTASEL_MADD,
+                )
+                for madd_patt in self.madd_map.values()
+            ]
+            for length in mottasel_lengths
+        }
+
+        # المد اللازم
+        # أوجه العنين
+        self.yaa_alayn_regs = {
+            length: QuranREWithMapping(
+                f"M:<r:({uth.fatha})><T:{uth.yaa}>{uth.madd}",
+                f"<r:\\1><T:{(length - 1) * ph.yaa}>",
+                TajweedRuleType.LEEN_MADD,
+            )
+            for length in get_moshaf_literal_values("madd_yaa_alayn_alharfy")
+        }
+
+        # ميم آل عمران
+        self.meem_aal_imran_regs: dict[str, QuranREWithMapping] = {}
+        for mode in get_moshaf_literal_values("meem_aal_imran"):
+            if mode == "wasl_2":
+                meema_len = 2
+                meem_aal_imran_taj_rule = TajweedRuleType.NORMAL_MADD
+            else:
+                meema_len = 6
+                meem_aal_imran_taj_rule = TajweedRuleType.LAZIM_MADD
+            self.meem_aal_imran_regs[mode] = QuranREWithMapping(
+                f"M:<r:({uth.meem}{uth.kasra})><T:{uth.yaa}>{uth.madd}<D0:({uth.meem}{uth.fatha})>",
+                f"<r:\\1><T:{ph.yaa_madd * meema_len}><D0:\\2>",
+                meem_aal_imran_taj_rule,
+            )
+
+        self.lazim_regs = [
+            QuranREWithMapping(
+                # we might have the case where in طس the input is طَا سِيٓن and noon has no skoon letter
+                f"M:{madd_patt.pattern}{uth.madd}<D0:([^{uth.hamza}](?:{uth.shadda}|{uth.ras_haaa}|[{ph.noon}{ph.meem}{ph.noon_mokhfah}]{{2,3}}|$))>",
+                f"<r:\\1><T:{6 * madd_patt.target}><D0:\\2>",
+                TajweedRuleType.LAZIM_MADD,
+            )
+            for madd_patt in self.madd_map.values()
+        ]
+
+        # المد العارض للسكون
+        self.aared_regs = {
+            length: [
+                QuranREWithMapping(
+                    f"M:{madd_patt.pattern}<D0:([^{uth.shadda}](?:{uth.ras_haaa}$|$|{ph.sakt}))>",
+                    f"<r:\\1><T:{length * madd_patt.target}><D0:\\2>",
+                    TajweedRuleType.AARED_MADD,
+                )
+                for madd_patt in self.madd_map.values()
+            ]
+            for length in aared_lengths
+        }
+
+        # مد اللين
+        self.leen_regs = {
+            length: QuranREWithMapping(
+                f"M:<D0:({uth.fatha})><T:([{uth.yaa}{uth.waw}])><D1:({uth.ras_haaa}?[^{uth.shadda}]{uth.ras_haaa}?$)>",
+                f"<D0:\\1><T:{(length - 1) * '\\2'}><D1:\\3>",
+                TajweedRuleType.LEEN_MADD,
+            )
+            for length in get_moshaf_literal_values("madd_alleen_len")
+        }
+
+        # المد الطبيعي
+        self.normal_madd_regs = [
+            QuranREWithMapping(
+                f"M:{madd_patt.pattern}<r1:([^{madd_patt.madd}{uth.ras_haaa}{uth.shadda}{uth.harakat_group}]|$)>",
+                f"<r:\\1><T:{2 * madd_patt.target}><r1:\\2>",
+                TajweedRuleType.NORMAL_MADD,
+            )
+            for madd_patt in self.madd_map.values()
+        ]
+
     def forward(
         self,
         text: str,
@@ -907,108 +1054,48 @@ class Madd(ConversionOperation):
     ) -> tuple[str, PhonetizerMappings]:
         # المد المنفصل
         # ها ويا التنبيه
-        text, mappings = sub_with_tagged_mapping(
-            f"M:<r:((?:^|{uth.space}|(?:(?:^|{uth.space})[{uth.faa}{uth.waw}{uth.hamza}]{uth.fatha}))[{uth.yaa}{uth.haa}]{uth.fatha})><T:{uth.alif}>{uth.madd}<D0:({uth.hamza}.[^{uth.space}])>",
-            f"<r:\\1><T:{ph.alif * moshaf.madd_monfasel_len}><D0:\\2>",
-            text,
-            mappings,
-            TajweedRuleType.MONFASEL_MADD,
+        text, mappings = self.monfasel_tanbih_regs[moshaf.madd_monfasel_len].sub(
+            text, mappings
         )
         # normal monfasel
-        for madd_patt in self.madd_map.values():
-            text, mappings = sub_with_tagged_mapping(
-                f"M:{madd_patt.pattern}{uth.madd}<D0:({uth.space}{uth.hamza})>",
-                f"<r:\\1><T:{moshaf.madd_monfasel_len * madd_patt.target}><D0:\\2>",
-                text,
-                mappings,
-                TajweedRuleType.MONFASEL_MADD,
-            )
+        for reg in self.monfasel_regs[moshaf.madd_monfasel_len]:
+            text, mappings = reg.sub(text, mappings)
 
         # المد المتصل وقفا
         # أقوى السببين
-        for madd_patt in self.madd_map.values():
-            text, mappings = sub_with_tagged_mapping(
-                f"M:{madd_patt.pattern}{uth.madd}<D0:({uth.hamza}$)>",
-                f"<r:\\1><T:{max(moshaf.madd_mottasel_waqf, moshaf.madd_aared_len) * madd_patt.target}><D0:\\2>",
-                text,
-                mappings,
-                TajweedRuleType.MOTTASEL_MADD,
-            )
+        for reg in self.mottasel_waqf_regs[
+            max(moshaf.madd_mottasel_waqf, moshaf.madd_aared_len)
+        ]:
+            text, mappings = reg.sub(text, mappings)
 
         # المد المتصل
-        for madd_patt in self.madd_map.values():
-            text, mappings = sub_with_tagged_mapping(
-                f"M:{madd_patt.pattern}{uth.madd}<D0:({uth.hamza})>",
-                f"<r:\\1><T:{moshaf.madd_mottasel_len * madd_patt.target}><D0:\\2>",
-                text,
-                mappings,
-                TajweedRuleType.MOTTASEL_MADD,
-            )
+        for reg in self.mottasel_regs[moshaf.madd_mottasel_len]:
+            text, mappings = reg.sub(text, mappings)
 
         # المد اللازم
         # أوجه العنين
-        text, mappings = sub_with_tagged_mapping(
-            f"M:<r:({uth.fatha})><T:{uth.yaa}>{uth.madd}",
-            f"<r:\\1><T:{(moshaf.madd_yaa_alayn_alharfy - 1) * ph.yaa}>",
-            text,
-            mappings,
-            TajweedRuleType.LEEN_MADD,
-        )
-        # ميم آل عمران
-        meem_aal_imran_taj_rule = TajweedRuleType.LAZIM_MADD
-        if moshaf.meem_aal_imran == "wasl_2":
-            meema_len = 2
-            meem_aal_imran_taj_rule = TajweedRuleType.NORMAL_MADD
-        elif moshaf.meem_aal_imran == "wasl_6":
-            meema_len = 6
-        else:
-            meema_len = 6
-        text, mappings = sub_with_tagged_mapping(
-            f"M:<r:({uth.meem}{uth.kasra})><T:{uth.yaa}>{uth.madd}<D0:({uth.meem}{uth.fatha})>",
-            f"<r:\\1><T:{ph.yaa_madd * meema_len}><D0:\\2>",
-            text,
-            mappings,
-            meem_aal_imran_taj_rule,
+        text, mappings = self.yaa_alayn_regs[moshaf.madd_yaa_alayn_alharfy].sub(
+            text, mappings
         )
 
-        for madd_patt in self.madd_map.values():
-            text, mappings = sub_with_tagged_mapping(
-                # we might have the case where in طس the input is طَا سِيٓن and noon has no skoon letter
-                f"M:{madd_patt.pattern}{uth.madd}<D0:([^{uth.hamza}](?:{uth.shadda}|{uth.ras_haaa}|[{ph.noon}{ph.meem}{ph.noon_mokhfah}]{{2,3}}|$))>",
-                f"<r:\\1><T:{6 * madd_patt.target}><D0:\\2>",
-                text,
-                mappings,
-                TajweedRuleType.LAZIM_MADD,
-            )
+        # ميم آل عمران
+        text, mappings = self.meem_aal_imran_regs[moshaf.meem_aal_imran].sub(
+            text, mappings
+        )
+
+        for reg in self.lazim_regs:
+            text, mappings = reg.sub(text, mappings)
 
         # المد العارض للسكون
-        for madd_patt in self.madd_map.values():
-            text, mappings = sub_with_tagged_mapping(
-                f"M:{madd_patt.pattern}<D0:([^{uth.shadda}](?:{uth.ras_haaa}$|$|{ph.sakt}))>",
-                f"<r:\\1><T:{moshaf.madd_aared_len * madd_patt.target}><D0:\\2>",
-                text,
-                mappings,
-                TajweedRuleType.AARED_MADD,
-            )
+        for reg in self.aared_regs[moshaf.madd_aared_len]:
+            text, mappings = reg.sub(text, mappings)
 
         # مد اللين
-        text, mappings = sub_with_tagged_mapping(
-            f"M:<D0:({uth.fatha})><T:([{uth.yaa}{uth.waw}])><D1:({uth.ras_haaa}?[^{uth.shadda}]{uth.ras_haaa}?$)>",
-            f"<D0:\\1><T:{(moshaf.madd_alleen_len - 1) * '\\2'}><D1:\\3>",
-            text,
-            mappings,
-            TajweedRuleType.LEEN_MADD,
-        )
+        text, mappings = self.leen_regs[moshaf.madd_alleen_len].sub(text, mappings)
 
         # المد الطبيعي
-        for madd_patt in self.madd_map.values():
-            text, mappings = sub_with_tagged_mapping(
-                f"M:{madd_patt.pattern}<r1:([^{madd_patt.madd}{uth.ras_haaa}{uth.shadda}{uth.harakat_group}]|$)>",
-                f"<r:\\1><T:{2 * madd_patt.target}><r1:\\2>",
-                text,
-                mappings,
-                TajweedRuleType.NORMAL_MADD,
-            )
+        for reg in self.normal_madd_regs:
+            text, mappings = reg.sub(text, mappings)
 
         return text, mappings
 
