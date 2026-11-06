@@ -291,6 +291,49 @@ class PhonetizerMappings:
         else:
             return found_uth_idx
 
+    def find_uth_idx_or_deleted_end_log_n(self, curr_ph_pos_idx: int) -> int:
+        """curr_ph_pos_idx: is exclusive"""
+        self.init_uth_start(curr_ph_pos_idx)
+
+        lo = self._uth_start
+        hi = len(self.uth_to_ph) - 1
+        found_uth_idx = -1
+        while lo <= hi:
+            mid = (lo + hi) // 2
+
+            if mid == self._uth_start:
+                start, end = self._prev_pos
+            else:
+                start, end = self.uth_to_ph[mid].pos
+
+            if curr_ph_pos_idx < start or (curr_ph_pos_idx == start and start != end):
+                hi = mid - 1
+            elif curr_ph_pos_idx > end:
+                lo = mid + 1
+            else:
+                found_uth_idx = mid
+                break
+        if found_uth_idx == -1:
+            raise ValueError("Can not find uth_idx at first time")
+
+        # Checking we have the most last end
+        for uth_idx in range(found_uth_idx, len(self.uth_to_ph)):
+            if uth_idx == self._uth_start and self._is_uth_start_altered():
+                start, end = self._prev_pos
+            else:
+                start, end = self.uth_to_ph[uth_idx].pos
+
+            if (
+                curr_ph_pos_idx > start
+                and curr_ph_pos_idx <= end
+                or (start == end and curr_ph_pos_idx == start)
+            ):
+                found_uth_idx = uth_idx
+            elif start > curr_ph_pos_idx:
+                break
+
+        return found_uth_idx
+
     def update_ph_one_to_many(
         self, curr_ph_pos_start: int, new_ph_pos_start: int, N: int
     ) -> None:
@@ -339,9 +382,9 @@ class PhonetizerMappings:
         )
 
         uth_start = self.find_uth_idx_or_deleted_start(curr_ph_pos_start)
-        uth_end = self.find_uth_idx_or_deleted_end(
-            curr_ph_pos_start + N - 1
-        )  # end is inclusive
+        uth_end = self.find_uth_idx_or_deleted_end_log_n(
+            curr_ph_pos_start + N
+        )  # end is exclusive
 
         # assert self._is_uth_start_altered(), "a shift occured it has to be altered"
 
