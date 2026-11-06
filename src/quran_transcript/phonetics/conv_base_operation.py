@@ -1,6 +1,7 @@
 import re
+from bisect import bisect_left
 from collections.abc import Callable, Iterator
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Literal, TypeAlias
 from uuid import uuid4
 
@@ -8,7 +9,20 @@ from .moshaf_attributes import MoshafAttributes
 from .tajweed_rulses import TajweedRule, TajweedRuleMetadata, TajweedRuleType
 
 
-@dataclass
+class _ShiftBlock:
+    """Shared lazy offset for a block of mapping positions.
+
+    Range shifts are applied by changing ``delta`` once per fully covered block
+    instead of updating every ``MappingPos`` inside it.
+    """
+
+    __slots__ = ("delta",)
+
+    def __init__(self):
+        self.delta = 0
+
+
+@dataclass(init=False, eq=False)
 class MappingPos:
     """Represents character position mappings in Quranic text transformations.
 
@@ -34,9 +48,44 @@ class MappingPos:
     """
 
     # TODO: fill the uthmani tajweed rules
-    pos: tuple[int, int]  # start, (pythonic exlusive end)
+    start: int
+    end: int  # pythonic exclusive end
     tajweed_rules: list[TajweedRule] | None = None
     deleted: bool = False
+    _block: _ShiftBlock | None = field(default=None, repr=False, compare=False)
+
+    def __init__(
+        self,
+        pos: tuple[int, int],
+        tajweed_rules: list[TajweedRule] | None = None,
+        deleted: bool = False,
+    ):
+        self._block = None
+        self.start, self.end = pos
+        self.tajweed_rules = tajweed_rules
+        self.deleted = deleted
+
+    @property
+    def pos(self) -> tuple[int, int]:
+        block = self._block
+        delta = block.delta if block is not None else 0
+        return (self.start + delta, self.end + delta)
+
+    @pos.setter
+    def pos(self, value: tuple[int, int]) -> None:
+        block = self._block
+        delta = block.delta if block is not None else 0
+        self.start = value[0] - delta
+        self.end = value[1] - delta
+
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, MappingPos):
+            return NotImplemented
+        return (
+            self.pos == other.pos
+            and self.tajweed_rules == other.tajweed_rules
+            and self.deleted == other.deleted
+        )
 
     def add_tajweed_rule(
         self, new_tajweed_rules: TajweedRule | list[TajweedRule] | None
@@ -94,22 +143,26 @@ class TajweedRulePartContainer:
         self.old_map: dict[
             int, list[TajweedRulePart]
         ] = {}  # temp is in the old idx space
+        self._old_keys: list[int] = []
 
     def finalize(self):
+        if not self.new_map:
+            return
 
-        un_shifted_keys = list(self.old_map.keys())
-        for idx in un_shifted_keys:
-            parts = self.old_map.pop(idx)
-            self.new_map.setdefault(idx, []).extend(parts)
+        new_map = self.new_map
+        for idx, parts in self.old_map.items():
+            new_map.setdefault(idx, []).extend(parts)
 
-        self.old_map = self.new_map
+        self.old_map = new_map
         self.new_map = {}
+        self._old_keys = sorted(new_map)
 
     def __iter__(self) -> Iterator[TajweedRulePart]:
         """The iterator should be called after finalize"""
-        sorted_keys = sorted(self.old_map.keys())
-        for idx in sorted_keys:
-            yield from self.old_map[idx]
+        for idx in self._old_keys:
+            for part in self.old_map[idx]:
+                part.ph_idx = idx
+                yield part
 
     def insert(self, idx: int, taj_rule_part: TajweedRulePart) -> None:
         self.new_map.setdefault(idx, []).append(taj_rule_part)
@@ -139,19 +192,23 @@ class TajweedRulePartContainer:
             end (int): execlusive
 
         """
-        if shift_val == 0 or self.old_map == {}:
+        if shift_val == 0 or not self.old_map:
             return
 
-        for idx in range(old_start, old_end):
-            new_idx = idx + shift_val
-            if idx in self.old_map:
-                parts = self.old_map.pop(idx)
+        keys = self._old_keys
+        i = bisect_left(keys, old_start)
+        j = bisect_left(keys, old_end)
+        if i == j:
+            return
 
-                # updating the idx
-                for p_idx in range(len(parts)):
-                    parts[p_idx].ph_idx = new_idx
+        moved = keys[i:j]
+        del keys[i:j]
 
-                self.new_map.setdefault(new_idx, []).extend(parts)
+        old_map = self.old_map
+        new_map = self.new_map
+        for idx in moved:
+            parts = old_map.pop(idx)
+            new_map.setdefault(idx + shift_val, []).extend(parts)
 
     def delete_shift(self, old_start: int, old_end: int, new_idx: int) -> None:
         """Not acully deleting but moving old idx and concatenate them to the new index
@@ -160,17 +217,23 @@ class TajweedRulePartContainer:
             end (int): execlusive
 
         """
-        if old_end - 1 == new_idx or self.old_map == {}:
+        if old_end - 1 == new_idx or not self.old_map:
             return
 
-        for idx in range(old_start, old_end):
-            if idx in self.old_map:
-                parts = self.old_map.pop(idx)
-                # updating the idx
-                for p_idx in range(len(parts)):
-                    parts[p_idx].ph_idx = new_idx
+        keys = self._old_keys
+        i = bisect_left(keys, old_start)
+        j = bisect_left(keys, old_end)
+        if i == j:
+            return
 
-                self.new_map.setdefault(new_idx, []).extend(parts)
+        moved = keys[i:j]
+        del keys[i:j]
+
+        old_map = self.old_map
+        new_map = self.new_map
+        for idx in moved:
+            parts = old_map.pop(idx)
+            new_map.setdefault(new_idx, []).extend(parts)
 
 
 @dataclass
@@ -192,6 +255,8 @@ class PhonetizerMappings:
 
     def __setitem__(self, idx: int, val):
         self.uth_to_ph[idx] = val
+        if getattr(val, "_block", None) is None and self._blocks:
+            val._block = self._blocks[idx // self._block_size]
 
     def __len__(self):
         return len(self.uth_to_ph)
@@ -202,6 +267,43 @@ class PhonetizerMappings:
         self._taj_to_id = {}
         self._taj_parts = TajweedRulePartContainer()
         self._taj_to_first_to_watch: dict[str, Literal["TAJ", "DEP"]] = {}
+
+        # Positions are shifted lazily per block. A range update only touches
+        # the boundary blocks and a single integer per fully covered block.
+        self._block_size = 8
+        n_blocks = (len(self.uth_to_ph) + self._block_size - 1) // self._block_size
+        self._blocks = [_ShiftBlock() for _ in range(n_blocks)]
+        for idx, mapping_pos in enumerate(self.uth_to_ph):
+            mapping_pos._block = self._blocks[idx // self._block_size]
+
+    def _range_add(self, start: int, end: int, delta: int) -> None:
+        """Add ``delta`` to mapping positions in the half-open range [start, end)."""
+        if start >= end or delta == 0:
+            return
+
+        uth_to_ph = self.uth_to_ph
+        blocks = self._blocks
+        block_size = self._block_size
+        first_block = start // block_size
+        last_block = (end - 1) // block_size
+
+        if first_block == last_block:
+            for mapping_pos in uth_to_ph[start:end]:
+                mapping_pos.start += delta
+                mapping_pos.end += delta
+            return
+
+        first_block_end = (first_block + 1) * block_size
+        for mapping_pos in uth_to_ph[start:first_block_end]:
+            mapping_pos.start += delta
+            mapping_pos.end += delta
+
+        for block_idx in range(first_block + 1, last_block):
+            blocks[block_idx].delta += delta
+
+        for mapping_pos in uth_to_ph[last_block * block_size : end]:
+            mapping_pos.start += delta
+            mapping_pos.end += delta
 
     def reset(self):
         self._uth_start = -1
@@ -373,7 +475,6 @@ class PhonetizerMappings:
         new_ph_pos_start: int,
         N: int,
     ) -> None:
-
         # Shifting Tajweed Rules
         self._taj_parts.shift(
             curr_ph_pos_start,
@@ -392,21 +493,20 @@ class PhonetizerMappings:
         if uth_start == self._uth_start:
             uth_start += 1
 
-        shift = new_ph_pos_start - curr_ph_pos_start
-        prev_pos = (-1, -1)
-        for uth_idx in range(uth_start, uth_end + 1):
-            prev_pos = self.uth_to_ph[uth_idx].pos
-            self.uth_to_ph[uth_idx].pos = (
-                self.uth_to_ph[uth_idx].pos[0] + shift,
-                self.uth_to_ph[uth_idx].pos[1] + shift,
-            )
-        # Updatign our self._uth_start (states)
-        # avoiding updaing state with new pos
-        if prev_pos[0] != -1 and uth_idx != self._uth_start:
-            # A change happend so we need to udpate the:
-            # self_uth_start and self._prev_pos
-            self._uth_start = uth_idx
-            self._prev_pos = prev_pos
+        if uth_start <= uth_end:
+            # Keep the pre-shift position of the last shifted entry. `_prev_pos`
+            # is a snapshot used by `_is_uth_start_altered`, not the new value.
+            prev_pos = self.uth_to_ph[uth_end].pos
+            shift = new_ph_pos_start - curr_ph_pos_start
+            self._range_add(uth_start, uth_end + 1, shift)
+
+            # Updatign our self._uth_start (states)
+            # avoiding updaing state with new pos
+            if uth_end != self._uth_start:
+                # A change happend so we need to udpate the:
+                # self_uth_start and self._prev_pos
+                self._uth_start = uth_end
+                self._prev_pos = prev_pos
 
     def delete_shift(
         self,
@@ -419,14 +519,14 @@ class PhonetizerMappings:
             curr_ph_pos_start, curr_ph_pos_start + N, new_ph_pos_start
         )
         uth_start = self.find_uth_idx_or_deleted_start(curr_ph_pos_start)
-        uth_end = self.find_uth_idx_or_deleted_end(
-            curr_ph_pos_start + N - 1
-        )  # end is inclusive
+        uth_end = self.find_uth_idx_or_deleted_end_log_n(curr_ph_pos_start + N)
+
+        if uth_start > uth_end:
+            return
 
         shift = new_ph_pos_start - curr_ph_pos_start
-        prev_pos = (-1, -1)
+        prev_pos = self.uth_to_ph[uth_end].pos
         for uth_idx in range(uth_start, uth_end + 1):
-            prev_pos = self.uth_to_ph[uth_idx].pos
             start, end = self.uth_to_ph[uth_idx].pos
             if uth_idx != self._uth_start:
                 # self._uth_start is already shifted
@@ -444,9 +544,9 @@ class PhonetizerMappings:
 
         # Updating our self._uth_start (states)
         # avoiding updaing state with new pos
-        if prev_pos[0] != -1 and uth_idx != self._uth_start:
+        if uth_end != self._uth_start:
             # A change happend so we need to udpate the:
-            self._uth_start = uth_idx
+            self._uth_start = uth_end
             self._prev_pos = prev_pos
 
     def insert_tajweed_rule_part(
