@@ -221,6 +221,7 @@ class TajweedRulePartContainer:
             return
 
         keys = self._old_keys
+        # avoid recomputing self._old_keys at finalize
         i = bisect_left(keys, old_start)
         j = bisect_left(keys, old_end)
         if i == j:
@@ -246,6 +247,7 @@ class TajweedRulePartContainer:
             return
 
         keys = self._old_keys
+        # avoid recomputing self._old_keys at finalize
         i = bisect_left(keys, old_start)
         j = bisect_left(keys, old_end)
         if i == j:
@@ -302,30 +304,51 @@ class PhonetizerMappings:
             mapping_pos._block = self._blocks[idx // self._block_size]
 
     def range_add(self, start: int, end: int, delta: int) -> None:
-        """Add ``delta`` to mapping positions in the half-open range [start, end)."""
+        """Add ``delta`` to mapping positions in the half-open range [start, end).
+
+        A Simply adding offset to the delta for a block instead of loop over every entry.
+        A block's ``delta`` is shared by all mappings in that block, so only
+        fully covered interior blocks can use the one-integer shortcut.
+        Boundary blocks are usually partial and must be updated element by
+        element.
+
+        Example with ``block_size = 8`` and ``range_add(5, 21, +3)``::
+
+            indices:  0 1 2 3 4 | 5 6 7 | 8 9 10 11 12 13 14 15 | 16 17 18 19 20 | 21 22 23
+            range:                [--------------------------------------------)
+                                  ^^^^^   ^^^^^^^^^^^^^^^^^^^^^   ^^^^^^^^^^^^^^
+                                  tail      block.delta += 3          head
+        """
         if start >= end or delta == 0:
+            # Empty range or no-op shift.
             return
 
         uth_to_ph = self.uth_to_ph
         blocks = self._blocks
         block_size = self._block_size
+        # `end` is exclusive, so `end - 1` is the last affected index.
         first_block = start // block_size
         last_block = (end - 1) // block_size
 
         if first_block == last_block:
+            # Range is inside one block: update only the covered mappings.
+            # Changing block.delta would also move the rest of the block.
             for mapping_pos in uth_to_ph[start:end]:
                 mapping_pos.start += delta
                 mapping_pos.end += delta
             return
 
+        # First block is partial: update only its tail.
         first_block_end = (first_block + 1) * block_size
         for mapping_pos in uth_to_ph[start:first_block_end]:
             mapping_pos.start += delta
             mapping_pos.end += delta
 
+        # Fully covered interior blocks: one integer update per block.
         for block_idx in range(first_block + 1, last_block):
             blocks[block_idx].delta += delta
 
+        # Last block is partial: update only its head.
         for mapping_pos in uth_to_ph[last_block * block_size : end]:
             mapping_pos.start += delta
             mapping_pos.end += delta
