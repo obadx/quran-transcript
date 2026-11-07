@@ -45,6 +45,11 @@ class MappingPos:
         >>> # Add a tajweed rule to this mapping
         >>> mapping.add_tajweed_rule(None)  # No rule added
         >>> mapping.add_tajweed_rule(None)  # Still no rules
+
+
+    ShiftBlok Idea:
+    * The idea is simple: split mapping into blocks have constat delta.
+    * Whever update to the pos we ensure that delta unchanged
     """
 
     # TODO: fill the uthmani tajweed rules
@@ -150,12 +155,27 @@ class TajweedRulePartContainer:
             return
 
         new_map = self.new_map
-        for idx, parts in self.old_map.items():
-            new_map.setdefault(idx, []).extend(parts)
+        old_map = self.old_map
 
-        self.old_map = new_map
-        self.new_map = {}
-        self._old_keys = sorted(new_map)
+        # getting keys from the minimum of both (old and new) to reduced the copy overhead
+        if len(new_map) >= len(old_map):
+            for idx, parts in old_map.items():
+                new_map.setdefault(idx, []).extend(parts)
+
+            self.old_map = new_map
+            self.new_map = {}
+            self._old_keys = sorted(new_map)
+        else:
+            for idx, parts in new_map.items():
+                existing = old_map.get(idx)
+                if existing is None:
+                    old_map[idx] = parts
+                else:
+                    # Keep the original new-before-old order for overlapping
+                    # keys.
+                    existing[:0] = parts
+            self.new_map = {}
+            self._old_keys = sorted(old_map)
 
     def __iter__(self) -> Iterator[TajweedRulePart]:
         """The iterator should be called after finalize"""
@@ -276,7 +296,7 @@ class PhonetizerMappings:
         for idx, mapping_pos in enumerate(self.uth_to_ph):
             mapping_pos._block = self._blocks[idx // self._block_size]
 
-    def _range_add(self, start: int, end: int, delta: int) -> None:
+    def range_add(self, start: int, end: int, delta: int) -> None:
         """Add ``delta`` to mapping positions in the half-open range [start, end)."""
         if start >= end or delta == 0:
             return
@@ -369,44 +389,30 @@ class PhonetizerMappings:
                 return uth_idx
         raise ValueError("Can not find uth_idx")
 
-    def find_uth_idx_or_deleted_end(self, curr_ph_pos_idx: int) -> int:
-        self.init_uth_start(curr_ph_pos_idx)
-
-        found_uth_idx = -1
-        for uth_idx in range(self._uth_start, len(self.uth_to_ph)):
-            if uth_idx == self._uth_start and self._is_uth_start_altered():
-                start, end = self._prev_pos
-            else:
-                start, end = self.uth_to_ph[uth_idx].pos
-
-            if (
-                curr_ph_pos_idx >= start
-                and curr_ph_pos_idx < end
-                or (start == end and (curr_ph_pos_idx + 1) == start)
-            ):
-                found_uth_idx = uth_idx
-            elif start > curr_ph_pos_idx:
-                break
-
-        if found_uth_idx == -1:
-            raise ValueError("Can not find uth_idx")
-        else:
-            return found_uth_idx
-
     def find_uth_idx_or_deleted_end_log_n(self, curr_ph_pos_idx: int) -> int:
         """curr_ph_pos_idx: is exclusive"""
         self.init_uth_start(curr_ph_pos_idx)
 
-        lo = self._uth_start
-        hi = len(self.uth_to_ph) - 1
+        uth_to_ph = self.uth_to_ph
+        uth_start = self._uth_start
+        prev_start, prev_end = self._prev_pos
+
+        lo = uth_start
+        hi = len(uth_to_ph) - 1
         found_uth_idx = -1
         while lo <= hi:
             mid = (lo + hi) // 2
 
-            if mid == self._uth_start:
-                start, end = self._prev_pos
+            if mid == uth_start:
+                start, end = prev_start, prev_end
             else:
-                start, end = self.uth_to_ph[mid].pos
+                mapping = uth_to_ph[mid]
+                block = mapping._block
+                if block is None:
+                    start, end = mapping.start, mapping.end
+                else:
+                    delta = block.delta
+                    start, end = mapping.start + delta, mapping.end + delta
 
             if curr_ph_pos_idx < start or (curr_ph_pos_idx == start and start != end):
                 hi = mid - 1
@@ -419,11 +425,17 @@ class PhonetizerMappings:
             raise ValueError("Can not find uth_idx at first time")
 
         # Checking we have the most last end
-        for uth_idx in range(found_uth_idx, len(self.uth_to_ph)):
-            if uth_idx == self._uth_start and self._is_uth_start_altered():
-                start, end = self._prev_pos
+        for uth_idx in range(found_uth_idx, len(uth_to_ph)):
+            if uth_idx == uth_start:
+                start, end = prev_start, prev_end
             else:
-                start, end = self.uth_to_ph[uth_idx].pos
+                mapping = uth_to_ph[uth_idx]
+                block = mapping._block
+                if block is None:
+                    start, end = mapping.start, mapping.end
+                else:
+                    delta = block.delta
+                    start, end = mapping.start + delta, mapping.end + delta
 
             if (
                 curr_ph_pos_idx > start
@@ -434,6 +446,49 @@ class PhonetizerMappings:
             elif start > curr_ph_pos_idx:
                 break
 
+        return found_uth_idx
+
+    def find_uth_idx_or_deleted_end_linear(
+        self, curr_ph_pos_idx: int, start_idx: int | None = None
+    ) -> int:
+        """Linear variant of `find_uth_idx_or_deleted_end_log_n`.
+
+        `curr_ph_pos_idx` is exclusive, matching the log-n variant. `start_idx`
+        may be passed when the caller already resolved the start mapping with
+        `find_uth_idx_or_deleted_start`.
+        """
+        self.init_uth_start(curr_ph_pos_idx)
+
+        uth_to_ph = self.uth_to_ph
+        uth_start = self._uth_start
+        prev_start, prev_end = self._prev_pos
+        if start_idx is None:
+            start_idx = uth_start
+
+        found_uth_idx = -1
+        for uth_idx in range(start_idx, len(uth_to_ph)):
+            if uth_idx == uth_start:
+                start, end = prev_start, prev_end
+            else:
+                mapping = uth_to_ph[uth_idx]
+                block = mapping._block
+                if block is None:
+                    start, end = mapping.start, mapping.end
+                else:
+                    delta = block.delta
+                    start, end = mapping.start + delta, mapping.end + delta
+
+            if (
+                curr_ph_pos_idx > start
+                and curr_ph_pos_idx <= end
+                or (start == end and curr_ph_pos_idx == start)
+            ):
+                found_uth_idx = uth_idx
+            elif start > curr_ph_pos_idx:
+                break
+
+        if found_uth_idx == -1:
+            raise ValueError("Can not find uth_idx")
         return found_uth_idx
 
     def update_ph_one_to_many(
@@ -483,9 +538,13 @@ class PhonetizerMappings:
         )
 
         uth_start = self.find_uth_idx_or_deleted_start(curr_ph_pos_start)
-        uth_end = self.find_uth_idx_or_deleted_end_log_n(
-            curr_ph_pos_start + N
-        )  # end is exclusive
+        curr_end = curr_ph_pos_start + N
+        if N < 5:
+            # Short ranges are cheaper to resolve with a forward scan from the
+            # already-known start mapping.
+            uth_end = self.find_uth_idx_or_deleted_end_linear(curr_end, uth_start)
+        else:
+            uth_end = self.find_uth_idx_or_deleted_end_log_n(curr_end)
 
         # assert self._is_uth_start_altered(), "a shift occured it has to be altered"
 
@@ -498,7 +557,7 @@ class PhonetizerMappings:
             # is a snapshot used by `_is_uth_start_altered`, not the new value.
             prev_pos = self.uth_to_ph[uth_end].pos
             shift = new_ph_pos_start - curr_ph_pos_start
-            self._range_add(uth_start, uth_end + 1, shift)
+            self.range_add(uth_start, uth_end + 1, shift)
 
             # Updatign our self._uth_start (states)
             # avoiding updaing state with new pos
@@ -519,7 +578,9 @@ class PhonetizerMappings:
             curr_ph_pos_start, curr_ph_pos_start + N, new_ph_pos_start
         )
         uth_start = self.find_uth_idx_or_deleted_start(curr_ph_pos_start)
-        uth_end = self.find_uth_idx_or_deleted_end_log_n(curr_ph_pos_start + N)
+        uth_end = self.find_uth_idx_or_deleted_end_linear(
+            curr_ph_pos_start + N, uth_start
+        )
 
         if uth_start > uth_end:
             return
