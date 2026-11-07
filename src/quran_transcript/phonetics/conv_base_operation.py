@@ -14,6 +14,11 @@ class _ShiftBlock:
 
     Range shifts are applied by changing ``delta`` once per fully covered block
     instead of updating every ``MappingPos`` inside it.
+
+
+    ShiftBlok Idea:
+    * The idea is simple: split mapping into blocks have constat delta.
+    * Whever update to the pos we ensure that delta unchanged
     """
 
     __slots__ = ("delta",)
