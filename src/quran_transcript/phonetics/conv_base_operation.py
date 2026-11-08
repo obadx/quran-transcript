@@ -60,14 +60,14 @@ class MappingPos:
     # TODO: fill the uthmani tajweed rules
     start: int
     end: int  # pythonic exclusive end
-    tajweed_rules: list[TajweedRule] | None = None
+    tajweed_rules: list[TajweedRuleType] | None = None
     deleted: bool = False
     _block: _ShiftBlock | None = field(default=None, repr=False, compare=False)
 
     def __init__(
         self,
         pos: tuple[int, int],
-        tajweed_rules: list[TajweedRule] | None = None,
+        tajweed_rules: list[TajweedRuleType] | None = None,
         deleted: bool = False,
     ):
         self._block = None
@@ -98,7 +98,7 @@ class MappingPos:
         )
 
     def add_tajweed_rule(
-        self, new_tajweed_rules: TajweedRule | list[TajweedRule] | None
+        self, new_tajweed_rules: TajweedRuleType | list[TajweedRuleType] | None
     ) -> None:
         """Add a tajweed rule to this mapping position.
 
@@ -118,7 +118,7 @@ class MappingPos:
         if self.tajweed_rules is None:
             self.tajweed_rules = []
         # if new_tajweed_rules is a single rule, make it a list
-        if isinstance(new_tajweed_rules, TajweedRule):
+        if isinstance(new_tajweed_rules, TajweedRuleType):
             self.tajweed_rules.append(new_tajweed_rules)
         else:
             self.tajweed_rules.extend(new_tajweed_rules)
@@ -294,6 +294,8 @@ class PhonetizerMappings:
         self._taj_to_id = {}
         self._taj_parts = TajweedRulePartContainer()
         self._taj_to_first_to_watch: dict[str, Literal["TAJ", "DEP"]] = {}
+        self._ph_to_taj_rules = []
+        self._ph_to_uth = []
 
         # Positions are shifted lazily per block. A range update only touches
         # the boundary blocks and a single integer per fully covered block.
@@ -745,8 +747,28 @@ class PhonetizerMappings:
         return ph_to_taj_rules
 
     @property
-    def ph_to_taj_rules(self):
-        return self.get_ph_to_tajweed_rules()
+    def ph_to_taj_rules(self) -> list[list[TajweedRuleMetadata]]:
+        if self._ph_to_taj_rules:
+            return self._ph_to_taj_rules
+        self._ph_to_taj_rules = self.get_ph_to_tajweed_rules()
+        return self._ph_to_taj_rules
+
+    @property
+    def ph_to_uth(self) -> list[int]:
+        if self._ph_to_uth:
+            return self._ph_to_uth
+        ph_to_uth = []
+        for uth_idx in range(len(self.uth_to_ph)):
+            for ph_idx in range(
+                self.uth_to_ph[uth_idx].pos[0], self.uth_to_ph[uth_idx].pos[1]
+            ):
+                ph_to_uth.append(uth_idx)
+
+        # last index
+        ph_to_uth.append(len(self.uth_to_ph))
+
+        self._ph_to_uth = ph_to_uth
+        return self._ph_to_uth
 
 
 def init_mappings(text: str) -> PhonetizerMappings:
