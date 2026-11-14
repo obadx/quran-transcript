@@ -4,6 +4,7 @@ from enum import IntEnum, auto
 from typing import Literal, TypeAlias
 
 from ..alphabet import MultiLangText
+from ..alphabet import phonetics as ph
 
 
 class TajweedRuleType(IntEnum):
@@ -118,7 +119,7 @@ class TajweedRule(ABC):
     rule_type: TajweedRuleType
     correctness: CorrectnessType
 
-    def count(self, ref_text: str, pred_text: str) -> int:
+    def count(self, ref_text: str, pred_text: str) -> int | float:
         return 0
 
     def match(self, ref_text: str, pred_text: str) -> bool:
@@ -371,7 +372,7 @@ class TanweenFatahForHaaTaneethPauseRule(DescriptiveTajweedRule):
 
 
 @dataclass
-class IzharNoonRule(DescriptiveTajweedRule):
+class IzharNoonRule(TajweedRule):
     name: MultiLangText = MultiLangText(
         ar="الإظهار الحلقي",
         en="Al-Izhar Al-Halqi for Sakin Noon and Tanween",
@@ -381,10 +382,11 @@ class IzharNoonRule(DescriptiveTajweedRule):
         en="",
     )
     rule_type: TajweedRuleType = TajweedRuleType.IZHAR_NOON
+    correctness: CorrectnessType = "match"
 
 
 @dataclass
-class IdghamGonnahNoonRule(DescriptiveTajweedRule):
+class IdghamGonnahNoonRule(TajweedRule):
     name: MultiLangText = MultiLangText(
         ar="إدغام بغنة",
         en="Idgham with Ghunnah",
@@ -394,10 +396,18 @@ class IdghamGonnahNoonRule(DescriptiveTajweedRule):
         en="",
     )
     rule_type: TajweedRuleType = TajweedRuleType.IDGHAM_GONNAH_NOON
+    correctness: CorrectnessType = "count"
+
+    def count(self, ref_text: str, pred_text: str) -> float:
+        assert ref_text[0] == pred_text[0]
+        if ref_text[0] in {ph.yaa, ph.waw}:
+            return (len(pred_text) + 1) / 2
+        else:
+            return len(pred_text) / 2
 
 
 @dataclass
-class IqlabNoonRule(DescriptiveTajweedRule):
+class IqlabNoonRule(TajweedRule):
     name: MultiLangText = MultiLangText(
         ar="إقلاب",
         en="Iqlab",
@@ -407,23 +417,36 @@ class IqlabNoonRule(DescriptiveTajweedRule):
         en="",
     )
     rule_type: TajweedRuleType = TajweedRuleType.IQLAB_NOON
+    correctness: CorrectnessType = "count"
+
+    def count(self, ref_text: str, pred_text: str) -> float:
+        assert ref_text[0] == pred_text[0]
+        if ref_text[0] == ph.meem_mokhfah:
+            return (len(pred_text) + 1) / 2
+        else:
+            return len(pred_text) / 2
 
 
 @dataclass
-class IkhfaaNoonRule(DescriptiveTajweedRule):
+class IkhfaaNoonRule(TajweedRule):
     name: MultiLangText = MultiLangText(
-        ar="إخفاء",
-        en="Ikhfaa",
+        ar="إخفاء حقيقي",
+        en="Ikhfaa Haqiqy",
     )
     description: MultiLangText = MultiLangText(
         ar="",
         en="",
     )
     rule_type: TajweedRuleType = TajweedRuleType.IKHFAA_NOON
+    correctness: CorrectnessType = "count"
+
+    def count(self, ref_text: str, pred_text: str) -> float:
+        assert ref_text[0] == pred_text[0]
+        return (len(pred_text) + 1) / 2
 
 
 @dataclass
-class IzharMeemRule(DescriptiveTajweedRule):
+class IzharMeemRule(TajweedRule):
     name: MultiLangText = MultiLangText(
         ar="الإظهار الشفوي",
         en="Al-Izhar Al-Shafawy for Sakin Meem",
@@ -433,10 +456,11 @@ class IzharMeemRule(DescriptiveTajweedRule):
         en="",
     )
     rule_type: TajweedRuleType = TajweedRuleType.IZHAR_MEEM
+    correctness: CorrectnessType = "match"
 
 
 @dataclass
-class IdghamMeemRule(DescriptiveTajweedRule):
+class IdghamMeemRule(TajweedRule):
     name: MultiLangText = MultiLangText(
         ar="إدغام الميم الساكنة",
         en="Idgham for Sakin Meem",
@@ -445,11 +469,16 @@ class IdghamMeemRule(DescriptiveTajweedRule):
         ar="",
         en="",
     )
+    correctness: CorrectnessType = "count"
     rule_type: TajweedRuleType = TajweedRuleType.IDGHAM_MEEM
+
+    def count(self, ref_text: str, pred_text: str) -> float:
+        assert ref_text[0] == pred_text[0]
+        return len(pred_text) / 2
 
 
 @dataclass
-class IkhfaaMeemRule(DescriptiveTajweedRule):
+class IkhfaaMeemRule(TajweedRule):
     name: MultiLangText = MultiLangText(
         ar="إخفاء شفوي",
         en="Ikhfaa Shafawy for Sakin Meem",
@@ -459,10 +488,18 @@ class IkhfaaMeemRule(DescriptiveTajweedRule):
         en="",
     )
     rule_type: TajweedRuleType = TajweedRuleType.IKHFAA_MEEM
+    correctness: CorrectnessType = "count"
+
+    def count(self, ref_text: str, pred_text: str) -> float:
+        assert ref_text[0] == pred_text[0]
+        if ref_text[0] == ph.meem_mokhfah:
+            return (len(pred_text) + 1) / 2
+        else:
+            return len(pred_text) / 2
 
 
 @dataclass
-class MoshadadNoonRule(DescriptiveTajweedRule):
+class MoshadadNoonRule(TajweedRule):
     name: MultiLangText = MultiLangText(
         ar="نون مشددة",
         en="Noon Mushaddadah",
@@ -472,10 +509,15 @@ class MoshadadNoonRule(DescriptiveTajweedRule):
         en="",
     )
     rule_type: TajweedRuleType = TajweedRuleType.MOSHADAD_NOON
+    correctness: CorrectnessType = "count"
+
+    def count(self, ref_text: str, pred_text: str) -> float:
+        assert ref_text[0] == pred_text[0]
+        return len(pred_text) / 2
 
 
 @dataclass
-class MoshadadMeemRule(DescriptiveTajweedRule):
+class MoshadadMeemRule(TajweedRule):
     name: MultiLangText = MultiLangText(
         ar="ميم مشددة",
         en="Meem Mushaddadah",
@@ -485,10 +527,15 @@ class MoshadadMeemRule(DescriptiveTajweedRule):
         en="",
     )
     rule_type: TajweedRuleType = TajweedRuleType.MOSHADAD_MEEM
+    correctness: CorrectnessType = "count"
+
+    def count(self, ref_text: str, pred_text: str) -> float:
+        assert ref_text[0] == pred_text[0]
+        return len(pred_text) / 2
 
 
 @dataclass
-class IdghamKamelRule(DescriptiveTajweedRule):
+class IdghamKamelRule(TajweedRule):
     name: MultiLangText = MultiLangText(
         ar="إدغام كامل",
         en="Full Merging",
@@ -498,10 +545,11 @@ class IdghamKamelRule(DescriptiveTajweedRule):
         en="",
     )
     rule_type: TajweedRuleType = TajweedRuleType.IDGHAM_KAMEL
+    correctness: CorrectnessType = "match"
 
 
 @dataclass
-class KasrTanweenIltiqaaSakenaynRule(DescriptiveTajweedRule):
+class KasrTanweenIltiqaaSakenaynRule(TajweedRule):
     name: MultiLangText = MultiLangText(
         ar="كسر التنوين لالتقاء الساكنين",
         en="Kasr Tanween for Iltiqaa Sakenayn",
@@ -511,6 +559,7 @@ class KasrTanweenIltiqaaSakenaynRule(DescriptiveTajweedRule):
         en="",
     )
     rule_type: TajweedRuleType = TajweedRuleType.KASR_TANWEEN_ILTIQAA_SAKENAYN
+    correctness: CorrectnessType = "match"
 
 
 @dataclass
@@ -527,7 +576,7 @@ class DeleteFirstIltiqaaSakenaynRule(DescriptiveTajweedRule):
 
 
 @dataclass
-class TasheelRule(DescriptiveTajweedRule):
+class TasheelRule(TajweedRule):
     name: MultiLangText = MultiLangText(
         ar="تسهيل",
         en="Tasheel",
@@ -537,10 +586,11 @@ class TasheelRule(DescriptiveTajweedRule):
         en="",
     )
     rule_type: TajweedRuleType = TajweedRuleType.TASHEEL
+    correctness: CorrectnessType = "match"
 
 
 @dataclass
-class QalqalahRule(DescriptiveTajweedRule):
+class QalqalahRule(TajweedRule):
     name: MultiLangText = MultiLangText(
         ar="قلقلة",
         en="Qalqalah",
@@ -550,13 +600,14 @@ class QalqalahRule(DescriptiveTajweedRule):
         en="",
     )
     rule_type: TajweedRuleType = TajweedRuleType.QALQALAH
+    correctness: CorrectnessType = "match"
 
 
 @dataclass
 class HamzatWaslDeleteRule(DescriptiveTajweedRule):
     name: MultiLangText = MultiLangText(
-        ar="حذف همزة الوصل",
-        en="Hamzat Wasl Delete",
+        ar="حذف همزة الوصل وصلا",
+        en="Hamzat Wasl Delete on Pause",
     )
     description: MultiLangText = MultiLangText(
         ar="",
@@ -618,7 +669,7 @@ class FathAllHamzatWaslRule(DescriptiveTajweedRule):
 
 
 @dataclass
-class IltiqaaHamzatanSecondMaddYaaRule(DescriptiveTajweedRule):
+class IltiqaaHamzatanSecondMaddYaaRule(TajweedRule):
     name: MultiLangText = MultiLangText(
         ar="مد الياء لالتقاء الهمزتين",
         en="Iltiqaa Hamzatan Second Madd Yaa",
@@ -628,10 +679,11 @@ class IltiqaaHamzatanSecondMaddYaaRule(DescriptiveTajweedRule):
         en="",
     )
     rule_type: TajweedRuleType = TajweedRuleType.ILTIQAA_HAMZATAN_SECOND_MADD_YAA
+    correctness: CorrectnessType = "match"
 
 
 @dataclass
-class IltiqaaHamzatanSecondMaddWawRule(DescriptiveTajweedRule):
+class IltiqaaHamzatanSecondMaddWawRule(TajweedRule):
     name: MultiLangText = MultiLangText(
         ar="مد الواو لالتقاء الهمزتين",
         en="Iltiqaa Hamzatan Second Madd Waw",
@@ -641,320 +693,7 @@ class IltiqaaHamzatanSecondMaddWawRule(DescriptiveTajweedRule):
         en="",
     )
     rule_type: TajweedRuleType = TajweedRuleType.ILTIQAA_HAMZATAN_SECOND_MADD_WAW
-
-
-#
-#
-# @dataclass
-# class MonfaselMaddRule(MaddRule):
-#     name: MultiLangText = field(
-#         default_factory=lambda: MultiLangText(ar="المد المنفصل", en="Monfasel Madd")
-#     )
-#     golden_len: int = 4
-#
-#
-# @dataclass
-# class MottaselMaddPauseRule(MaddRule):
-#     name: MultiLangText = field(
-#         default_factory=lambda: MultiLangText(
-#             ar="المد المتصل وقفا", en="Mottasel Madd at Pause"
-#         )
-#     )
-#     golden_len: int = 4
-#
-#
-# @dataclass
-# class MottaselMaddRule(MaddRule):
-#     name: MultiLangText = field(
-#         default_factory=lambda: MultiLangText(ar="المد المتصل", en="Mottasel Madd")
-#     )
-#     golden_len: int = 4
-#
-#
-# @dataclass
-# class LazemMaddRule(MaddRule):
-#     name: MultiLangText = field(
-#         default_factory=lambda: MultiLangText(ar="المد اللازم", en="Lazem Madd")
-#     )
-#     golden_len: int = 6
-#
-#
-# @dataclass
-# class AaredMaddRule(MaddRule):
-#     name: MultiLangText = field(
-#         default_factory=lambda: MultiLangText(ar="المد العارض للسكون", en="Aared Madd")
-#     )
-#     golden_len: int = 4
-#
-#
-# @dataclass
-# class LeenMaddRule(MaddRule):
-#     name: MultiLangText = field(
-#         default_factory=lambda: MultiLangText(ar="مد اللين", en="Leen Madd")
-#     )
-#     golden_len: int = 4
-#
-#     def __post_init__(self):
-#         self.available_tags = {"waw", "yaa"}
-#         super().__post_init__()
-#         self._madd_to_tag = {
-#             alph.phonetics.waw: "waw",
-#             alph.phonetics.yaa: "yaa",
-#         }
-#         assert self.tag in self.available_tags
-#
-#     def count(self, ref_text, pred_text) -> int:
-#         # The case where we have Tashkeel after madd (Error from the model)
-#         if pred_text[-1] != pred_text[0]:
-#             return pred_text[:-1].count(ref_text[0]) + 1
-#         else:
-#             return pred_text.count(ref_text[0]) + 1
-#
-#
-# @dataclass
-# class IdghamKamel(TajweedRule):
-#     name: MultiLangText = field(
-#         default_factory=lambda: MultiLangText(ar="إدغام كامل", en="Full Merging")
-#     )
-#     golden_len: int = 0
-#     correctness_type: Literal["match", "count"] = "match"
-#
-#     def match(self, ref_text, pred_text) -> bool:
-#         return ref_text == pred_text
-#
-#     def is_ph_str_in(self, ph_str: str) -> bool:
-#         """Whether the phonetic script is assoicated with this Tajweed rule or not"""
-#         return True
-#
-#     def get_relvant_rule(self, ph_str: str) -> Optional["TajweedRule"]:
-#         """Returs a Tajweed rule that is assocaited with the input ph_str"""
-#         return None
-#
-#
-# @dataclass
-# class NoonOrMeemRuleMetadata:
-#     name: MultiLangText
-#     tag: str
-#     offset: int = 0
-#     golden_len: int = 4
-#
-#
-# @dataclass
-# class NoonOrMeemRule(TajweedRule):
-#     name: MultiLangText
-#     golden_len: int
-#     offset: int = 0
-#     correctness_type: Literal["match", "count"] = "count"
-#
-#     # TODO:
-#     # * [ ] Add post_init that red the tag Literal and assign it to the avaialbe_tags class field
-#
-#     def __post_init__(self):
-#         self.available_tags = {
-#             "noon_izhar",
-#             "noon",
-#             "noon_yaa",
-#             "noon_waw",
-#             "noon_mokhfah",
-#             "meem_izhar",
-#             "meem",
-#             "meem_mokhfah",
-#         }
-#         super().__post_init__()
-#         self._ph_to_metadata: dict[str, list[NoonOrMeemRuleMetadata]] = {
-#             alph.phonetics.noon: [
-#                 NoonOrMeemRuleMetadata(
-#                     name=field(
-#                         default_factory=lambda: MultiLangText(
-#                             ar="النون المشددة أو المدغمة", en="Moshadad or Modgham Noon"
-#                         )
-#                     ),
-#                     tag="noon",
-#                     offset=0,
-#                 )
-#             ],
-#             alph.phonetics.yaa: [
-#                 NoonOrMeemRuleMetadata(
-#                     name=field(default_factory=lambda: MultiLangText(ar="", en="")),
-#                     tag="noon_yaa",
-#                     offset=1,
-#                 )
-#             ],
-#             alph.phonetics.waw: [
-#                 NoonOrMeemRuleMetadata(
-#                     name=field(default_factory=lambda: MultiLangText(ar="", en="")),
-#                     tag="noon_waw",
-#                     offset=1,
-#                 )
-#             ],
-#             alph.phonetics.noon_mokhfah: [
-#                 NoonOrMeemRuleMetadata(
-#                     name=field(default_factory=lambda: MultiLangText(ar="", en="")),
-#                     tag="noon_mokhfah",
-#                     offset=1,
-#                 )
-#             ],
-#             alph.phonetics.meem: [
-#                 NoonOrMeemRuleMetadata(
-#                     name=field(default_factory=lambda: MultiLangText(ar="", en="")),
-#                     tag="meem",
-#                     offset=0,
-#                 )
-#             ],
-#             alph.phonetics.meem_mokhfah: [
-#                 NoonOrMeemRuleMetadata(
-#                     name=field(default_factory=lambda: MultiLangText(ar="", en="")),
-#                     tag="meem_mokhfah",
-#                     offset=0,
-#                 )
-#             ],
-#         }
-#
-#     def count(self, ref_text, pred_text) -> int:
-#         return pred_text.count(ref_text[0]) + self.offset
-#
-#     def is_ph_str_in(self, ph_str: str) -> bool:
-#         """Whether the phonetic script is assoicated with this Tajweed rule or not"""
-#         if ph_str:
-#             return ph_str[0] in self._ph_to_metadata
-#         else:
-#             return False
-#
-#     def get_relvant_rule(self, ph_str: str) -> Optional["TajweedRule"]:
-#         """Returs a Tajweed rule that is assocaited with the input ph_str"""
-#         if not ph_str:
-#             return None
-#         elif ph_str[0] not in self._ph_to_metadata:
-#             return None
-#         return replace(
-#             self,
-#             name=self._ph_to_metadata[ph_str[0]].name,
-#             offset=self._ph_to_metadata[ph_str[0]].offset,
-#             tag=self._ph_to_metadata[ph_str[0]].tag,
-#         )
-#
-#
-# @dataclass
-# class IzharHalqy(NoonOrMeemRule):
-#     name: MultiLangText = field(
-#         default_factory=lambda: MultiLangText(
-#             ar="الإظهار الحلقي",
-#             en="Al-Izhar Al-Halqi for Sakin Noon and Tanween",
-#         )
-#     )
-#     golden_len: int = 1
-#     offset: int = 0
-#     tag: str = "noon_izhar"
-#
-#
-# @dataclass
-# class IdghamWithGunnah(NoonOrMeemRule):
-#     name: MultiLangText = field(
-#         default_factory=lambda: MultiLangText(
-#             ar="إدغام بغنة",
-#             en="Idgham with Ghunnah",
-#         )
-#     )
-#     golden_len: int = 4
-#     offset: int = 0
-#     tag: Literal["yaa", "waw", "meem", "noon"] = "noon"
-#
-#     def __post_init__(self):
-#         if self.tag in {"yaa", "waw"}:
-#             self.offset = 1
-#         else:
-#             self.offset = 0
-#
-#
-# @dataclass
-# class Iqlab(NoonOrMeemRule):
-#     name: MultiLangText = field(
-#         default_factory=lambda: MultiLangText(
-#             ar="إقلاب",
-#             en="Iqlab",
-#         )
-#     )
-#     golden_len: int = 4
-#     offset: int = 1
-#     tag: Literal["meem", "meem_mokhfah"] = "meem_mokhfah"
-#
-#
-# @dataclass
-# class Ikhfaa(NoonOrMeemRule):
-#     name: MultiLangText = field(
-#         default_factory=lambda: MultiLangText(
-#             ar="إخفاء",
-#             en="Ikfaa",
-#         )
-#     )
-#     golden_len: int = 4
-#     offset: int = 1
-#     tag: str = "noon_mokhfah"
-#
-#
-# @dataclass
-# class NoonWithShaddah(NoonOrMeemRule):
-#     name: MultiLangText = field(
-#         default_factory=lambda: MultiLangText(
-#             ar="نون مشددة",
-#             en="Noom Mushaddadah",
-#         )
-#     )
-#     golden_len: int = 4
-#     offset: int = 0
-#     tag: str = "noon"
-#
-#
-# @dataclass
-# class MeemWithShaddah(NoonOrMeemRule):
-#     name: MultiLangText = field(
-#         default_factory=lambda: MultiLangText(
-#             ar="ميم مشددة",
-#             en="Noom Mushaddadah",
-#         )
-#     )
-#     golden_len: int = 4
-#     offset: int = 0
-#     tag: str = "meem"
-#
-#
-# @dataclass
-# class IzharShafawy(NoonOrMeemRule):
-#     name: MultiLangText = field(
-#         default_factory=lambda: MultiLangText(
-#             ar="الإظهار شفوي",
-#             en="Al-Izhar Al-Shafawy for Sakin Meem",
-#         )
-#     )
-#     golden_len: int = 1
-#     offset: int = 0
-#     tag: str = "meem_izhar"
-#
-#
-# @dataclass
-# class IkhfaaShafawy(NoonOrMeemRule):
-#     name: MultiLangText = field(
-#         default_factory=lambda: MultiLangText(
-#             ar="إخفاء شفوي",
-#             en="Ikfaa Shafawy for Sakin Meem",
-#         )
-#     )
-#     golden_len: int = 4
-#     offset: int = 1
-#     tag: Literal["meem", "meem_mokhfah"] = "meem_mokhfah"
-#
-#
-# @dataclass
-# class IdghamSakinMeem(NoonOrMeemRule):
-#     name: MultiLangText = field(
-#         default_factory=lambda: MultiLangText(
-#             ar="إدغام مثلين صغير بغنة للميم الساكنة",
-#             en="Idgham for Sakin Meem",
-#         )
-#     )
-#     golden_len: int = 4
-#     offset: int = 0
-#     tag: str = "meem"
+    correctness: CorrectnessType = "match"
 
 
 TAJ_TYPE_TO_RULE = {
