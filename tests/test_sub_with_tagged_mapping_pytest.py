@@ -41,7 +41,7 @@ def _assert_tajweed_rules(
 ):
     actual = {
         idx: rules
-        for idx, rules in enumerate(out_mappings.ph_to_taj_rules)
+        for idx, rules in enumerate(out_mappings.ph_to_taj_rule_metas)
         if rules
     }
     assert actual == expected

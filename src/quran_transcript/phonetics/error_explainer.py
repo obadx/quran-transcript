@@ -1,16 +1,30 @@
+from collections.abc import Iterable
 from dataclasses import dataclass, field
-from typing import Literal, Optional
+from typing import Literal
 
 import Levenshtein as lv
 
 from .. import alphabet as alph
 from .conv_base_operation import PhonetizerMappings
 from .sifa import chunck_phonemes
-from .tajweed_rulses import FullTajweedRuleType
+from .tajweed_rulses import ExplainedTajweedRule, FullTajweedRuleType
+
+
+def to_explained_tajweed_rules(
+    rules: Iterable[FullTajweedRuleType],
+) -> list[ExplainedTajweedRule]:
+    """Convert internal ``(rule, metadata)`` pairs to final output structs."""
+    return [ExplainedTajweedRule.from_(taj, meta) for taj, meta in rules]
 
 
 @dataclass
 class ReciterError:
+    """A single recitation error.
+
+    Tajweed rule fields contain :class:`ExplainedTajweedRule` snapshots, ready
+    for display or serialization.
+    """
+
     uthmani_pos: tuple[int, int]  # start, end
     ph_pos: tuple[int, int]  # start, end
     error_type: Literal["tajweed", "normal", "tashkeel"]
@@ -19,10 +33,10 @@ class ReciterError:
     preditected_ph: str
     expected_len: int = -1
     predicted_len: int = -1
-    ref_tajweed_rules: list[FullTajweedRuleType] = field(default_factory=list)
-    inserted_tajweed_rules: list[FullTajweedRuleType] = field(default_factory=list)
-    replaced_tajweed_rules: list[FullTajweedRuleType] = field(default_factory=list)
-    missing_tajweed_rules: list[FullTajweedRuleType] = field(default_factory=list)
+    ref_tajweed_rules: list[ExplainedTajweedRule] = field(default_factory=list)
+    inserted_tajweed_rules: list[ExplainedTajweedRule] = field(default_factory=list)
+    replaced_tajweed_rules: list[ExplainedTajweedRule] = field(default_factory=list)
+    missing_tajweed_rules: list[ExplainedTajweedRule] = field(default_factory=list)
 
 
 @dataclass
@@ -226,8 +240,6 @@ def explain_error(
         ref_ph_groups=ref_ph_groups,
         mappings=mappings,
     )
-    print(mappings.ph_to_taj_rule_metas[-1])
-    print(ref_ph_groups_tajweed_rules[-1])
     # Aligning Phonemes groups using first chat of  every one
     alignments = align_phonemes_groups(ref_ph_groups, pred_ph_groups)
     errors = []
@@ -288,7 +300,9 @@ def explain_error(
                         speech_error_type="replace",
                         expected_ph=ref_ph,
                         preditected_ph=pred_ph,
-                        ref_tajweed_rules=ref_ph_groups_tajweed_rules[align.ref_idx],
+                        ref_tajweed_rules=to_explained_tajweed_rules(
+                            ref_ph_groups_tajweed_rules[align.ref_idx]
+                        ),
                     )
                 )
             else:
@@ -315,7 +329,9 @@ def explain_error(
                     speech_error_type="delete",
                     expected_ph=ref_ph,
                     preditected_ph="",
-                    ref_tajweed_rules=ref_ph_groups_tajweed_rules[align.ref_idx],
+                    ref_tajweed_rules=to_explained_tajweed_rules(
+                        ref_ph_groups_tajweed_rules[align.ref_idx]
+                    ),
                 )
             )
         elif align.op_type == "equal":
@@ -323,6 +339,11 @@ def explain_error(
                 ...
             # We have Tajweed rule
             elif ref_ph_groups_tajweed_rules[align.ref_idx]:
+                descriptive_rules = [
+                    (taj, meta)
+                    for taj, meta in ref_ph_groups_tajweed_rules[align.ref_idx]
+                    if taj.correctness == "descriptive"
+                ]
                 for taj_rule, taj_meta in ref_ph_groups_tajweed_rules[align.ref_idx]:
                     exp_len = -1
                     pred_len = -1
@@ -334,7 +355,7 @@ def explain_error(
                         if not taj_rule.match(ref_ph, pred_ph):
                             missing_taj_rules.append((taj_rule, taj_meta))
                     elif taj_rule.correctness == "descriptive":
-                        ...
+                        continue
                     else:
                         raise ValueError(
                             f"Invalid mathing type: `{taj_rule.correctness}`. Available: `match`, `count`, `descriptive`"
@@ -349,8 +370,12 @@ def explain_error(
                             preditected_ph=pred_ph,
                             expected_len=exp_len,
                             predicted_len=pred_len,
-                            ref_tajweed_rules=[(taj_rule, taj_meta)],
-                            missing_tajweed_rules=missing_taj_rules,
+                            ref_tajweed_rules=to_explained_tajweed_rules(
+                                [(taj_rule, taj_meta)] + descriptive_rules
+                            ),
+                            missing_tajweed_rules=to_explained_tajweed_rules(
+                                missing_taj_rules
+                            ),
                         )
                     )
                     # أخطاء التشكيل

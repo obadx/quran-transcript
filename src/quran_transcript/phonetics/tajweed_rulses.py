@@ -129,6 +129,47 @@ class TajweedRule(ABC):
 FullTajweedRuleType: TypeAlias = tuple[TajweedRule, TajweedRuleMetadata]
 
 
+@dataclass(frozen=True)
+class ExplainedTajweedRule:
+    """A pure, serializable snapshot of a Tajweed rule and its metadata.
+
+    This is intentionally a plain data struct used in the final error output.
+    The original :class:`TajweedRule` keeps all behavior (``count``/``match``);
+    this class only carries the fields needed to display or serialize a rule.
+    """
+
+    name: MultiLangText
+    description: MultiLangText
+    rule_type: TajweedRuleType
+    correctness: CorrectnessType
+    ph_pivot: tuple[int, int]
+    ph_deps: list[tuple[int, int]]
+    tag: str
+    uth_pivot: tuple[int, int]
+    uth_deps: list[tuple[int, int]]
+    golden_len: int
+
+    @classmethod
+    def from_(
+        cls,
+        rule: TajweedRule,
+        meta: TajweedRuleMetadata,
+    ) -> "ExplainedTajweedRule":
+        """Build a plain snapshot from a rule and its metadata."""
+        return cls(
+            name=replace(rule.name),
+            description=replace(rule.description),
+            rule_type=rule.rule_type,
+            correctness=rule.correctness,
+            ph_pivot=meta.pivot,
+            ph_deps=list(meta.deps),
+            tag=meta.tag,
+            uth_pivot=meta.uth_pivot,
+            uth_deps=list(meta.uth_deps),
+            golden_len=meta.golden_len,
+        )
+
+
 # @dataclass
 # class Qalqalah(TajweedRule):
 #     name: MultiLangText = field(

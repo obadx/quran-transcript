@@ -4,6 +4,87 @@ from quran_transcript import (
     explain_error,
     quran_phonetizer,
 )
+from quran_transcript.phonetics.tajweed_rulses import ExplainedTajweedRule
+
+SEPARATOR = "=" * 72
+SUB_SEPARATOR = "-" * 72
+
+
+def print_mappings(uthmani_text: str, mappings) -> None:
+    print("Uthmani -> phonetic mappings:")
+    print(f"  {'idx':>3}  {'char':<6}  phonetic span")
+    for uth_idx, span in enumerate(mappings.uth_to_ph):
+        char = uthmani_text[uth_idx] if uth_idx < len(uthmani_text) else ""
+        deleted = " (deleted)" if span.deleted else ""
+        print(f"  {uth_idx:>3}  {char!r:<6}  {span.pos}{deleted}")
+    print()
+
+
+def format_tajweed_rule(rule: ExplainedTajweedRule) -> list[str]:
+    default_name = rule.rule_type.name.replace("_", " ").title()
+    name_ar = rule.name.ar or default_name
+    name_en = rule.name.en or default_name
+    lines = [
+        f"- {name_ar} ({name_en})",
+        f"  rule_type:   {rule.rule_type.name}",
+        f"  correctness: {rule.correctness}",
+        f"  ph_pivot:    {rule.ph_pivot}",
+        f"  uth_pivot:   {rule.uth_pivot}",
+    ]
+    if rule.description.ar or rule.description.en:
+        lines.append(f"  description: {rule.description.ar} ({rule.description.en})")
+    if rule.ph_deps:
+        lines.append(f"  ph_deps:     {rule.ph_deps}")
+    if rule.uth_deps:
+        lines.append(f"  uth_deps:    {rule.uth_deps}")
+    if rule.golden_len != -1:
+        lines.append(f"  golden_len:  {rule.golden_len}")
+    if rule.tag:
+        lines.append(f"  tag:         {rule.tag}")
+    return lines
+
+
+def print_tajweed_rules(
+    label: str,
+    rules: list[ExplainedTajweedRule],
+) -> None:
+    if not rules:
+        return
+    print(f"  {label}:")
+    for rule in rules:
+        for line in format_tajweed_rule(rule):
+            print(f"    {line}")
+
+
+def print_error(
+    index: int,
+    total: int,
+    err: ReciterError,
+    uthmani_text: str,
+    ref_ph_text: str,
+) -> None:
+    uth_start, uth_end = err.uthmani_pos
+    ph_start, ph_end = err.ph_pos
+    uth_slice = uthmani_text[uth_start:uth_end]
+    ref_slice = ref_ph_text[ph_start:ph_end]
+
+    print(SUB_SEPARATOR)
+    print(f"Error {index}/{total}: {err.error_type} / {err.speech_error_type}")
+    print(f"  Uthmani:   {err.uthmani_pos}\n             '{uth_slice}'")
+    print(f"  Ref PH : {err.ph_pos}\n             '{ref_slice}'")
+    print(f"  Expected:  {err.expected_ph!r}")
+    print(f"  Predicted: {err.preditected_ph!r}")
+    if err.expected_len != -1 or err.predicted_len != -1:
+        print(
+            f"  Length:    expected={err.expected_len}, predicted={err.predicted_len}"
+        )
+
+    print_tajweed_rules("Reference Tajweed rules", err.ref_tajweed_rules)
+    print_tajweed_rules("Inserted Tajweed rules", err.inserted_tajweed_rules)
+    print_tajweed_rules("Replaced Tajweed rules", err.replaced_tajweed_rules)
+    print_tajweed_rules("Missing Tajweed rules", err.missing_tajweed_rules)
+    print()
+
 
 if __name__ == "__main__":
     moshaf = MoshafAttributes(
@@ -19,7 +100,7 @@ if __name__ == "__main__":
     # normal madd len 1 error
     predicted_text = "قَاالُۥ"
 
-    # predicted_text = "كالۥۥ"
+    predicted_text = "كالۥۥ"
     # predicted_text = "فكالۥۥ"
     # predicted_text = "فكۥۥلۥۥ"
 
@@ -36,20 +117,22 @@ if __name__ == "__main__":
     # predicted_text = "لَكَا"
 
     ref_ph_out = quran_phonetizer(uthmani_text, moshaf)
-    print(ref_ph_out.phonemes)
-    print(predicted_text)
     errors = explain_error(
         uthmani_text=uthmani_text,
         ref_ph_text=ref_ph_out.phonemes,
         predicted_ph_text=predicted_text,
         mappings=ref_ph_out.mappings,
     )
-    for err in errors:
-        print(
-            f"UTH: `{uthmani_text[err.uthmani_pos[0] : err.uthmani_pos[1]]}`, '{err.uthmani_pos}'"
-        )
-        print(
-            f"PH: `{ref_ph_out.phonemes[err.ph_pos[0] : err.ph_pos[1]]}`, '{err.ph_pos}'"
-        )
-        print(err)
-        print("-" * 50)
+
+    print(SEPARATOR)
+    print("Recitation error analysis")
+    print(SEPARATOR)
+    print(f"Uthmani text:       `{uthmani_text}`")
+    print(f"Predicted text:     `{predicted_text}`")
+    print(f"Reference phonemes: `{ref_ph_out.phonemes}`")
+    print()
+
+    # print_mappings(uthmani_text, ref_ph_out.mappings)
+    print(f"Total errors: {len(errors)}")
+    for index, err in enumerate(errors, 1):
+        print_error(index, len(errors), err, uthmani_text, ref_ph_out.phonemes)
