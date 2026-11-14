@@ -1,9 +1,8 @@
-from abc import ABC, abstractmethod
+from abc import ABC
 from dataclasses import dataclass, field, replace
 from enum import IntEnum, auto
-from typing import Literal, Optional, TypeAlias
+from typing import Literal, TypeAlias
 
-from .. import alphabet as alph
 from ..alphabet import MultiLangText
 
 
@@ -277,6 +276,19 @@ class MottaselMaddRule(MaddRule):
 
 
 @dataclass
+class AaredMaddRule(MaddRule):
+    name: MultiLangText = MultiLangText(
+        ar="المد العارض للسكون",
+        en="Aared Madd",
+    )
+    description: MultiLangText = MultiLangText(
+        ar="",
+        en="",
+    )
+    rule_type: TajweedRuleType = TajweedRuleType.AARED_MADD
+
+
+@dataclass
 class LeenMaddRule(MaddRule):
     name: MultiLangText = MultiLangText(
         ar="مد اللين",
@@ -288,18 +300,9 @@ class LeenMaddRule(MaddRule):
     )
     rule_type: TajweedRuleType = TajweedRuleType.LEEN_MADD
 
-
-@dataclass
-class AaredMaddRule(MaddRule):
-    name: MultiLangText = MultiLangText(
-        ar="المد العارض للسكون",
-        en="Aared Madd",
-    )
-    description: MultiLangText = MultiLangText(
-        ar="",
-        en="",
-    )
-    rule_type: TajweedRuleType = TajweedRuleType.AARED_MADD
+    def count(self, ref_text: str, pred_text: str) -> int:
+        assert ref_text[0] == pred_text[0]
+        return len(pred_text) + 1
 
 
 @dataclass
@@ -331,8 +334,8 @@ class SkoonMostateelMidDeleteRule(DescriptiveTajweedRule):
 @dataclass
 class SkoonMostateelEndAddRule(DescriptiveTajweedRule):
     name: MultiLangText = MultiLangText(
-        ar="إضافة السكون المستطيل في النهاية",
-        en="Skoon Mostateel End Add",
+        ar="إثبات الألف وقفا في الألفات السبعة",
+        en="Ithbat mad alif of the seven alifs at puase",
     )
     description: MultiLangText = MultiLangText(
         ar="",
@@ -357,8 +360,8 @@ class TanweenFathMidDeleteRule(DescriptiveTajweedRule):
 @dataclass
 class TanweenFatahForHaaTaneethPauseRule(DescriptiveTajweedRule):
     name: MultiLangText = MultiLangText(
-        ar="تنوين الفتح لهاء التأنيث وقفاً",
-        en="Tanween Fatah for Haa Taneeth at Pause",
+        ar="حذف تنوين الفتح لهاء التأنيث وقفاً",
+        en="Delete Tanween Fatah for Haa Taneeth at Pause",
     )
     description: MultiLangText = MultiLangText(
         ar="",

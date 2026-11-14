@@ -59,7 +59,7 @@ class ReciterErrPatern:
          ^ ^
          ^ - > `e` is called **operation type** and can be out of 4 valude: `e`: equal, `i`: insert, `r`: replace, or `d`: delete
            ^ - > `t0` is called  the **tag name** and composed only of a single charcter and it can followed by a number like `x`, `y3` and it is optional
-         `abc` is called `tag pattern`
+         `abc` is called `tag pattern`; every character in the tag pattern represents the first chacter of each phonemes group
 
         * pat patterns Have to be connected like r"<d,t0:ABC><r:m>" but not r"<d,t0:ABC>N<r:m>" ->  ParserError `N` should be included in a tag
         * tag names have to be unique; repeating a tag raises
