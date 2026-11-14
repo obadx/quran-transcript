@@ -1,8 +1,13 @@
-import inspect
 import json
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Literal
+
+
+@dataclass(frozen=True)
+class MultiLangText:
+    ar: str
+    en: str
 
 
 @dataclass
@@ -562,3 +567,53 @@ with open(alphabet_path, "r", encoding="utf8") as f:
         + phonetics.noon_mokhfah
         + phonetics.meem_mokhfah,
     )
+
+
+ph_to_name = {
+    # Letters
+    phonetics.hamza: MultiLangText(ar="همزة", en="hamza"),
+    phonetics.baa: MultiLangText(ar="باء", en="baa"),
+    phonetics.taa: MultiLangText(ar="تاء", en="taa"),
+    phonetics.thaa: MultiLangText(ar="ثاء", en="thaa"),
+    phonetics.jeem: MultiLangText(ar="جيم", en="jeem"),
+    phonetics.haa_mohmala: MultiLangText(ar="حاء", en="haa mohmala"),
+    phonetics.khaa: MultiLangText(ar="خاء", en="khaa"),
+    phonetics.daal: MultiLangText(ar="دال", en="daal"),
+    phonetics.thaal: MultiLangText(ar="ذال", en="thaal"),
+    phonetics.raa: MultiLangText(ar="راء", en="raa"),
+    phonetics.zay: MultiLangText(ar="زاي", en="zay"),
+    phonetics.seen: MultiLangText(ar="سين", en="seen"),
+    phonetics.sheen: MultiLangText(ar="شين", en="sheen"),
+    phonetics.saad: MultiLangText(ar="صاد", en="saad"),
+    phonetics.daad: MultiLangText(ar="ضاد", en="daad"),
+    phonetics.taa_mofakhama: MultiLangText(ar="طاء", en="taa mofakhama"),
+    phonetics.zaa_mofakhama: MultiLangText(ar="ظاء", en="zaa mofakhama"),
+    phonetics.ayn: MultiLangText(ar="عين", en="ayn"),
+    phonetics.ghyn: MultiLangText(ar="غين", en="ghyn"),
+    phonetics.faa: MultiLangText(ar="فاء", en="faa"),
+    phonetics.qaf: MultiLangText(ar="قاف", en="qaf"),
+    phonetics.kaf: MultiLangText(ar="كاف", en="kaf"),
+    phonetics.lam: MultiLangText(ar="لام", en="lam"),
+    phonetics.meem: MultiLangText(ar="ميم", en="meem"),
+    phonetics.noon: MultiLangText(ar="نون", en="noon"),
+    phonetics.haa: MultiLangText(ar="هاء", en="haa"),
+    phonetics.waw: MultiLangText(ar="واو", en="waw"),
+    phonetics.yaa: MultiLangText(ar="ياء", en="yaa"),
+    # Madd
+    phonetics.alif: MultiLangText(ar="مد ألف", en="madd alif"),
+    phonetics.yaa_madd: MultiLangText(ar="مد ياء", en="madd yaa"),
+    phonetics.waw_madd: MultiLangText(ar="مد واو", en="madd waw"),
+    # Harakat
+    phonetics.fatha: MultiLangText(ar="فتحة", en="fatha"),
+    phonetics.dama: MultiLangText(ar="ضمة", en="dama"),
+    phonetics.kasra: MultiLangText(ar="كسرة", en="kasra"),
+    # Special characters
+    phonetics.fatha_momala: MultiLangText(ar="فتحة ممالة", en="fatha momala"),
+    phonetics.alif_momala: MultiLangText(ar="ألف ممالة", en="alif momala"),
+    phonetics.hamza_mosahala: MultiLangText(ar="همزة مسهلة", en="hamza mosahala"),
+    phonetics.qlqla: MultiLangText(ar="قلقة", en="qalqala"),
+    phonetics.noon_mokhfah: MultiLangText(ar="نون مخفاة", en="noon mokhfah"),
+    phonetics.meem_mokhfah: MultiLangText(ar="ميم مخفاة", en="meem mokhfah"),
+    phonetics.sakt: MultiLangText(ar="سكت", en="sakt"),
+    phonetics.dama_mokhtalasa: MultiLangText(ar="ضمة مختلسة", en="dama mokhtalasa"),
+}

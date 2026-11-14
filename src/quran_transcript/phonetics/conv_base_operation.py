@@ -6,7 +6,14 @@ from typing import Literal, TypeAlias
 from uuid import uuid4
 
 from .moshaf_attributes import MoshafAttributes
-from .tajweed_rulses import TajweedRule, TajweedRuleMetadata, TajweedRuleType
+from .tajweed_rulses import (
+    TAJ_TYPE_TO_RULE,
+    FullTajweedRuleType,
+    MaddRule,
+    TajweedRule,
+    TajweedRuleMetadata,
+    TajweedRuleType,
+)
 
 
 class _ShiftBlock:
@@ -294,7 +301,7 @@ class PhonetizerMappings:
         self._taj_to_id = {}
         self._taj_parts = TajweedRulePartContainer()
         self._taj_to_first_to_watch: dict[str, Literal["TAJ", "DEP"]] = {}
-        self._ph_to_taj_rules = []
+        self._ph_to_taj_rules: list[list[TajweedRuleMetadata]] = []
         self._ph_to_uth = []
 
         # Positions are shifted lazily per block. A range update only touches
@@ -713,11 +720,13 @@ class PhonetizerMappings:
         )
         self._taj_parts.finalize()
 
-    def get_ph_to_tajweed_rules(self) -> list[list[TajweedRuleMetadata]]:
+    def get_ph_to_tajweed_rule_metadata(self) -> list[list[TajweedRuleMetadata]]:
         """ """
+
         max_ph = self.uth_to_ph[-1].pos[1] if self.uth_to_ph else 0
         ph_to_taj_rules: list[list[TajweedRuleMetadata]] = [
-            [] for _ in range(max_ph + 1)
+            []
+            for _ in range(max_ph + 1)  # max + 1 to account to rules on deletion
         ]
 
         taj_to_meta: dict[str, TajweedRuleMetadata] = {}
@@ -740,6 +749,7 @@ class PhonetizerMappings:
                 case "DEP_END":
                     taj_to_meta[part.id].update_dep_end(part.dep_idx, part.ph_idx)
 
+        # TODO: handel the deleted position tajweed rule as it will be repeated prev_pos, del_pos, nex_pos not here but this can be use for rules with deletion
         taj_ids = list(taj_to_meta.keys())
         for taj_id in taj_ids:
             taj_meta = taj_to_meta.pop(taj_id)
@@ -747,10 +757,10 @@ class PhonetizerMappings:
         return ph_to_taj_rules
 
     @property
-    def ph_to_taj_rules(self) -> list[list[TajweedRuleMetadata]]:
+    def ph_to_taj_rule_metas(self) -> list[list[TajweedRuleMetadata]]:
         if self._ph_to_taj_rules:
             return self._ph_to_taj_rules
-        self._ph_to_taj_rules = self.get_ph_to_tajweed_rules()
+        self._ph_to_taj_rules = self.get_ph_to_tajweed_rule_metadata()
         return self._ph_to_taj_rules
 
     @property
@@ -769,6 +779,40 @@ class PhonetizerMappings:
 
         self._ph_to_uth = ph_to_uth
         return self._ph_to_uth
+
+    def _get_full_taj_rule_type(
+        self,
+        ph_str: str,
+        taj_rule_meta: TajweedRuleMetadata,
+    ) -> FullTajweedRuleType:
+        taj_rule_meta.fill_uth(self.ph_to_uth)
+        taj_rule = TAJ_TYPE_TO_RULE[taj_rule_meta.rule_type]
+
+        if taj_rule.correctness == "count":
+            if isinstance(taj_rule, MaddRule):
+                # The madd letters are what this rule is counting. Leen madd
+                # counts the preceding yaa/waw in addition to the inserted ones.
+                golden_len = taj_rule_meta.pivot[1] - taj_rule_meta.pivot[0]
+                if taj_rule_meta.rule_type == TajweedRuleType.LEEN_MADD:
+                    golden_len += 1
+                taj_rule_meta.set_golden_len(golden_len)
+            else:
+                taj_rule_meta.set_golden_len(taj_rule.golden_len)
+
+        return (taj_rule, taj_rule_meta)
+
+    def get_ph_to_tajweed_rules(self, ph_str: str) -> list[list[FullTajweedRuleType]]:
+        """Get mapping between phonetic script indices to TajweedRule not TajweedRuleType
+
+        TajweedRule is used for recitation error correction unlike the TajweedRuleType is
+        used for tagging the place of tajweed rule only
+        """
+        outputs = []
+        for taj_metas in self.ph_to_taj_rule_metas:
+            outputs.append([])
+            for taj_meta in taj_metas:
+                outputs[-1].append(self._get_full_taj_rule_type(ph_str, taj_meta))
+        return outputs
 
 
 def init_mappings(text: str) -> PhonetizerMappings:

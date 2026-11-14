@@ -16,7 +16,7 @@ def check_mapping_continuty(mappings: PhonetizerMappings):
 
 
 def render_mappings(in_text: str, out_text: str, out_mappings: PhonetizerMappings):
-    ph_taj_rules = out_mappings.ph_to_taj_rules
+    ph_taj_rules = out_mappings.ph_to_taj_rule_metas
     for idx, uth_c in enumerate(in_text):
         mapping = out_mappings[idx]
         ph_c = out_text[mapping.pos[0] : mapping.pos[1]]

@@ -1,10 +1,9 @@
 from quran_transcript import (
-    quran_phonetizer,
     MoshafAttributes,
     ReciterError,
     explain_error,
+    quran_phonetizer,
 )
-
 
 if __name__ == "__main__":
     moshaf = MoshafAttributes(
@@ -16,9 +15,13 @@ if __name__ == "__main__":
     )
 
     uthmani_text = "قَالُوٓا۟"
-    predicted_text = "كالۥۥ"
-    predicted_text = "فكالۥۥ"
-    predicted_text = "فكۥۥلۥۥ"
+
+    # normal madd len 1 error
+    predicted_text = "قَاالُۥ"
+
+    # predicted_text = "كالۥۥ"
+    # predicted_text = "فكالۥۥ"
+    # predicted_text = "فكۥۥلۥۥ"
 
     # uthmani_text = "ٱلْحَقُّ"
     # predicted_text = "ءَلحَقق"
@@ -29,8 +32,8 @@ if __name__ == "__main__":
     # predicted_text = "ءَلِف لَااااااممممِۦۦۦۦۦۦم"
     # predicted_text = "ءَلِف لَاااااممممِۦۦۦۦۦۦم"
 
-    uthmani_text = "لَكَ"
-    predicted_text = "لَكَا"
+    # uthmani_text = "لَكَ"
+    # predicted_text = "لَكَا"
 
     ref_ph_out = quran_phonetizer(uthmani_text, moshaf)
     print(ref_ph_out.phonemes)
@@ -43,10 +46,10 @@ if __name__ == "__main__":
     )
     for err in errors:
         print(
-            f"UTH: `{uthmani_text[err.uthmani_pos[0] : err.uthmani_pos[1]]}`, {err.uthmani_pos}"
+            f"UTH: `{uthmani_text[err.uthmani_pos[0] : err.uthmani_pos[1]]}`, '{err.uthmani_pos}'"
         )
         print(
-            f"PH: `{ref_ph_out.phonemes[err.ph_pos[0] : err.ph_pos[1]]}`, {err.ph_pos}"
+            f"PH: `{ref_ph_out.phonemes[err.ph_pos[0] : err.ph_pos[1]]}`, '{err.ph_pos}'"
         )
         print(err)
         print("-" * 50)

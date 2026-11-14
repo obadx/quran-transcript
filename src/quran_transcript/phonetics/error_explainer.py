@@ -1,5 +1,4 @@
-from abc import ABC, abstractmethod
-from dataclasses import dataclass, replace
+from dataclasses import dataclass, field
 from typing import Literal, Optional
 
 import Levenshtein as lv
@@ -7,7 +6,7 @@ import Levenshtein as lv
 from .. import alphabet as alph
 from .conv_base_operation import PhonetizerMappings
 from .sifa import chunck_phonemes
-from .tajweed_rulses import TajweedRule
+from .tajweed_rulses import FullTajweedRuleType
 
 
 @dataclass
@@ -18,12 +17,12 @@ class ReciterError:
     speech_error_type: Literal["insert", "delete", "replace"]
     expected_ph: str
     preditected_ph: str
-    expected_len: Optional[int] | None = None
-    predicted_len: Optional[int] | None = None
-    ref_tajweed_rules: Optional[list[TajweedRule]] | None = None
-    inserted_tajweed_rules: Optional[list[TajweedRule]] | None = None
-    replaced_tajweed_rules: Optional[list[TajweedRule]] | None = None
-    missing_tajweed_rules: Optional[list[TajweedRule]] | None = None
+    expected_len: int = -1
+    predicted_len: int = -1
+    ref_tajweed_rules: list[FullTajweedRuleType] = field(default_factory=list)
+    inserted_tajweed_rules: list[FullTajweedRuleType] = field(default_factory=list)
+    replaced_tajweed_rules: list[FullTajweedRuleType] = field(default_factory=list)
+    missing_tajweed_rules: list[FullTajweedRuleType] = field(default_factory=list)
 
 
 @dataclass
@@ -76,40 +75,26 @@ def align_phonemes_groups(
     return out_aligments
 
 
-def extract_ref_phonetic_to_uthmani(
-    mappings: PhonetizerMappings,
-) -> dict[int, int]:
-    ref_ph_to_uthmani = {}
-    for idx, map_pos in enumerate(mappings):
-        for ph_idx in range(*map_pos.pos):
-            if ph_idx in ref_ph_to_uthmani:
-                raise ValueError(
-                    f"Same phonetic scripts has multiple uthmani script. Phonetic posision: `{ph_idx}`, Uthmani Poses: `{ref_ph_to_uthmani[ph_idx]}, {idx}`"
-                )
-            else:
-                ref_ph_to_uthmani[ph_idx] = idx
-    return ref_ph_to_uthmani
-
-
 def get_ref_phonetic_groups_tajweed_rules(
+    ref_ph_str: str,
     ref_ph_groups: list[str],
     mappings: PhonetizerMappings,
-    ref_ph_to_uthmani: dict[int, int],
-) -> list[list[TajweedRule]]:
-    ref_tajweed_rules: list[TajweedRule] = [[] for _ in range(len(ref_ph_groups))]
+) -> list[list[FullTajweedRuleType]]:
+    ref_tajweed_rules: list[list[FullTajweedRuleType]] = []
     start = 0
     end = 0
+    ph_to_taj_rles = mappings.get_ph_to_tajweed_rules(ref_ph_str)
     # Computing Tajweed rules O(len(ref_ph_text))
-    for ph_g_idx, ph_g in enumerate(ref_ph_groups):
+    for ph_g in ref_ph_groups:
         end += len(ph_g)
-        used_uth_ids = set()
-        for ph_idx in range(start, end):
-            uth_idx = ref_ph_to_uthmani[ph_idx]
-            if uth_idx not in used_uth_ids:
-                used_uth_ids.add(uth_idx)
-                if mappings[uth_idx].tajweed_rules:
-                    ref_tajweed_rules[ph_g_idx].extend(mappings[uth_idx].tajweed_rules)
+        # Some rules (e.g. madd) span more than one phoneme, so collect all
+        # rules attached to any phoneme of this group.
+        group_rules: list[FullTajweedRuleType] = []
+        for phoneme_rules in ph_to_taj_rles[start:end]:
+            group_rules.extend(phoneme_rules)
+        ref_tajweed_rules.append(group_rules)
         start = end
+    ref_tajweed_rules[-1].extend(ph_to_taj_rles[end])
     return ref_tajweed_rules
 
 
@@ -235,13 +220,14 @@ def explain_error(
     ref_ph_groups = chunck_phonemes(ref_ph_text)
     pred_ph_groups = chunck_phonemes(predicted_ph_text)
 
-    ref_ph_to_uthmani = extract_ref_phonetic_to_uthmani(mappings)
+    ref_ph_to_uthmani = mappings.ph_to_uth
     ref_ph_groups_tajweed_rules = get_ref_phonetic_groups_tajweed_rules(
+        ref_ph_text,
         ref_ph_groups=ref_ph_groups,
         mappings=mappings,
-        ref_ph_to_uthmani=ref_ph_to_uthmani,
     )
-
+    print(mappings.ph_to_taj_rule_metas[-1])
+    print(ref_ph_groups_tajweed_rules[-1])
     # Aligning Phonemes groups using first chat of  every one
     alignments = align_phonemes_groups(ref_ph_groups, pred_ph_groups)
     errors = []
@@ -249,6 +235,8 @@ def explain_error(
     ref_ph_start = 0
     pred_ph_end = 0
     ref_ph_end = 0
+
+    # TODO: Add tajweed rule with no correction critreia like kasr al tanween, idham kamel with gonnah
 
     for align in alignments:
         if align.ref_idx < len(ref_ph_groups):
@@ -270,17 +258,10 @@ def explain_error(
             ph_pos = (ref_ph_start, ref_ph_end)
         else:
             # TODO: Make the uthmani posision more precise. Now we bound it to the aligments
-            if ref_ph_start in ref_ph_to_uthmani:
-                uthmani_pos = (
-                    ref_ph_to_uthmani[ref_ph_start],
-                    ref_ph_to_uthmani[ref_ph_start],
-                )
-            else:
-                uthmani_pos = (
-                    ref_ph_to_uthmani[ref_ph_start - 1],
-                    ref_ph_to_uthmani[ref_ph_start - 1],
-                )
-
+            uthmani_pos = (
+                ref_ph_to_uthmani[ref_ph_start],
+                ref_ph_to_uthmani[ref_ph_start],
+            )
             ph_pos = (ref_ph_start, ref_ph_start)
 
         # TODO: for insert and replace try to make explanation for special phoneme like madd, ikhfaa, iqlab, ..
@@ -297,47 +278,21 @@ def explain_error(
             )
 
         elif align.op_type == "replace":
-            pred_rules = []
             if ref_ph_groups_tajweed_rules[align.ref_idx]:
-                for taj_rule in ref_ph_groups_tajweed_rules[align.ref_idx]:
-                    pred_taj_rule = taj_rule.get_relvant_rule(pred_ph)
-                    if pred_taj_rule is not None:
-                        # TODO: What to do with `match`
-                        if pred_taj_rule.correctness_type == "count":
-                            ref_len = taj_rule.golden_len
-                            pred_len = pred_taj_rule.count(pred_ph, pred_ph)
-                        else:
-                            ref_len = None
-                            pred_len = None
-                        errors.append(
-                            ReciterError(
-                                uthmani_pos=uthmani_pos,
-                                ph_pos=ph_pos,
-                                error_type="tajweed",
-                                speech_error_type="replace",
-                                expected_ph=ref_ph,
-                                preditected_ph=pred_ph,
-                                expected_len=ref_len,
-                                predicted_len=pred_len,
-                                ref_tajweed_rules=[taj_rule],
-                                replaced_tajweed_rules=[pred_taj_rule],
-                            )
-                        )
-                    else:
-                        errors.append(
-                            ReciterError(
-                                uthmani_pos=uthmani_pos,
-                                ph_pos=ph_pos,
-                                error_type="tajweed",
-                                speech_error_type="replace",
-                                expected_ph=ref_ph,
-                                preditected_ph=pred_ph,
-                                ref_tajweed_rules=[taj_rule],
-                            )
-                        )
-
-            # No Tajweed Rule associated
-            if not ref_ph_groups_tajweed_rules[align.ref_idx]:
+                # TODO: Add tajweed rule relvant by error pattern like QuranReWithMapping
+                errors.append(
+                    ReciterError(
+                        uthmani_pos=uthmani_pos,
+                        ph_pos=ph_pos,
+                        error_type="tajweed",
+                        speech_error_type="replace",
+                        expected_ph=ref_ph,
+                        preditected_ph=pred_ph,
+                        ref_tajweed_rules=ref_ph_groups_tajweed_rules[align.ref_idx],
+                    )
+                )
+            else:
+                # No Tajweed Rule associated
                 errors.append(
                     ReciterError(
                         uthmani_pos=uthmani_pos,
@@ -355,11 +310,12 @@ def explain_error(
                     uthmani_pos=uthmani_pos,
                     ph_pos=ph_pos,
                     error_type="tajweed"
-                    if mappings[ref_ph_to_uthmani[ref_ph_start]].tajweed_rules
+                    if ref_ph_groups_tajweed_rules[align.ref_idx]
                     else "normal",
                     speech_error_type="delete",
                     expected_ph=ref_ph,
                     preditected_ph="",
+                    ref_tajweed_rules=ref_ph_groups_tajweed_rules[align.ref_idx],
                 )
             )
         elif align.op_type == "equal":
@@ -367,19 +323,21 @@ def explain_error(
                 ...
             # We have Tajweed rule
             elif ref_ph_groups_tajweed_rules[align.ref_idx]:
-                for taj_rule in ref_ph_groups_tajweed_rules[align.ref_idx]:
-                    exp_len = None
-                    pred_len = None
-                    missing_taj_rules = None
-                    if taj_rule.correctness_type == "count":
+                for taj_rule, taj_meta in ref_ph_groups_tajweed_rules[align.ref_idx]:
+                    exp_len = -1
+                    pred_len = -1
+                    missing_taj_rules = []
+                    if taj_rule.correctness == "count":
                         pred_len = taj_rule.count(ref_ph, pred_ph)
-                        exp_len = taj_rule.golden_len
-                    elif taj_rule.correctness_type == "match":
+                        exp_len = taj_meta.golden_len
+                    elif taj_rule.correctness == "match":
                         if not taj_rule.match(ref_ph, pred_ph):
-                            missing_taj_rules = [taj_rule]
+                            missing_taj_rules.append((taj_rule, taj_meta))
+                    elif taj_rule.correctness == "descriptive":
+                        ...
                     else:
                         raise ValueError(
-                            f"Invalid mathing type: `{taj_rule.correctness_type}`. Available: `match`, `count`"
+                            f"Invalid mathing type: `{taj_rule.correctness}`. Available: `match`, `count`, `descriptive`"
                         )
                     errors.append(
                         ReciterError(
@@ -391,10 +349,11 @@ def explain_error(
                             preditected_ph=pred_ph,
                             expected_len=exp_len,
                             predicted_len=pred_len,
-                            ref_tajweed_rules=[taj_rule],
+                            ref_tajweed_rules=[(taj_rule, taj_meta)],
                             missing_tajweed_rules=missing_taj_rules,
                         )
                     )
+                    # أخطاء التشكيل
                     if (
                         ref_ph[-1] in alph.phonetic_groups.harakat
                         and pred_ph[-1] != ref_ph[-1]
