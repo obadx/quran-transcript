@@ -4,10 +4,19 @@ from quran_transcript import (
     explain_error,
     quran_phonetizer,
 )
+from quran_transcript import (
+    alphabet as alph,
+)
 from quran_transcript.phonetics.tajweed_rulses import ExplainedTajweedRule
 
 SEPARATOR = "=" * 72
 SUB_SEPARATOR = "-" * 72
+
+TASHKEEL_TO_PH = {
+    "fatha": alph.phonetics.fatha,
+    "dama": alph.phonetics.dama,
+    "kasra": alph.phonetics.kasra,
+}
 
 
 def print_mappings(uthmani_text: str, mappings) -> None:
@@ -37,11 +46,33 @@ def format_tajweed_rule(rule: ExplainedTajweedRule) -> list[str]:
         lines.append(f"  ph_deps:     {rule.ph_deps}")
     if rule.uth_deps:
         lines.append(f"  uth_deps:    {rule.uth_deps}")
-    if rule.golden_len != -1:
-        lines.append(f"  golden_len:  {rule.golden_len}")
+    lines.append(f"  golden_len:  {rule.golden_len}")
     if rule.tag:
         lines.append(f"  tag:         {rule.tag}")
     return lines
+
+
+def format_tashkeel(tashkeel: str | None) -> str:
+    if tashkeel is None:
+        return "-"
+    if tashkeel == "skoon":
+        return "سكون (skoon)"
+    ph_char = TASHKEEL_TO_PH.get(tashkeel)
+    if ph_char is None:
+        return tashkeel
+    name = alph.ph_to_name[ph_char]
+    return f"{name.ar} ({name.en})"
+
+
+def format_ph_with_names(ph_text: str) -> str:
+    names = []
+    for char in ph_text:
+        name = alph.ph_to_name.get(char)
+        if name is not None:
+            names.append(f"{name.ar} ({name.en})")
+    if not names:
+        return repr(ph_text)
+    return f"{ph_text!r}  → {' + '.join(names)}"
 
 
 def print_tajweed_rules(
@@ -72,11 +103,16 @@ def print_error(
     print(f"Error {index}/{total}: {err.error_type} / {err.speech_error_type}")
     print(f"  Uthmani:   {err.uthmani_pos}\n             '{uth_slice}'")
     print(f"  Ref PH : {err.ph_pos}\n             '{ref_slice}'")
-    print(f"  Expected:  {err.expected_ph!r}")
-    print(f"  Predicted: {err.preditected_ph!r}")
-    if err.expected_len != -1 or err.predicted_len != -1:
+    print(f"  Expected:  {format_ph_with_names(err.expected_ph)}")
+    print(f"  Predicted: {format_ph_with_names(err.preditected_ph)}")
+    print(
+        f"  Length:    expected_len={err.expected_len}, "
+        f"predicted_len={err.predicted_len}"
+    )
+    if err.expected_tashkeel is not None or err.predicted_tashkeel is not None:
         print(
-            f"  Length:    expected={err.expected_len}, predicted={err.predicted_len}"
+            f"  Tashkeel:  expected={format_tashkeel(err.expected_tashkeel)}, "
+            f"predicted={format_tashkeel(err.predicted_tashkeel)}"
         )
 
     print_tajweed_rules("Reference Tajweed rules", err.ref_tajweed_rules)

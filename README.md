@@ -379,8 +379,8 @@ for err in errors:
 - `preditected_ph`: str – المقطع الصوتي المُتنبأ به.
 - `expected_len`: Optional[int] – الطول المتوقع (لأخطاء المد مثلاً).
 - `predicted_len`: Optional[int] – الطول الفعلي.
-- `ref_tajweed_rules`: Optional[list[TajweedRule]] – قواعد التجويد المرتبطة بالمقطع المتوقع.
-- `inserted_tajweed_rules`, `replaced_tajweed_rules`, `missing_tajweed_rules`: Optional[list[TajweedRule]] – قواعد التجويد التي تم إدراجها أو استبدالها أو فقدانها.
+- `ref_tajweed_rules`: list[ExplainedTajweedRule] – قواعد التجويد المرتبطة بالمقطع المتوقع. كل عنصر يحتوي على حقول جاهزة للعرض/التسلسل مثل `name`, `rule_type`, `correctness`, `ph_pivot`, `ph_deps`, `uth_pivot`, `uth_deps`, و `golden_len`.
+- `inserted_tajweed_rules`, `replaced_tajweed_rules`, `missing_tajweed_rules`: list[ExplainedTajweedRule] – قواعد التجويد التي تم إدراجها أو استبدالها أو فقدانها.
 
 
 ### الحروف: (43)

@@ -1,11 +1,13 @@
 from collections.abc import Iterable
 from dataclasses import dataclass, field
-from typing import Literal
+from typing import Literal, TypeAlias
 
 import Levenshtein as lv
 
 from .. import alphabet as alph
+from ..alphabet import phonetics as ph
 from .conv_base_operation import PhonetizerMappings
+from .error_pat import PhonemesGroupsAligment, ReciterError, TashkeelErrorType
 from .sifa import chunck_phonemes
 from .tajweed_rulses import ExplainedTajweedRule, FullTajweedRuleType
 
@@ -15,35 +17,6 @@ def to_explained_tajweed_rules(
 ) -> list[ExplainedTajweedRule]:
     """Convert internal ``(rule, metadata)`` pairs to final output structs."""
     return [ExplainedTajweedRule.from_(taj, meta) for taj, meta in rules]
-
-
-@dataclass
-class ReciterError:
-    """A single recitation error.
-
-    Tajweed rule fields contain :class:`ExplainedTajweedRule` snapshots, ready
-    for display or serialization.
-    """
-
-    uthmani_pos: tuple[int, int]  # start, end
-    ph_pos: tuple[int, int]  # start, end
-    error_type: Literal["tajweed", "normal", "tashkeel"]
-    speech_error_type: Literal["insert", "delete", "replace"]
-    expected_ph: str
-    preditected_ph: str
-    expected_len: int = -1
-    predicted_len: int = -1
-    ref_tajweed_rules: list[ExplainedTajweedRule] = field(default_factory=list)
-    inserted_tajweed_rules: list[ExplainedTajweedRule] = field(default_factory=list)
-    replaced_tajweed_rules: list[ExplainedTajweedRule] = field(default_factory=list)
-    missing_tajweed_rules: list[ExplainedTajweedRule] = field(default_factory=list)
-
-
-@dataclass
-class PhonemesGroupsAligment:
-    op_type: Literal["insert", "replace", "delete", "equal"]
-    ref_idx: int
-    pred_idx: int
 
 
 # TODO: Testing
@@ -112,6 +85,13 @@ def get_ref_phonetic_groups_tajweed_rules(
     return ref_tajweed_rules
 
 
+HARAKA_TO_TASHKEEL_ERR: dict[str, TashkeelErrorType] = {
+    ph.fatha: "fatha",
+    ph.dama: "dama",
+    ph.kasra: "kasra",
+}
+
+
 def get_tasshkeel_error(
     ref_ph: str,
     pred_ph: str,
@@ -132,6 +112,8 @@ def get_tasshkeel_error(
         speech_error_type=sp_tp,
         expected_ph=ref_ph,
         preditected_ph=pred_ph,
+        expected_tashkeel=HARAKA_TO_TASHKEEL_ERR.get(ref_ph[-1], "skoon"),
+        predicted_tashkeel=HARAKA_TO_TASHKEEL_ERR.get(pred_ph[-1], "skoon"),
     )
     return err
 

@@ -123,7 +123,7 @@ class TajweedRule(ABC):
         return 0
 
     def match(self, ref_text: str, pred_text: str) -> bool:
-        return True
+        return ref_text == pred_text
 
 
 FullTajweedRuleType: TypeAlias = tuple[TajweedRule, TajweedRuleMetadata]
@@ -205,10 +205,17 @@ class MaddRule(TajweedRule):
 
 
 @dataclass
+class DescriptiveTajweedRule(TajweedRule):
+    """Base for rules that are tagged but do not have correction behavior yet."""
+
+    correctness: CorrectnessType = "descriptive"
+
+
+@dataclass
 class NormalMaddRule(MaddRule):
     name: MultiLangText = MultiLangText(
-        ar="",
-        en="",
+        ar="المد الطبيعي",
+        en="Normal Madd",
     )
     description: MultiLangText = MultiLangText(
         ar="",
@@ -218,17 +225,419 @@ class NormalMaddRule(MaddRule):
 
 
 @dataclass
-class SkoonMostadeerDelete(MaddRule):
+class LazimMaddRule(MaddRule):
     name: MultiLangText = MultiLangText(
+        ar="المد اللازم",
+        en="Lazem Madd",
+    )
+    description: MultiLangText = MultiLangText(
         ar="",
         en="",
+    )
+    rule_type: TajweedRuleType = TajweedRuleType.LAZIM_MADD
+
+
+@dataclass
+class ElewadMaddRule(MaddRule):
+    name: MultiLangText = MultiLangText(
+        ar="مد العوض",
+        en="Iwad Madd",
+    )
+    description: MultiLangText = MultiLangText(
+        ar="",
+        en="",
+    )
+    rule_type: TajweedRuleType = TajweedRuleType.ELEWAD_MADD
+
+
+@dataclass
+class MonfaselMaddRule(MaddRule):
+    name: MultiLangText = MultiLangText(
+        ar="المد المنفصل",
+        en="Monfasel Madd",
+    )
+    description: MultiLangText = MultiLangText(
+        ar="",
+        en="",
+    )
+    rule_type: TajweedRuleType = TajweedRuleType.MONFASEL_MADD
+
+
+@dataclass
+class MottaselMaddRule(MaddRule):
+    name: MultiLangText = MultiLangText(
+        ar="المد المتصل",
+        en="Mottasel Madd",
+    )
+    description: MultiLangText = MultiLangText(
+        ar="",
+        en="",
+    )
+    rule_type: TajweedRuleType = TajweedRuleType.MOTTASEL_MADD
+
+
+@dataclass
+class LeenMaddRule(MaddRule):
+    name: MultiLangText = MultiLangText(
+        ar="مد اللين",
+        en="Leen Madd",
+    )
+    description: MultiLangText = MultiLangText(
+        ar="",
+        en="",
+    )
+    rule_type: TajweedRuleType = TajweedRuleType.LEEN_MADD
+
+
+@dataclass
+class AaredMaddRule(MaddRule):
+    name: MultiLangText = MultiLangText(
+        ar="المد العارض للسكون",
+        en="Aared Madd",
+    )
+    description: MultiLangText = MultiLangText(
+        ar="",
+        en="",
+    )
+    rule_type: TajweedRuleType = TajweedRuleType.AARED_MADD
+
+
+@dataclass
+class SkoonMostadeerDeleteRule(DescriptiveTajweedRule):
+    name: MultiLangText = MultiLangText(
+        ar="حذف السكون المستدير",
+        en="Skoon Mostadeer Delete",
     )
     description: MultiLangText = MultiLangText(
         ar="",
         en="",
     )
     rule_type: TajweedRuleType = TajweedRuleType.SKOON_MOSTADEER_DELETE
-    correctness: CorrectnessType = "descriptive"
+
+
+@dataclass
+class SkoonMostateelMidDeleteRule(DescriptiveTajweedRule):
+    name: MultiLangText = MultiLangText(
+        ar="حذف السكون المستطيل في الوسط",
+        en="Skoon Mostateel Mid Delete",
+    )
+    description: MultiLangText = MultiLangText(
+        ar="",
+        en="",
+    )
+    rule_type: TajweedRuleType = TajweedRuleType.SKOON_MOSTATEEL_MID_DELETE
+
+
+@dataclass
+class SkoonMostateelEndAddRule(DescriptiveTajweedRule):
+    name: MultiLangText = MultiLangText(
+        ar="إضافة السكون المستطيل في النهاية",
+        en="Skoon Mostateel End Add",
+    )
+    description: MultiLangText = MultiLangText(
+        ar="",
+        en="",
+    )
+    rule_type: TajweedRuleType = TajweedRuleType.SKOON_MOSTATEEL_END_ADD
+
+
+@dataclass
+class TanweenFathMidDeleteRule(DescriptiveTajweedRule):
+    name: MultiLangText = MultiLangText(
+        ar="حذف تنوين الفتح في الوسط",
+        en="Tanween Fath Mid Delete",
+    )
+    description: MultiLangText = MultiLangText(
+        ar="",
+        en="",
+    )
+    rule_type: TajweedRuleType = TajweedRuleType.TANWEEN_FATH_MID_DELETE
+
+
+@dataclass
+class TanweenFatahForHaaTaneethPauseRule(DescriptiveTajweedRule):
+    name: MultiLangText = MultiLangText(
+        ar="تنوين الفتح لهاء التأنيث وقفاً",
+        en="Tanween Fatah for Haa Taneeth at Pause",
+    )
+    description: MultiLangText = MultiLangText(
+        ar="",
+        en="",
+    )
+    rule_type: TajweedRuleType = TajweedRuleType.TANWEEN_FATAH_FOR_HAA_TANEETH_PAUSE
+
+
+@dataclass
+class IzharNoonRule(DescriptiveTajweedRule):
+    name: MultiLangText = MultiLangText(
+        ar="الإظهار الحلقي",
+        en="Al-Izhar Al-Halqi for Sakin Noon and Tanween",
+    )
+    description: MultiLangText = MultiLangText(
+        ar="",
+        en="",
+    )
+    rule_type: TajweedRuleType = TajweedRuleType.IZHAR_NOON
+
+
+@dataclass
+class IdghamGonnahNoonRule(DescriptiveTajweedRule):
+    name: MultiLangText = MultiLangText(
+        ar="إدغام بغنة",
+        en="Idgham with Ghunnah",
+    )
+    description: MultiLangText = MultiLangText(
+        ar="",
+        en="",
+    )
+    rule_type: TajweedRuleType = TajweedRuleType.IDGHAM_GONNAH_NOON
+
+
+@dataclass
+class IqlabNoonRule(DescriptiveTajweedRule):
+    name: MultiLangText = MultiLangText(
+        ar="إقلاب",
+        en="Iqlab",
+    )
+    description: MultiLangText = MultiLangText(
+        ar="",
+        en="",
+    )
+    rule_type: TajweedRuleType = TajweedRuleType.IQLAB_NOON
+
+
+@dataclass
+class IkhfaaNoonRule(DescriptiveTajweedRule):
+    name: MultiLangText = MultiLangText(
+        ar="إخفاء",
+        en="Ikhfaa",
+    )
+    description: MultiLangText = MultiLangText(
+        ar="",
+        en="",
+    )
+    rule_type: TajweedRuleType = TajweedRuleType.IKHFAA_NOON
+
+
+@dataclass
+class IzharMeemRule(DescriptiveTajweedRule):
+    name: MultiLangText = MultiLangText(
+        ar="الإظهار الشفوي",
+        en="Al-Izhar Al-Shafawy for Sakin Meem",
+    )
+    description: MultiLangText = MultiLangText(
+        ar="",
+        en="",
+    )
+    rule_type: TajweedRuleType = TajweedRuleType.IZHAR_MEEM
+
+
+@dataclass
+class IdghamMeemRule(DescriptiveTajweedRule):
+    name: MultiLangText = MultiLangText(
+        ar="إدغام الميم الساكنة",
+        en="Idgham for Sakin Meem",
+    )
+    description: MultiLangText = MultiLangText(
+        ar="",
+        en="",
+    )
+    rule_type: TajweedRuleType = TajweedRuleType.IDGHAM_MEEM
+
+
+@dataclass
+class IkhfaaMeemRule(DescriptiveTajweedRule):
+    name: MultiLangText = MultiLangText(
+        ar="إخفاء شفوي",
+        en="Ikhfaa Shafawy for Sakin Meem",
+    )
+    description: MultiLangText = MultiLangText(
+        ar="",
+        en="",
+    )
+    rule_type: TajweedRuleType = TajweedRuleType.IKHFAA_MEEM
+
+
+@dataclass
+class MoshadadNoonRule(DescriptiveTajweedRule):
+    name: MultiLangText = MultiLangText(
+        ar="نون مشددة",
+        en="Noon Mushaddadah",
+    )
+    description: MultiLangText = MultiLangText(
+        ar="",
+        en="",
+    )
+    rule_type: TajweedRuleType = TajweedRuleType.MOSHADAD_NOON
+
+
+@dataclass
+class MoshadadMeemRule(DescriptiveTajweedRule):
+    name: MultiLangText = MultiLangText(
+        ar="ميم مشددة",
+        en="Meem Mushaddadah",
+    )
+    description: MultiLangText = MultiLangText(
+        ar="",
+        en="",
+    )
+    rule_type: TajweedRuleType = TajweedRuleType.MOSHADAD_MEEM
+
+
+@dataclass
+class IdghamKamelRule(DescriptiveTajweedRule):
+    name: MultiLangText = MultiLangText(
+        ar="إدغام كامل",
+        en="Full Merging",
+    )
+    description: MultiLangText = MultiLangText(
+        ar="",
+        en="",
+    )
+    rule_type: TajweedRuleType = TajweedRuleType.IDGHAM_KAMEL
+
+
+@dataclass
+class KasrTanweenIltiqaaSakenaynRule(DescriptiveTajweedRule):
+    name: MultiLangText = MultiLangText(
+        ar="كسر التنوين لالتقاء الساكنين",
+        en="Kasr Tanween for Iltiqaa Sakenayn",
+    )
+    description: MultiLangText = MultiLangText(
+        ar="",
+        en="",
+    )
+    rule_type: TajweedRuleType = TajweedRuleType.KASR_TANWEEN_ILTIQAA_SAKENAYN
+
+
+@dataclass
+class DeleteFirstIltiqaaSakenaynRule(DescriptiveTajweedRule):
+    name: MultiLangText = MultiLangText(
+        ar="حذف الأول لالتقاء الساكنين",
+        en="Delete First for Iltiqaa Sakenayn",
+    )
+    description: MultiLangText = MultiLangText(
+        ar="",
+        en="",
+    )
+    rule_type: TajweedRuleType = TajweedRuleType.DELETE_FIRST_ILTIQAA_SAKENAYN
+
+
+@dataclass
+class TasheelRule(DescriptiveTajweedRule):
+    name: MultiLangText = MultiLangText(
+        ar="تسهيل",
+        en="Tasheel",
+    )
+    description: MultiLangText = MultiLangText(
+        ar="",
+        en="",
+    )
+    rule_type: TajweedRuleType = TajweedRuleType.TASHEEL
+
+
+@dataclass
+class QalqalahRule(DescriptiveTajweedRule):
+    name: MultiLangText = MultiLangText(
+        ar="قلقلة",
+        en="Qalqalah",
+    )
+    description: MultiLangText = MultiLangText(
+        ar="",
+        en="",
+    )
+    rule_type: TajweedRuleType = TajweedRuleType.QALQALAH
+
+
+@dataclass
+class HamzatWaslDeleteRule(DescriptiveTajweedRule):
+    name: MultiLangText = MultiLangText(
+        ar="حذف همزة الوصل",
+        en="Hamzat Wasl Delete",
+    )
+    description: MultiLangText = MultiLangText(
+        ar="",
+        en="",
+    )
+    rule_type: TajweedRuleType = TajweedRuleType.HAMZAT_WASL_DELETE
+
+
+@dataclass
+class KasrNounsHamzatWaslRule(DescriptiveTajweedRule):
+    name: MultiLangText = MultiLangText(
+        ar="كسر همزة الوصل في الأسماء",
+        en="Kasr Hamzat Wasl in Nouns",
+    )
+    description: MultiLangText = MultiLangText(
+        ar="",
+        en="",
+    )
+    rule_type: TajweedRuleType = TajweedRuleType.KASR_NOUNS_HAMZAT_WASL
+
+
+@dataclass
+class KasrVerbHamzatWaslRule(DescriptiveTajweedRule):
+    name: MultiLangText = MultiLangText(
+        ar="كسر همزة الوصل في الأفعال",
+        en="Kasr Hamzat Wasl in Verbs",
+    )
+    description: MultiLangText = MultiLangText(
+        ar="",
+        en="",
+    )
+    rule_type: TajweedRuleType = TajweedRuleType.KASR_VERB_HAMZAT_WASL
+
+
+@dataclass
+class DamVerbHamzatWaslRule(DescriptiveTajweedRule):
+    name: MultiLangText = MultiLangText(
+        ar="ضم همزة الوصل في الأفعال",
+        en="Dam Hamzat Wasl in Verbs",
+    )
+    description: MultiLangText = MultiLangText(
+        ar="",
+        en="",
+    )
+    rule_type: TajweedRuleType = TajweedRuleType.DAM_VERB_HAMZAT_WASL
+
+
+@dataclass
+class FathAllHamzatWaslRule(DescriptiveTajweedRule):
+    name: MultiLangText = MultiLangText(
+        ar="فتح همزة الوصل",
+        en="Fath Hamzat Wasl",
+    )
+    description: MultiLangText = MultiLangText(
+        ar="",
+        en="",
+    )
+    rule_type: TajweedRuleType = TajweedRuleType.FATH_ALL_HAMZAT_WASL
+
+
+@dataclass
+class IltiqaaHamzatanSecondMaddYaaRule(DescriptiveTajweedRule):
+    name: MultiLangText = MultiLangText(
+        ar="مد الياء لالتقاء الهمزتين",
+        en="Iltiqaa Hamzatan Second Madd Yaa",
+    )
+    description: MultiLangText = MultiLangText(
+        ar="",
+        en="",
+    )
+    rule_type: TajweedRuleType = TajweedRuleType.ILTIQAA_HAMZATAN_SECOND_MADD_YAA
+
+
+@dataclass
+class IltiqaaHamzatanSecondMaddWawRule(DescriptiveTajweedRule):
+    name: MultiLangText = MultiLangText(
+        ar="مد الواو لالتقاء الهمزتين",
+        en="Iltiqaa Hamzatan Second Madd Waw",
+    )
+    description: MultiLangText = MultiLangText(
+        ar="",
+        en="",
+    )
+    rule_type: TajweedRuleType = TajweedRuleType.ILTIQAA_HAMZATAN_SECOND_MADD_WAW
 
 
 #
@@ -547,5 +956,44 @@ class SkoonMostadeerDelete(MaddRule):
 
 TAJ_TYPE_TO_RULE = {
     TajweedRuleType.NORMAL_MADD: NormalMaddRule(),
-    TajweedRuleType.SKOON_MOSTADEER_DELETE: SkoonMostadeerDelete(),
+    TajweedRuleType.LAZIM_MADD: LazimMaddRule(),
+    TajweedRuleType.ELEWAD_MADD: ElewadMaddRule(),
+    TajweedRuleType.MONFASEL_MADD: MonfaselMaddRule(),
+    TajweedRuleType.MOTTASEL_MADD: MottaselMaddRule(),
+    TajweedRuleType.LEEN_MADD: LeenMaddRule(),
+    TajweedRuleType.AARED_MADD: AaredMaddRule(),
+    TajweedRuleType.SKOON_MOSTADEER_DELETE: SkoonMostadeerDeleteRule(),
+    TajweedRuleType.SKOON_MOSTATEEL_MID_DELETE: SkoonMostateelMidDeleteRule(),
+    TajweedRuleType.SKOON_MOSTATEEL_END_ADD: SkoonMostateelEndAddRule(),
+    TajweedRuleType.TANWEEN_FATH_MID_DELETE: TanweenFathMidDeleteRule(),
+    TajweedRuleType.TANWEEN_FATAH_FOR_HAA_TANEETH_PAUSE: (
+        TanweenFatahForHaaTaneethPauseRule()
+    ),
+    TajweedRuleType.IZHAR_NOON: IzharNoonRule(),
+    TajweedRuleType.IDGHAM_GONNAH_NOON: IdghamGonnahNoonRule(),
+    TajweedRuleType.IQLAB_NOON: IqlabNoonRule(),
+    TajweedRuleType.IKHFAA_NOON: IkhfaaNoonRule(),
+    TajweedRuleType.IZHAR_MEEM: IzharMeemRule(),
+    TajweedRuleType.IDGHAM_MEEM: IdghamMeemRule(),
+    TajweedRuleType.IKHFAA_MEEM: IkhfaaMeemRule(),
+    TajweedRuleType.MOSHADAD_NOON: MoshadadNoonRule(),
+    TajweedRuleType.MOSHADAD_MEEM: MoshadadMeemRule(),
+    TajweedRuleType.IDGHAM_KAMEL: IdghamKamelRule(),
+    TajweedRuleType.KASR_TANWEEN_ILTIQAA_SAKENAYN: KasrTanweenIltiqaaSakenaynRule(),
+    TajweedRuleType.DELETE_FIRST_ILTIQAA_SAKENAYN: DeleteFirstIltiqaaSakenaynRule(),
+    TajweedRuleType.TASHEEL: TasheelRule(),
+    TajweedRuleType.QALQALAH: QalqalahRule(),
+    TajweedRuleType.HAMZAT_WASL_DELETE: HamzatWaslDeleteRule(),
+    TajweedRuleType.KASR_NOUNS_HAMZAT_WASL: KasrNounsHamzatWaslRule(),
+    TajweedRuleType.KASR_VERB_HAMZAT_WASL: KasrVerbHamzatWaslRule(),
+    TajweedRuleType.DAM_VERB_HAMZAT_WASL: DamVerbHamzatWaslRule(),
+    TajweedRuleType.FATH_ALL_HAMZAT_WASL: FathAllHamzatWaslRule(),
+    TajweedRuleType.ILTIQAA_HAMZATAN_SECOND_MADD_YAA: (
+        IltiqaaHamzatanSecondMaddYaaRule()
+    ),
+    TajweedRuleType.ILTIQAA_HAMZATAN_SECOND_MADD_WAW: (
+        IltiqaaHamzatanSecondMaddWawRule()
+    ),
 }
+
+assert set(TAJ_TYPE_TO_RULE) == set(TajweedRuleType)
