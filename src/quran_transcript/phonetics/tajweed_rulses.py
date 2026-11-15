@@ -198,31 +198,6 @@ class ExplainedTajweedRule:
         )
 
 
-# @dataclass
-# class Qalqalah(TajweedRule):
-#     name: MultiLangText = field(
-#         default_factory=lambda: MultiLangText(ar="قلقة", en="Qalqalah")
-#     )
-#     golden_len: int = 0
-#     correctness_type: Literal["match", "count"] = "match"
-#
-#     def match(self, ref_text, pred_text) -> bool:
-#         return ref_text == pred_text
-#
-#     def is_ph_str_in(self, ph_str: str) -> bool:
-#         """Whether the phonetic script is assoicated with this Tajweed rule or not"""
-#         return True
-#
-#     def get_relvant_rule(self, ph_str: str) -> Optional["TajweedRule"]:
-#         """Returs a Tajweed rule that is assocaited with the input ph_str"""
-#         if not ph_str:
-#             return None
-#         elif ph_str[-1] == alph.phonetics.qlqla:
-#             return self
-#         else:
-#             return None
-#
-#
 @dataclass
 class MaddRule(TajweedRule):
     correctness: CorrectnessType = "count"

@@ -1,7 +1,4 @@
-import pprint
 from collections.abc import Iterable
-from dataclasses import dataclass, field
-from typing import Literal, TypeAlias
 
 import Levenshtein as lv
 
@@ -241,14 +238,24 @@ def explain_error(
     )
     # Aligning Phonemes groups using first chat of  every one
     alignments = align_phonemes_groups(ref_ph_groups, pred_ph_groups)
-    pprint.pp(alignments)
     errors = []
     pred_ph_start = 0
     ref_ph_start = 0
     pred_ph_end = 0
     ref_ph_end = 0
 
-    # TODO: Add tajweed rule with no correction critreia like kasr al tanween, idham kamel with gonnah
+    # Generic rectier error patterns
+    ref_group_metas = [[t[1] for t in s] for s in ref_ph_groups_tajweed_rules]
+    for err_pat in ERR_PATERNS:
+        errors.extend(
+            err_pat.find_all(
+                ref_ph_groups,
+                pred_ph_groups,
+                alignments,
+                ref_group_metas,
+                ref_ph_to_uthmani,
+            )
+        )
 
     for align in alignments:
         if align.ref_idx < len(ref_ph_groups):
@@ -430,17 +437,5 @@ def explain_error(
 
         pred_ph_start = pred_ph_end
         ref_ph_start = ref_ph_end
-
-    ref_group_metas = [[t[1] for t in s] for s in ref_ph_groups_tajweed_rules]
-    for err_pat in ERR_PATERNS:
-        errors.extend(
-            err_pat.find_all(
-                ref_ph_groups,
-                pred_ph_groups,
-                alignments,
-                ref_group_metas,
-                ref_ph_to_uthmani,
-            )
-        )
 
     return errors

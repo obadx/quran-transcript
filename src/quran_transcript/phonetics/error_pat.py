@@ -4,8 +4,8 @@ from dataclasses import dataclass, field
 from typing import Literal, TypeAlias
 
 from .tajweed_rulses import (
+    TAJ_TYPE_TO_RULE,
     ExplainedTajweedRule,
-    FullTajweedRuleType,
     TajweedRuleMetadata,
     TajweedRuleType,
     get_full_taj_rule_type,
@@ -237,18 +237,14 @@ def _group_char_offsets(ph_groups: list[str]) -> list[int]:
     return offsets
 
 
-def _resolve_tajweed_rules(
+def _static_tajweed_rules(
     wanted_types: Sequence[TajweedRuleType],
-    full_rules: Sequence[FullTajweedRuleType],
 ) -> list[ExplainedTajweedRule]:
-    """Resolve the first matching rule for each wanted Tajweed type."""
-    resolved: list[ExplainedTajweedRule] = []
-    for wanted in wanted_types:
-        for rule, meta in full_rules:
-            if rule.rule_type == wanted:
-                resolved.append(ExplainedTajweedRule.from_(rule, meta))
-                break
-    return resolved
+    """Build static rule snapshots without runtime position data."""
+    return [
+        ExplainedTajweedRule.from_rule(TAJ_TYPE_TO_RULE[wanted])
+        for wanted in wanted_types
+    ]
 
 
 class ReciterErrPatern:
@@ -321,9 +317,11 @@ class ReciterErrPatern:
           skipped. A named tag that is not in ``rules`` is only contextual.
 
         The static rule lists (``inserted_tajweed_rules``,
-        ``replaced_tajweed_rules`` and ``missing_tajweed_rules``) are resolved
-        from the matched reference metadata; a type that is absent from the
-        matched span is skipped.
+        ``replaced_tajweed_rules`` and ``missing_tajweed_rules``) are reported
+        as declared. Their static fields (name, description, rule type and
+        correctness) come from the rule definition, while runtime position
+        fields are left at sentinel values: ``(-1, -1)`` for pivots, empty
+        dependency lists, an empty tag and ``golden_len = -1``.
 
         Limitation:
 
@@ -557,17 +555,14 @@ class ReciterErrPatern:
             ExplainedTajweedRule.from_(rule, meta) for rule, meta in full_rules
         ]
 
-        inserted_tajweed_rules = _resolve_tajweed_rules(
-            self.inserted_tajweed_rules,
-            full_rules,
+        inserted_tajweed_rules = _static_tajweed_rules(
+            self.inserted_tajweed_rules
         )
-        replaced_tajweed_rules = _resolve_tajweed_rules(
-            self.replaced_tajweed_rules,
-            full_rules,
+        replaced_tajweed_rules = _static_tajweed_rules(
+            self.replaced_tajweed_rules
         )
-        missing_tajweed_rules = _resolve_tajweed_rules(
-            self.missing_tajweed_rules,
-            full_rules,
+        missing_tajweed_rules = _static_tajweed_rules(
+            self.missing_tajweed_rules
         )
 
         expected_len = -1
