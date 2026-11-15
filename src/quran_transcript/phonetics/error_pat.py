@@ -1,14 +1,19 @@
+import re
+from collections.abc import Sequence
 from dataclasses import dataclass, field
 from typing import Literal, TypeAlias
 
-from quran_transcript.phonetics.tajweed_rulses import (
+from .tajweed_rulses import (
+    ExplainedTajweedRule,
     FullTajweedRuleType,
+    TajweedRuleMetadata,
     TajweedRuleType,
+    get_full_taj_rule_type,
 )
 
-from .tajweed_rulses import ExplainedTajweedRule
-
 TashkeelErrorType: TypeAlias = Literal["fatha", "dama", "kasra", "skoon"]
+
+ReciterErrOp: TypeAlias = Literal["e", "i", "r", "d"]
 
 
 @dataclass(frozen=True)
@@ -42,59 +47,582 @@ class ReciterError:
     missing_tajweed_rules: list[ExplainedTajweedRule] = field(default_factory=list)
 
 
+class ReciterErrPatParsingError(Exception): ...
+
+
+@dataclass
+class ReciterErrPatTag:
+    start: int
+    end: int
+    op: ReciterErrOp
+    tag: str  # "" when unnamed
+    pat: str  # exact regex segment used in the full pattern
+    compiled_pat: re.Pattern  # re.compile(pat)
+
+
+# A tag is `<op[,name]:tag pattern>`. The tag pattern is a regex source and
+# must not contain a literal `>` outside a character class because `>` closes
+# the tag.
+_reciter_error_tags = re.compile(
+    r"<([eird])(?:,([a-z][0-9]?))?:"
+    r"((?:\\.|\[(?:\\.|[^\]\\])*\]|\(\?P<\w+>|[^>\\])*)>"
+)
+
+
+def parse_reciter_error_tags(
+    pat: str,
+    rules: dict[str, TajweedRuleType],
+) -> list[ReciterErrPatTag]:
+    """Parse a reciter-error pattern into its tags.
+
+    Args:
+        pat: The pattern without the leading ``R:`` prefix.
+        rules: Mapping from named tag to the Tajweed rule it requires.
+
+    Raises:
+        ReciterErrPatParsingError: If the pattern is malformed or if a tag is
+            used inconsistently with ``rules``.
+    """
+    for rule_tag, rule_type in rules.items():
+        if not isinstance(rule_type, TajweedRuleType):
+            raise ReciterErrPatParsingError(
+                f"Rule type of tag `{rule_tag}` has to be a `TajweedRuleType` "
+                f"but got `{type(rule_type).__name__}`"
+            )
+
+    mapped_tags: list[ReciterErrPatTag] = []
+    pat_tags: set[str] = set()
+    last_idx = 0
+    prev_op: ReciterErrOp | None = None
+
+    for match in _reciter_error_tags.finditer(pat):
+        if last_idx != match.start():
+            raise ReciterErrPatParsingError(
+                f"`pat` should be connected like `<e,t0:abc><i:d>` but found "
+                f"out-of-bounds element at position {match.start()}: "
+                f"`{pat[last_idx : match.start()]}`"
+            )
+
+        op: ReciterErrOp = match.group(1)
+        tag = match.group(2) or ""
+        tag_pat = match.group(3)
+
+        if op == "i" and tag:
+            raise ReciterErrPatParsingError(
+                f"Insert tag `i` can not be named but got `{tag}` at "
+                f"position `{match.start(2)}`"
+            )
+
+        if tag:
+            if tag in pat_tags:
+                raise ReciterErrPatParsingError(
+                    f"Repeated tag `{tag}` at position `{match.start(2)}` "
+                    f"in `pat` pattern. Tag should be used only once in the pat!"
+                )
+            pat_tags.add(tag)
+
+        if not tag_pat:
+            raise ReciterErrPatParsingError(
+                f"Empty tag pattern at position `{match.start(3)}`"
+            )
+
+        try:
+            compiled_tag_pat = re.compile(tag_pat)
+        except re.error as exc:
+            raise ReciterErrPatParsingError(
+                f"Invalid regex in tag `{tag}` at position `{match.start(3)}`: {exc}"
+            ) from exc
+
+        if compiled_tag_pat.fullmatch("") is not None:
+            raise ReciterErrPatParsingError(
+                f"Tag pattern `{tag_pat}` at position `{match.start(3)}` "
+                f"can match an empty string"
+            )
+
+        # One operation letter per run of same-op tags. The tag pattern is
+        # wrapped in a non-capturing group so alternation keeps its meaning
+        # without shifting the user's capture-group numbering.
+        op_prefix = op if op != prev_op else ""
+        full_pat = f"{op_prefix}(?:{tag_pat})"
+
+        mapped_tags.append(
+            ReciterErrPatTag(
+                start=match.start(),
+                end=match.end(),
+                op=op,
+                tag=tag,
+                pat=full_pat,
+                compiled_pat=re.compile(full_pat),
+            )
+        )
+        prev_op = op
+        last_idx = match.end()
+
+    if last_idx != len(pat):
+        raise ReciterErrPatParsingError(
+            f"`pat` should be connected like `<e,t0:abc><i:d>` but found "
+            f"out-of-bounds element from position {last_idx}: `{pat[last_idx:]}`"
+        )
+
+    if not mapped_tags:
+        raise ReciterErrPatParsingError(
+            "`pat` has to contain at least one tag like `<e,t0:abc>`"
+        )
+
+    # Every tag in `rules` must exist in `pat`.
+    for rule_tag in rules:
+        if rule_tag not in pat_tags:
+            raise ReciterErrPatParsingError(
+                f"tag: `{rule_tag}` exists in the `rules` but does not "
+                f"exist in the `pat`"
+            )
+
+    return mapped_tags
+
+
+_ALIGN_TO_OP: dict[str, ReciterErrOp] = {
+    "equal": "e",
+    "insert": "i",
+    "replace": "r",
+    "delete": "d",
+}
+
+
+def _encode_alignments(
+    ref_ph_groups: list[str],
+    pred_ph_groups: list[str],
+    ph_groups_align: list[PhonemesGroupsAligment],
+) -> tuple[str, list[int]]:
+    """Encode alignments as one op letter per run followed by group first chars.
+
+    Example::
+
+        equal A, equal B, equal C, insert D, delete E
+        -> encoded = "eABCiDdE"
+        -> enc_to_align = [0, 0, 1, 2, 3, 3, 4, 4, 5]
+
+    ``enc_to_align`` maps every encoded character index to its alignment index.
+    Its last entry maps the end of the encoded string to
+    ``len(ph_groups_align)``.
+    """
+    parts: list[str] = []
+    enc_to_align: list[int] = []
+    prev_op: ReciterErrOp | None = None
+
+    for i, align in enumerate(ph_groups_align):
+        op = _ALIGN_TO_OP[align.op_type]
+
+        if op != prev_op:
+            parts.append(op)
+            enc_to_align.append(i)
+
+        if align.op_type == "delete":
+            group = ref_ph_groups[align.ref_idx]
+        else:
+            group = pred_ph_groups[align.pred_idx]
+
+        parts.append(group[0])
+        enc_to_align.append(i)
+        prev_op = op
+
+    enc_to_align.append(len(ph_groups_align))
+    return "".join(parts), enc_to_align
+
+
+def _group_char_offsets(ph_groups: list[str]) -> list[int]:
+    """Cumulative character offsets of phoneme groups (inclusive end)."""
+    offsets = [0]
+    for group in ph_groups:
+        offsets.append(offsets[-1] + len(group))
+    return offsets
+
+
+def _resolve_tajweed_rules(
+    wanted_types: Sequence[TajweedRuleType],
+    full_rules: Sequence[FullTajweedRuleType],
+) -> list[ExplainedTajweedRule]:
+    """Resolve the first matching rule for each wanted Tajweed type."""
+    resolved: list[ExplainedTajweedRule] = []
+    for wanted in wanted_types:
+        for rule, meta in full_rules:
+            if rule.rule_type == wanted:
+                resolved.append(ExplainedTajweedRule.from_(rule, meta))
+                break
+    return resolved
+
+
 class ReciterErrPatern:
-    def __init__(self, pat: str, rules: dict[str, TajweedRuleType]) -> None:
-        """A minimal layer over re to detect reciters errors and return coreespoding
-        human readable output to the user
+    def __init__(
+        self,
+        pat: str,
+        rules: dict[str, TajweedRuleType],
+        *,
+        error_type: Literal["tajweed", "normal", "tashkeel"] | None = None,
+        speech_error_type: Literal["insert", "delete", "replace"] | None = None,
+        inserted_tajweed_rules: Sequence[TajweedRuleType] = (),
+        replaced_tajweed_rules: Sequence[TajweedRuleType] = (),
+        missing_tajweed_rules: Sequence[TajweedRuleType] = (),
+    ) -> None:
+        """Detect reciter error patterns and build human readable errors.
+
+        This is a minimal layer on top of ``re`` that captures error patterns
+        in the predicted phoneme groups produced by a reciter.
+
+        The predicted/reference alignments are encoded as one operation letter
+        per maximal run of the same alignment operation followed by the first
+        character of every phoneme group in that run. For example::
+
+            equal A, equal B, equal C, insert D, delete E
+            -> "eABCiDdE"
+
+        ``pat`` should start with ``R:`` [R]eciter. A pattern is a connected
+        sequence of tags::
+
+            pat = r"R:<e,t0:abc><i:d>"
+            <e,t0:abc>
+            ^^ ^     ^
+            -^-^------  This is called a `tag`; the brackets `<...>` hold the
+             ^ ^        pattern and are not related to re groups.
+             ^ ^
+             ^ - > `e` is the **operation type**: `e` equal, `i` insert,
+                    `r` replace, or `d` delete.
+               ^ - > `t0` is the optional **tag name**, a single lowercase
+                      character optionally followed by one digit (`x`, `y3`).
+             `abc` is the tag pattern; every character represents the first
+             character of a phoneme group.
+
+        Operation matching side:
+
+        * ``e`` matches the **predicted** group first char (the reference char
+          is the same under an equal alignment).
+        * ``i`` matches the **predicted** group first char.
+        * ``r`` matches the **predicted** group first char.
+        * ``d`` matches the **reference** group first char.
 
         Rules:
-        * This a minimal layer on top of re to cature error patterns in predicted phonemes groups by the [R]eciter
-        * The Reciter Error pattern is trying to match the predicted phonemes by a reciter to detect error pattern to
-          return human readable reciter error
-        * `pat` should start with `R:` [R]eciter
-        * EX: pat = r"<e,t0:abc><i:d>"
-        <e,t0:abc>
-        ^^ ^     ^
-        -^-^------  This is called a `tag` These brackets `<..>` holds the pattern and is not related to re gropus.
-         ^ ^
-         ^ - > `e` is called **operation type** and can be out of 4 valude: `e`: equal, `i`: insert, `r`: replace, or `d`: delete
-           ^ - > `t0` is called  the **tag name** and composed only of a single charcter and it can followed by a number like `x`, `y3` and it is optional
-         `abc` is called `tag pattern`; every character in the tag pattern represents the first chacter of each phonemes group
 
-        * pat patterns Have to be connected like r"<d,t0:ABC><r:m>" but not r"<d,t0:ABC>N<r:m>" ->  ParserError `N` should be included in a tag
-        * tag names have to be unique; repeating a tag raises
+        * Tags have to be connected like ``<d,t0:ABC><r:m>`` but not
+          ``<d,t0:ABC>N<r:m>``; text outside tags raises
+          :class:`ReciterErrPatParsingError`.
+        * Tag names are ``[a-z][0-9]?`` and have to be unique in ``pat``.
+        * Insert tags (``i``) can not be named.
+        * Tag patterns are regex sources. They must not be empty and must not
+          match the empty string.
+        * Tag patterns must not contain a literal ``>`` outside a character
+          class because ``>`` closes the tag.
+        * Adjacent tags with the same operation share one operation prefix:
+          ``<e,t0:A><e,t1:B>`` compiles to ``e(?:A)(?:B)`` and matches
+          ``eAB``.
+        * Tag names do not add capture groups. Tag patterns are wrapped in
+          non-capturing groups, so user-defined groups keep their numbering.
+        * A tag name in ``rules`` has to exist as a named tag in ``pat``. For
+          every named tag in ``rules`` the matched reference span has to
+          contain that :class:`TajweedRuleType`; otherwise the match is
+          skipped. A named tag that is not in ``rules`` is only contextual.
 
-        * for `e` equal, `d`: delete, `r`: replace operations it is optinal to add **tag name** like r"R:<e:abc>" or r"R:<e,x:abc>",
-          ,r"R:<d:abc>" or r"R:<d,x:abc>", r"R:<r:abc>" or r"R:<r,x:abc>"
-        * for `insert` operation it is not allowed to add **tag name** you will get parser error like: r"R:<i,x:abc>"
-
-        * **tag names** should b compose of a single small case character followed by a single digit like `m0`, `m` not `x11` or `M`
-        * if a **tag name** is found in the rules but not in the pat you will get a tag not found error
-
+        The static rule lists (``inserted_tajweed_rules``,
+        ``replaced_tajweed_rules`` and ``missing_tajweed_rules``) are resolved
+        from the matched reference metadata; a type that is absent from the
+        matched span is skipped.
 
         Limitation:
-        * not supporting named group followed by the end of tag brackets in `rep` like this: `r"<x:X><r:\\g<c>>"`
-                                               -------------------------------------------------------------^
-        Because the parser will think that the end of named group is the group name closing
 
+        * Because the encoding emits one op letter per maximal run, a match can
+          only start at a run boundary. To target a group in the middle of a
+          run, include the preceding groups from that run in the tag pattern.
+        * ``finditer`` is non-overlapping. If a strict rule lookup rejects a
+          match, the scan continues after that match; it does not retry from
+          ``match.start() + 1``.
+        * Tag regexes must not consume another run's op letter. The
+          ``_tag_span_ok`` check rejects such matches. Simple Arabic regexes
+          (``ا+``, ``[اب]{2}``, ``ا[بت]``) are safe; ``.`` / ``.*`` may be
+          rejected.
+        * A backreference within one tag works (``<e,t0:(A)\\1>``), but numeric
+          backreferences are resolved against the combined pattern. In a later
+          tag, ``\\1`` can bind to a group defined in an earlier tag; cross-tag
+          references are not supported. Use unique named groups when tags
+          contain groups.
+        * ``find_all`` re-matches each tag greedily at the matched position. If
+          tag patterns have overlapping alternatives, for example
+          ``<e,t0:AB|A><e,t1:B>`` against ``eAB``, the full pattern matches but
+          the per-tag re-match can consume text needed by the next tag. This
+          currently raises ``AssertionError``.
+        * User-defined named groups must be unique across all tags. Duplicate
+          names fail when the concatenated pattern is compiled in ``__init__``.
         """
         assert pat.startswith("R:")
+        pat = pat[2:]
 
-    def match(
+        self.pat = pat
+        self.rules = rules
+        self.error_type = error_type
+        self.speech_error_type = speech_error_type
+        self.inserted_tajweed_rules = tuple(inserted_tajweed_rules)
+        self.replaced_tajweed_rules = tuple(replaced_tajweed_rules)
+        self.missing_tajweed_rules = tuple(missing_tajweed_rules)
+
+        self.mapped_tags = parse_reciter_error_tags(pat, rules)
+        self.re_pat = re.compile("".join(m_tag.pat for m_tag in self.mapped_tags))
+
+    def find_all(
         self,
-        ref_ph_gropuhs: list[str],
-        pred_ph_gropus: list[str],
+        ref_ph_groups: list[str],
+        pred_ph_groups: list[str],
         ph_groups_align: list[PhonemesGroupsAligment],
-        ref_ph_groupt_rule_types: list[list[FullTajweedRuleType]],
-    ) -> ReciterError:
-        """
+        ref_group_rules: list[list[TajweedRuleMetadata]],
+        ref_ph_to_uthmani: list[int],
+    ) -> list[ReciterError]:
+        """Find all non-overlapping error patterns in the alignments.
 
-        # thinking with you opencode:
-        * I'm thinkig for gropus take the first char and at:  i, e, r, d at the begnning
-        * for the the pat we will append i, e, r, d in the pat also like <e,t1:abc> tag text become in the parser eabc
-        * we all have arabic letters so no problem about this implementation
+        Args:
+            ref_ph_groups: Reference phoneme groups.
+            pred_ph_groups: Predicted phoneme groups.
+            ph_groups_align: Reference/predicted phoneme group alignments.
+            ref_group_rules: Tajweed rule metadata attached to every reference
+                phoneme group.
+            ref_ph_to_uthmani: Mapping from reference phonetic character index
+                to Uthmani character index (with a final extra entry).
 
-        What do you think opencode about this implementation
-        * use ideas and code quality same as conv_base_operation QuranReWithMapping but do not resue the code unless no conflicts no problems
+        Returns:
+            One :class:`ReciterError` per accepted pattern match.
         """
-        ...
+        encoded, enc_to_align = _encode_alignments(
+            ref_ph_groups,
+            pred_ph_groups,
+            ph_groups_align,
+        )
+
+        errors: list[ReciterError] = []
+
+        for match in self.re_pat.finditer(encoded):
+            pos = match.start()
+            strict_ok = True
+            matched_ops: list[ReciterErrOp] = []
+
+            for m_tag in self.mapped_tags:
+                tag_mat = m_tag.compiled_pat.match(encoded, pos=pos)
+                assert tag_mat is not None
+
+                # not ncessary
+                if not self._tag_span_ok(m_tag, tag_mat):
+                    strict_ok = False
+                    break
+
+                if m_tag.tag in self.rules and not self._tag_rule_ok(
+                    m_tag,
+                    tag_mat,
+                    enc_to_align,
+                    ph_groups_align,
+                    ref_group_rules,
+                ):
+                    strict_ok = False
+                    break
+
+                matched_ops.append(m_tag.op)
+                pos = tag_mat.end()
+
+            if not strict_ok:
+                continue
+
+            assert pos == match.end()
+
+            a_start = enc_to_align[match.start()]
+            a_end = enc_to_align[match.end()]
+
+            error = self._build_error(
+                a_start,
+                a_end,
+                matched_ops,
+                ref_ph_groups,
+                pred_ph_groups,
+                ph_groups_align,
+                ref_group_rules,
+                ref_ph_to_uthmani,
+            )
+            if error is not None:
+                errors.append(error)
+
+        return errors
+
+    def _tag_span_ok(
+        self,
+        m_tag: ReciterErrPatTag,
+        tag_mat: re.Match,
+    ) -> bool:
+        """Reject a tag match that swallowed another run's operation letter."""
+        text = tag_mat.group()
+        offset = 1 if text and text[0] == m_tag.op else 0
+        return not any(ch in "eird" for ch in text[offset:])
+
+    def _tag_rule_ok(
+        self,
+        m_tag: ReciterErrPatTag,
+        tag_mat: re.Match,
+        enc_to_align: list[int],
+        ph_groups_align: list[PhonemesGroupsAligment],
+        ref_group_rules: list[list[TajweedRuleMetadata]],
+    ) -> bool:
+        """Check that the required rule exists in the matched reference span."""
+        a_start = enc_to_align[tag_mat.start()]
+        a_end = enc_to_align[tag_mat.end()]
+
+        ref_idxs = {
+            ph_groups_align[i].ref_idx
+            for i in range(a_start, a_end)
+            if ph_groups_align[i].op_type != "insert"
+        }
+
+        wanted = self.rules[m_tag.tag]
+        return any(
+            meta.rule_type == wanted
+            for idx in ref_idxs
+            for meta in ref_group_rules[idx]
+        )
+
+    def _build_error(
+        self,
+        a_start: int,
+        a_end: int,
+        matched_ops: list[ReciterErrOp],
+        ref_ph_groups: list[str],
+        pred_ph_groups: list[str],
+        ph_groups_align: list[PhonemesGroupsAligment],
+        ref_group_rules: list[list[TajweedRuleMetadata]],
+        ref_ph_to_uthmani: list[int],
+    ) -> ReciterError | None:
+        ref_char_offsets = _group_char_offsets(ref_ph_groups)
+        pred_char_offsets = _group_char_offsets(pred_ph_groups)
+
+        ref_idxs = [
+            ph_groups_align[i].ref_idx
+            for i in range(a_start, a_end)
+            if ph_groups_align[i].op_type != "insert"
+        ]
+        pred_idxs = [
+            ph_groups_align[i].pred_idx
+            for i in range(a_start, a_end)
+            if ph_groups_align[i].op_type != "delete"
+        ]
+
+        if ref_idxs:
+            ref_start, ref_end = min(ref_idxs), max(ref_idxs) + 1
+        else:
+            # Pure insert: use the boundary alignment as a zero-width span.
+            boundary = (
+                ph_groups_align[a_start].ref_idx
+                if a_start < len(ph_groups_align)
+                else len(ref_ph_groups)
+            )
+            ref_start = ref_end = boundary
+
+        if pred_idxs:
+            pred_start, pred_end = min(pred_idxs), max(pred_idxs) + 1
+        else:
+            # Pure delete: use the boundary alignment as a zero-width span.
+            boundary = (
+                ph_groups_align[a_start].pred_idx
+                if a_start < len(ph_groups_align)
+                else len(pred_ph_groups)
+            )
+            pred_start = pred_end = boundary
+
+        ref_char_start = ref_char_offsets[ref_start]
+        ref_char_end = ref_char_offsets[ref_end]
+        pred_char_start = pred_char_offsets[pred_start]
+        pred_char_end = pred_char_offsets[pred_end]
+
+        expected_ph = "".join(ref_ph_groups[ref_start:ref_end])
+        preditected_ph = "".join(pred_ph_groups[pred_start:pred_end])
+
+        ph_pos = (ref_char_start, ref_char_end)
+        if ref_start != ref_end:
+            uthmani_pos = (
+                ref_ph_to_uthmani[ref_char_start],
+                ref_ph_to_uthmani[ref_char_end - 1] + 1,
+            )
+        else:
+            uthmani_pos = (
+                ref_ph_to_uthmani[ref_char_start],
+                ref_ph_to_uthmani[ref_char_start],
+            )
+
+        ref_metas: list[TajweedRuleMetadata] = []
+        for idx in range(ref_start, ref_end):
+            ref_metas.extend(ref_group_rules[idx])
+
+        full_rules = [
+            get_full_taj_rule_type(meta, ref_ph_to_uthmani) for meta in ref_metas
+        ]
+        ref_tajweed_rules = [
+            ExplainedTajweedRule.from_(rule, meta) for rule, meta in full_rules
+        ]
+
+        inserted_tajweed_rules = _resolve_tajweed_rules(
+            self.inserted_tajweed_rules,
+            full_rules,
+        )
+        replaced_tajweed_rules = _resolve_tajweed_rules(
+            self.replaced_tajweed_rules,
+            full_rules,
+        )
+        missing_tajweed_rules = _resolve_tajweed_rules(
+            self.missing_tajweed_rules,
+            full_rules,
+        )
+
+        expected_len = -1
+        predicted_len = -1
+        if expected_ph and preditected_ph and expected_ph[0] == preditected_ph[0]:
+            for rule, meta in full_rules:
+                if rule.correctness == "count":
+                    expected_len = meta.golden_len
+                    predicted_len = rule.count(expected_ph, preditected_ph)
+                    break
+
+        if self.error_type is not None:
+            error_type = self.error_type
+        elif ref_tajweed_rules:
+            error_type = "tajweed"
+        else:
+            error_type = "normal"
+
+        if self.speech_error_type is not None:
+            speech_error_type = self.speech_error_type
+        else:
+            speech_error_type = "replace"
+            for op in matched_ops:
+                if op == "i":
+                    speech_error_type = "insert"
+                    break
+                if op == "d":
+                    speech_error_type = "delete"
+                    break
+                if op == "r":
+                    speech_error_type = "replace"
+                    break
+
+        if (
+            expected_ph == preditected_ph
+            and not ref_tajweed_rules
+            and not inserted_tajweed_rules
+            and not replaced_tajweed_rules
+            and not missing_tajweed_rules
+        ):
+            return None
+
+        return ReciterError(
+            uthmani_pos=uthmani_pos,
+            ph_pos=ph_pos,
+            error_type=error_type,
+            speech_error_type=speech_error_type,
+            expected_ph=expected_ph,
+            preditected_ph=preditected_ph,
+            expected_len=expected_len,
+            predicted_len=predicted_len,
+            expected_tashkeel=None,
+            predicted_tashkeel=None,
+            ref_tajweed_rules=ref_tajweed_rules,
+            inserted_tajweed_rules=inserted_tajweed_rules,
+            replaced_tajweed_rules=replaced_tajweed_rules,
+            missing_tajweed_rules=missing_tajweed_rules,
+        )

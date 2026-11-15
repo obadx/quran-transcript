@@ -1,3 +1,4 @@
+import pprint
 from collections.abc import Iterable
 from dataclasses import dataclass, field
 from typing import Literal, TypeAlias
@@ -7,9 +8,14 @@ import Levenshtein as lv
 from .. import alphabet as alph
 from ..alphabet import phonetics as ph
 from .conv_base_operation import PhonetizerMappings
-from .error_pat import PhonemesGroupsAligment, ReciterError, TashkeelErrorType
+from .error_pat import (
+    PhonemesGroupsAligment,
+    ReciterError,
+    ReciterErrPatern,
+    TashkeelErrorType,
+)
 from .sifa import chunck_phonemes
-from .tajweed_rulses import ExplainedTajweedRule, FullTajweedRuleType
+from .tajweed_rulses import ExplainedTajweedRule, FullTajweedRuleType, TajweedRuleType
 
 
 def to_explained_tajweed_rules(
@@ -118,6 +124,17 @@ def get_tasshkeel_error(
     return err
 
 
+ERR_PATERNS = [
+    ReciterErrPatern(
+        f"R:<i:{ph.noon}><e,t0:[{ph.yaa}{ph.meem}{ph.waw}]>",
+        {"t0": TajweedRuleType.IDGHAM_GONNAH_NOON},
+        error_type="tajweed",
+        speech_error_type="replace",
+        replaced_tajweed_rules=(TajweedRuleType.IZHAR_NOON,),
+    ),
+]
+
+
 def explain_error(
     uthmani_text: str,
     ref_ph_text: str,
@@ -224,6 +241,7 @@ def explain_error(
     )
     # Aligning Phonemes groups using first chat of  every one
     alignments = align_phonemes_groups(ref_ph_groups, pred_ph_groups)
+    pprint.pp(alignments)
     errors = []
     pred_ph_start = 0
     ref_ph_start = 0
@@ -412,5 +430,17 @@ def explain_error(
 
         pred_ph_start = pred_ph_end
         ref_ph_start = ref_ph_end
+
+    ref_group_metas = [[t[1] for t in s] for s in ref_ph_groups_tajweed_rules]
+    for err_pat in ERR_PATERNS:
+        errors.extend(
+            err_pat.find_all(
+                ref_ph_groups,
+                pred_ph_groups,
+                alignments,
+                ref_group_metas,
+                ref_ph_to_uthmani,
+            )
+        )
 
     return errors

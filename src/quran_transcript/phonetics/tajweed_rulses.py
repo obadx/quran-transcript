@@ -57,6 +57,14 @@ class TajweedRuleType(IntEnum):
     ILTIQAA_HAMZATAN_SECOND_MADD_WAW = auto()
 
 
+def _ph_span_to_uth(ph_to_uth: list[int], start: int, end: int) -> tuple[int, int]:
+    """Convert a half-open phonetic span to a half-open Uthmani span."""
+    if start == end:
+        idx = ph_to_uth[start]
+        return (idx, idx)
+    return (ph_to_uth[start], ph_to_uth[end - 1] + 1)
+
+
 @dataclass
 class TajweedRuleMetadata:
     """The Tajweed rule poition in phonetic script space (not uthmani space)"""
@@ -67,7 +75,7 @@ class TajweedRuleMetadata:
     rule_type: TajweedRuleType
     uth_pivot: tuple[int, int] = (-1, -1)
     uth_deps: list[tuple[int, int]] = field(default_factory=list)
-    golden_len: int = -1
+    golden_len: float = -1
 
     def update_pivot_start(self, x: int) -> None:
         self.pivot = (x, self.pivot[1])
@@ -85,13 +93,17 @@ class TajweedRuleMetadata:
         """thie method is expected be called after finishing all operations
         it fills the uth_pivot and uth_deps"""
 
-        self.uth_pivot = (ph_to_uth[self.pivot[0]], ph_to_uth[self.pivot[1]])
+        # TODO: check delete ids
+        # self.uth_pivot = _ph_span_to_uth(ph_to_uth, *self.pivot)
+        self.uth_pivot = _ph_span_to_uth(ph_to_uth, *self.pivot)
         uth_deps = []
         for ph_start, ph_end in self.deps:
-            uth_deps.append((ph_to_uth[ph_start], ph_to_uth[ph_end]))
+            # TODO: check delete ids
+            # uth_deps.append(_ph_span_to_uth(ph_to_uth, ph_start, ph_end))
+            uth_deps.append(_ph_span_to_uth(ph_to_uth, ph_start, ph_end))
         self.uth_deps = uth_deps
 
-    def set_golden_len(self, val: int) -> None:
+    def set_golden_len(self, val: float) -> None:
         self.golden_len = val
 
     def set_tag(self, tag: str) -> None:
@@ -399,11 +411,12 @@ class IdghamGonnahNoonRule(TajweedRule):
     correctness: CorrectnessType = "count"
 
     def count(self, ref_text: str, pred_text: str) -> float:
+        # TODO: needs rewrite for haraka errors
         assert ref_text[0] == pred_text[0]
         if ref_text[0] in {ph.yaa, ph.waw}:
-            return (len(pred_text) + 1) / 2
-        else:
             return len(pred_text) / 2
+        else:
+            return (len(pred_text) - 1) / 2
 
 
 @dataclass
@@ -739,3 +752,33 @@ TAJ_TYPE_TO_RULE = {
 }
 
 assert set(TAJ_TYPE_TO_RULE) == set(TajweedRuleType)
+
+
+def get_full_taj_rule_type(
+    taj_rule_meta: TajweedRuleMetadata,
+    ph_to_uth: list[int],
+) -> FullTajweedRuleType:
+    """Resolve a rule metadata into its rule object and fill Uthmani positions.
+
+    The metadata is copied before ``fill_uth`` so callers can reuse the raw
+    metadata safely.
+    """
+    taj_rule_meta = replace(taj_rule_meta)
+    taj_rule_meta.fill_uth(ph_to_uth)
+    taj_rule = TAJ_TYPE_TO_RULE[taj_rule_meta.rule_type]
+
+    if taj_rule.correctness == "count":
+        # For count we have either madd or gonnah
+        golden_len = taj_rule_meta.pivot[1] - taj_rule_meta.pivot[0]
+        if isinstance(taj_rule, MaddRule):
+            # The madd letters are what this rule is counting. Leen madd
+            # counts the preceding yaa/waw in addition to the inserted ones.
+            if taj_rule_meta.rule_type == TajweedRuleType.LEEN_MADD:
+                golden_len += 1
+            taj_rule_meta.set_golden_len(golden_len)
+        else:
+            # Gonnah related rules
+            if golden_len == 3:
+                golden_len += 1
+            taj_rule_meta.set_golden_len(golden_len // 2)
+    return (taj_rule, taj_rule_meta)

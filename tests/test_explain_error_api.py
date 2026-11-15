@@ -79,9 +79,10 @@ def print_tajweed_rules(
     label: str,
     rules: list[ExplainedTajweedRule],
 ) -> None:
+    print(f"  {label} ({len(rules)}):")
     if not rules:
+        print("    (none)")
         return
-    print(f"  {label}:")
     for rule in rules:
         for line in format_tajweed_rule(rule):
             print(f"    {line}")
@@ -151,6 +152,9 @@ if __name__ == "__main__":
 
     # uthmani_text = "لَكَ"
     # predicted_text = "لَكَا"
+
+    uthmani_text = "مَن يَعْمَلْ"
+    predicted_text = "مَنيَعمَل"
 
     ref_ph_out = quran_phonetizer(uthmani_text, moshaf)
     errors = explain_error(

@@ -7,12 +7,10 @@ from uuid import uuid4
 
 from .moshaf_attributes import MoshafAttributes
 from .tajweed_rulses import (
-    TAJ_TYPE_TO_RULE,
     FullTajweedRuleType,
-    MaddRule,
-    TajweedRule,
     TajweedRuleMetadata,
     TajweedRuleType,
+    get_full_taj_rule_type,
 )
 
 
@@ -780,27 +778,6 @@ class PhonetizerMappings:
         self._ph_to_uth = ph_to_uth
         return self._ph_to_uth
 
-    def _get_full_taj_rule_type(
-        self,
-        ph_str: str,
-        taj_rule_meta: TajweedRuleMetadata,
-    ) -> FullTajweedRuleType:
-        taj_rule_meta.fill_uth(self.ph_to_uth)
-        taj_rule = TAJ_TYPE_TO_RULE[taj_rule_meta.rule_type]
-
-        if taj_rule.correctness == "count":
-            if isinstance(taj_rule, MaddRule):
-                # The madd letters are what this rule is counting. Leen madd
-                # counts the preceding yaa/waw in addition to the inserted ones.
-                golden_len = taj_rule_meta.pivot[1] - taj_rule_meta.pivot[0]
-                if taj_rule_meta.rule_type == TajweedRuleType.LEEN_MADD:
-                    golden_len += 1
-                taj_rule_meta.set_golden_len(golden_len)
-            else:
-                taj_rule_meta.set_golden_len(taj_rule.golden_len)
-
-        return (taj_rule, taj_rule_meta)
-
     def get_ph_to_tajweed_rules(self, ph_str: str) -> list[list[FullTajweedRuleType]]:
         """Get mapping between phonetic script indices to TajweedRule not TajweedRuleType
 
@@ -811,7 +788,7 @@ class PhonetizerMappings:
         for taj_metas in self.ph_to_taj_rule_metas:
             outputs.append([])
             for taj_meta in taj_metas:
-                outputs[-1].append(self._get_full_taj_rule_type(ph_str, taj_meta))
+                outputs[-1].append(get_full_taj_rule_type(taj_meta, self.ph_to_uth))
         return outputs
 
 
