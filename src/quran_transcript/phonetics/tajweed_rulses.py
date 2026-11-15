@@ -181,6 +181,22 @@ class ExplainedTajweedRule:
             golden_len=meta.golden_len,
         )
 
+    @classmethod
+    def from_rule(cls, rule: TajweedRule) -> "ExplainedTajweedRule":
+        """Build a snapshot with static fields only; runtime positions are unset."""
+        return cls(
+            name=replace(rule.name),
+            description=replace(rule.description),
+            rule_type=rule.rule_type,
+            correctness=rule.correctness,
+            ph_pivot=(-1, -1),
+            ph_deps=[],
+            tag="",
+            uth_pivot=(-1, -1),
+            uth_deps=[],
+            golden_len=-1,
+        )
+
 
 # @dataclass
 # class Qalqalah(TajweedRule):
@@ -398,7 +414,24 @@ class IzharNoonRule(TajweedRule):
 
 
 @dataclass
-class IdghamGonnahNoonRule(TajweedRule):
+class GhonnahRule(TajweedRule):
+    correctness: CorrectnessType = "count"
+
+    def count(self, ref_text: str, pred_text: str) -> float:
+        assert ref_text[0] == pred_text[0]
+        if pred_text[-1] != pred_text[0]:
+            pred_len = len(pred_text) - 1
+        else:
+            pred_len = len(pred_text)
+
+        if ref_text[0] in {ph.yaa, ph.waw, ph.noon_mokhfah, ph.meem_mokhfah}:
+            return (pred_len + 1) / 2
+        else:
+            return pred_len / 2
+
+
+@dataclass
+class IdghamGonnahNoonRule(GhonnahRule):
     name: MultiLangText = MultiLangText(
         ar="إدغام بغنة",
         en="Idgham with Ghunnah",
@@ -408,19 +441,10 @@ class IdghamGonnahNoonRule(TajweedRule):
         en="",
     )
     rule_type: TajweedRuleType = TajweedRuleType.IDGHAM_GONNAH_NOON
-    correctness: CorrectnessType = "count"
-
-    def count(self, ref_text: str, pred_text: str) -> float:
-        # TODO: needs rewrite for haraka errors
-        assert ref_text[0] == pred_text[0]
-        if ref_text[0] in {ph.yaa, ph.waw}:
-            return len(pred_text) / 2
-        else:
-            return (len(pred_text) - 1) / 2
 
 
 @dataclass
-class IqlabNoonRule(TajweedRule):
+class IqlabNoonRule(GhonnahRule):
     name: MultiLangText = MultiLangText(
         ar="إقلاب",
         en="Iqlab",
@@ -430,18 +454,10 @@ class IqlabNoonRule(TajweedRule):
         en="",
     )
     rule_type: TajweedRuleType = TajweedRuleType.IQLAB_NOON
-    correctness: CorrectnessType = "count"
-
-    def count(self, ref_text: str, pred_text: str) -> float:
-        assert ref_text[0] == pred_text[0]
-        if ref_text[0] == ph.meem_mokhfah:
-            return (len(pred_text) + 1) / 2
-        else:
-            return len(pred_text) / 2
 
 
 @dataclass
-class IkhfaaNoonRule(TajweedRule):
+class IkhfaaNoonRule(GhonnahRule):
     name: MultiLangText = MultiLangText(
         ar="إخفاء حقيقي",
         en="Ikhfaa Haqiqy",
@@ -451,11 +467,6 @@ class IkhfaaNoonRule(TajweedRule):
         en="",
     )
     rule_type: TajweedRuleType = TajweedRuleType.IKHFAA_NOON
-    correctness: CorrectnessType = "count"
-
-    def count(self, ref_text: str, pred_text: str) -> float:
-        assert ref_text[0] == pred_text[0]
-        return (len(pred_text) + 1) / 2
 
 
 @dataclass
@@ -473,7 +484,7 @@ class IzharMeemRule(TajweedRule):
 
 
 @dataclass
-class IdghamMeemRule(TajweedRule):
+class IdghamMeemRule(GhonnahRule):
     name: MultiLangText = MultiLangText(
         ar="إدغام الميم الساكنة",
         en="Idgham for Sakin Meem",
@@ -482,16 +493,11 @@ class IdghamMeemRule(TajweedRule):
         ar="",
         en="",
     )
-    correctness: CorrectnessType = "count"
     rule_type: TajweedRuleType = TajweedRuleType.IDGHAM_MEEM
-
-    def count(self, ref_text: str, pred_text: str) -> float:
-        assert ref_text[0] == pred_text[0]
-        return len(pred_text) / 2
 
 
 @dataclass
-class IkhfaaMeemRule(TajweedRule):
+class IkhfaaMeemRule(GhonnahRule):
     name: MultiLangText = MultiLangText(
         ar="إخفاء شفوي",
         en="Ikhfaa Shafawy for Sakin Meem",
@@ -501,18 +507,10 @@ class IkhfaaMeemRule(TajweedRule):
         en="",
     )
     rule_type: TajweedRuleType = TajweedRuleType.IKHFAA_MEEM
-    correctness: CorrectnessType = "count"
-
-    def count(self, ref_text: str, pred_text: str) -> float:
-        assert ref_text[0] == pred_text[0]
-        if ref_text[0] == ph.meem_mokhfah:
-            return (len(pred_text) + 1) / 2
-        else:
-            return len(pred_text) / 2
 
 
 @dataclass
-class MoshadadNoonRule(TajweedRule):
+class MoshadadNoonRule(GhonnahRule):
     name: MultiLangText = MultiLangText(
         ar="نون مشددة",
         en="Noon Mushaddadah",
@@ -522,15 +520,10 @@ class MoshadadNoonRule(TajweedRule):
         en="",
     )
     rule_type: TajweedRuleType = TajweedRuleType.MOSHADAD_NOON
-    correctness: CorrectnessType = "count"
-
-    def count(self, ref_text: str, pred_text: str) -> float:
-        assert ref_text[0] == pred_text[0]
-        return len(pred_text) / 2
 
 
 @dataclass
-class MoshadadMeemRule(TajweedRule):
+class MoshadadMeemRule(GhonnahRule):
     name: MultiLangText = MultiLangText(
         ar="ميم مشددة",
         en="Meem Mushaddadah",
@@ -540,11 +533,6 @@ class MoshadadMeemRule(TajweedRule):
         en="",
     )
     rule_type: TajweedRuleType = TajweedRuleType.MOSHADAD_MEEM
-    correctness: CorrectnessType = "count"
-
-    def count(self, ref_text: str, pred_text: str) -> float:
-        assert ref_text[0] == pred_text[0]
-        return len(pred_text) / 2
 
 
 @dataclass
