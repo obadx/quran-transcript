@@ -106,6 +106,8 @@ def print_error(
     print(f"  Ref PH : {err.ph_pos}\n             '{ref_slice}'")
     print(f"  Expected:  {format_ph_with_names(err.expected_ph)}")
     print(f"  Predicted: {format_ph_with_names(err.preditected_ph)}")
+    print(f"  Expected PH :  '{err.expected_ph}'")
+    print(f"  Predicted PH: '{err.preditected_ph}'")
     print(
         f"  Length:    expected_len={err.expected_len}, "
         f"predicted_len={err.predicted_len}"
@@ -137,6 +139,7 @@ if __name__ == "__main__":
     # normal madd len 1 error
     predicted_text = "قَاالُۥ"
 
+    # مد طبيعي + تبديل + تشكيل (حذف الساكن)
     predicted_text = "كالۥۥ"
     # predicted_text = "فكالۥۥ"
     # predicted_text = "فكۥۥلۥۥ"
@@ -153,8 +156,9 @@ if __name__ == "__main__":
     # uthmani_text = "لَكَ"
     # predicted_text = "لَكَا"
 
-    uthmani_text = "مَن يَعْمَلْ"
-    predicted_text = "مَنيَعمَل"
+    # إطهار بدل من الإدغام في أحكام النون الساكنة
+    # uthmani_text = "مَن يَعْمَلْ"
+    # predicted_text = "مَنيَعمَل"
 
     ref_ph_out = quran_phonetizer(uthmani_text, moshaf)
     errors = explain_error(

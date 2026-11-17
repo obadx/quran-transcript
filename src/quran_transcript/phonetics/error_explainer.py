@@ -244,18 +244,19 @@ def explain_error(
     pred_ph_end = 0
     ref_ph_end = 0
 
-    # Generic rectier error patterns
+    # Generic reciter error patterns
     ref_group_metas = [[t[1] for t in s] for s in ref_ph_groups_tajweed_rules]
+    covered_alignments: set[PhonemesGroupsAligment] = set()
     for err_pat in ERR_PATERNS:
-        errors.extend(
-            err_pat.find_all(
-                ref_ph_groups,
-                pred_ph_groups,
-                alignments,
-                ref_group_metas,
-                ref_ph_to_uthmani,
-            )
+        matches = err_pat.find_all_matches(
+            ref_ph_groups,
+            pred_ph_groups,
+            alignments,
+            ref_group_metas,
+            ref_ph_to_uthmani,
         )
+        errors.extend(matches.errors)
+        covered_alignments.update(matches.covered_alignments)
 
     for align in alignments:
         if align.ref_idx < len(ref_ph_groups):
@@ -270,6 +271,14 @@ def explain_error(
 
         if align.op_type != "insert":
             ref_ph_end = ref_ph_start + len(ref_ph)
+
+        skip_align = False
+        if align in covered_alignments:
+            pred_ph_start = pred_ph_end
+            ref_ph_start = ref_ph_end
+            skip_align = True
+
+        if align.op_type != "insert":
             uthmani_pos = (
                 ref_ph_to_uthmani[ref_ph_start],
                 ref_ph_to_uthmani[ref_ph_end - 1] + 1,
@@ -283,22 +292,20 @@ def explain_error(
             )
             ph_pos = (ref_ph_start, ref_ph_start)
 
-        # TODO: for insert and replace try to make explanation for special phoneme like madd, ikhfaa, iqlab, ..
-        if align.op_type == "insert":
+        if align.op_type == "insert" and not skip_align:
             errors.append(
                 ReciterError(
                     uthmani_pos=uthmani_pos,
                     ph_pos=ph_pos,
-                    error_type="normal",  # TODO: try to estimate what is the Tajweed rule associated with this error type
+                    error_type="normal",
                     speech_error_type="insert",
                     expected_ph="",
                     preditected_ph=pred_ph,
                 )
             )
 
-        elif align.op_type == "replace":
+        elif align.op_type == "replace" and not skip_align:
             if ref_ph_groups_tajweed_rules[align.ref_idx]:
-                # TODO: Add tajweed rule relvant by error pattern like QuranReWithMapping
                 errors.append(
                     ReciterError(
                         uthmani_pos=uthmani_pos,
@@ -325,7 +332,7 @@ def explain_error(
                     )
                 )
 
-        elif align.op_type == "delete":
+        elif align.op_type == "delete" and not skip_align:
             errors.append(
                 ReciterError(
                     uthmani_pos=uthmani_pos,
@@ -345,7 +352,7 @@ def explain_error(
             if ref_ph == pred_ph:
                 ...
             # We have Tajweed rule
-            elif ref_ph_groups_tajweed_rules[align.ref_idx]:
+            elif ref_ph_groups_tajweed_rules[align.ref_idx] and not skip_align:
                 descriptive_rules = [
                     (taj, meta)
                     for taj, meta in ref_ph_groups_tajweed_rules[align.ref_idx]
@@ -390,6 +397,7 @@ def explain_error(
                         ref_ph[-1] in alph.phonetic_groups.harakat
                         and pred_ph[-1] != ref_ph[-1]
                     ):
+                        print("Tashkeel Equal")
                         errors.append(
                             get_tasshkeel_error(
                                 ref_ph=ref_ph,
@@ -400,7 +408,10 @@ def explain_error(
                         )
 
                 # Tashkeel (Harakat)
-            elif ref_ph[-1] in alph.phonetic_groups.harakat:
+            elif (
+                ref_ph[-1] in alph.phonetic_groups.harakat and ref_ph[-1] != pred_ph[-1]
+            ):
+                print("Tashkeel Other")
                 errors.append(
                     get_tasshkeel_error(
                         ref_ph=ref_ph,
@@ -415,7 +426,10 @@ def explain_error(
                 ...
 
             # Sakin Letter
-            else:
+            elif (
+                ref_ph[-1] not in alph.phonetic_groups.harakat
+                and pred_ph[-1] in alph.phonetic_groups.harakat
+            ):
                 error_type = (
                     "tashkeel"
                     if pred_ph[-1] in alph.phonetic_groups.harakat

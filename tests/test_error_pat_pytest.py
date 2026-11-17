@@ -115,6 +115,15 @@ def test_parser_rejects_rules_tag_absent_from_pattern():
         )
 
 
+def test_parser_rejects_unknown_err_tag():
+    with pytest.raises(ReciterErrPatParsingError):
+        ReciterErrPatern(
+            r"R:<e,t0:A>",
+            {"t0": TajweedRuleType.NORMAL_MADD},
+            err_tag="t1",
+        )
+
+
 def test_parser_rejects_non_tajweed_rule_value():
     with pytest.raises(ReciterErrPatParsingError):
         ReciterErrPatern(
@@ -406,6 +415,147 @@ def test_find_all_strict_rule_lookup_success():
     assert [rule.rule_type for rule in errors[0].ref_tajweed_rules] == [
         TajweedRuleType.NORMAL_MADD
     ]
+
+
+def test_find_all_matches_err_tag_anchors_error_span():
+    ref_ph_groups = ["A", "B"]
+    pred_ph_groups = ["A", "B"]
+    alignments = [align("equal", 0, 0), align("equal", 1, 1)]
+    err_pat = ReciterErrPatern(
+        r"R:<e,t0:A><e,t1:B>",
+        {
+            "t0": TajweedRuleType.NORMAL_MADD,
+            "t1": TajweedRuleType.QALQALAH,
+        },
+        err_tag="t1",
+    )
+
+    matches = err_pat.find_all_matches(
+        ref_ph_groups,
+        pred_ph_groups,
+        alignments,
+        ref_group_rules=[
+            [meta(TajweedRuleType.NORMAL_MADD)],
+            [meta(TajweedRuleType.QALQALAH, pivot=(1, 2))],
+        ],
+        ref_ph_to_uthmani=[0, 1, 2],
+    )
+    assert len(matches.errors) == 1
+    err = matches.errors[0]
+    assert err.expected_ph == "B"
+    assert err.preditected_ph == "B"
+    assert err.ph_pos == (1, 2)
+    assert err.uthmani_pos == (1, 2)
+    assert [rule.rule_type for rule in err.ref_tajweed_rules] == [
+        TajweedRuleType.QALQALAH
+    ]
+    assert matches.covered_alignments == frozenset(alignments)
+
+
+def test_find_all_matches_empty_err_tag_uses_whole_match():
+    ref_ph_groups = ["A", "B"]
+    pred_ph_groups = ["A", "B"]
+    alignments = [align("equal", 0, 0), align("equal", 1, 1)]
+    err_pat = ReciterErrPatern(
+        r"R:<e,t0:A><e,t1:B>",
+        {
+            "t0": TajweedRuleType.NORMAL_MADD,
+            "t1": TajweedRuleType.QALQALAH,
+        },
+    )
+
+    matches = err_pat.find_all_matches(
+        ref_ph_groups,
+        pred_ph_groups,
+        alignments,
+        ref_group_rules=[
+            [meta(TajweedRuleType.NORMAL_MADD)],
+            [meta(TajweedRuleType.QALQALAH, pivot=(1, 2))],
+        ],
+        ref_ph_to_uthmani=[0, 1, 2],
+    )
+    assert len(matches.errors) == 1
+    err = matches.errors[0]
+    assert err.expected_ph == "AB"
+    assert err.preditected_ph == "AB"
+    assert err.ph_pos == (0, 2)
+    assert err.uthmani_pos == (0, 2)
+    assert [rule.rule_type for rule in err.ref_tajweed_rules] == [
+        TajweedRuleType.NORMAL_MADD,
+        TajweedRuleType.QALQALAH,
+    ]
+    assert matches.covered_alignments == frozenset(alignments)
+
+
+def test_find_all_matches_reports_covered_alignments():
+    ref_ph_groups = ["A"]
+    pred_ph_groups = ["B", "A"]
+    alignments = [align("insert", 0, 0), align("equal", 0, 1)]
+    err_pat = ReciterErrPatern(
+        r"R:<i:B><e,t0:A>",
+        {"t0": TajweedRuleType.NORMAL_MADD},
+    )
+
+    matches = err_pat.find_all_matches(
+        ref_ph_groups,
+        pred_ph_groups,
+        alignments,
+        ref_group_rules=[[meta(TajweedRuleType.NORMAL_MADD)]],
+        ref_ph_to_uthmani=[0, 1],
+    )
+    assert len(matches.errors) == 1
+    assert matches.covered_alignments == frozenset(alignments)
+
+
+def test_find_all_matches_does_not_cover_rejected_match():
+    err_pat = ReciterErrPatern(
+        r"R:<e,t0:A>",
+        {"t0": TajweedRuleType.NORMAL_MADD},
+    )
+
+    matches = err_pat.find_all_matches(
+        ref_ph_groups=["A"],
+        pred_ph_groups=["A"],
+        ph_groups_align=[align("equal", 0, 0)],
+        ref_group_rules=[[]],
+        ref_ph_to_uthmani=[0, 1],
+    )
+    assert matches.errors == []
+    assert matches.covered_alignments == frozenset()
+
+
+def test_find_all_matches_does_not_cover_match_without_error():
+    err_pat = ReciterErrPatern(r"R:<e:A>", {})
+
+    matches = err_pat.find_all_matches(
+        ref_ph_groups=["A"],
+        pred_ph_groups=["A"],
+        ph_groups_align=[align("equal", 0, 0)],
+        ref_group_rules=[[]],
+        ref_ph_to_uthmani=[0, 1],
+    )
+    assert matches.errors == []
+    assert matches.covered_alignments == frozenset()
+
+
+def test_find_all_matches_covers_only_consumed_alignments():
+    ref_ph_groups = ["A", "B"]
+    pred_ph_groups = ["A", "B"]
+    alignments = [align("equal", 0, 0), align("equal", 1, 1)]
+    err_pat = ReciterErrPatern(
+        r"R:<e,t0:A>",
+        {"t0": TajweedRuleType.NORMAL_MADD},
+    )
+
+    matches = err_pat.find_all_matches(
+        ref_ph_groups,
+        pred_ph_groups,
+        alignments,
+        ref_group_rules=[[meta(TajweedRuleType.NORMAL_MADD)], []],
+        ref_ph_to_uthmani=[0, 1, 2],
+    )
+    assert len(matches.errors) == 1
+    assert matches.covered_alignments == frozenset({alignments[0]})
 
 
 def test_find_all_strict_rule_lookup_uses_union_of_reference_groups():

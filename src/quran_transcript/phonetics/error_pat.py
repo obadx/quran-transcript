@@ -47,6 +47,20 @@ class ReciterError:
     missing_tajweed_rules: list[ExplainedTajweedRule] = field(default_factory=list)
 
 
+@dataclass(frozen=True)
+class ReciterErrPatMatches:
+    """Errors produced by a pattern and the alignments it dominates.
+
+    ``covered_alignments`` contains every alignment consumed by an accepted
+    pattern match that produced an error. Callers can use it to suppress
+    generic errors for those alignments, because the pattern error already
+    explains them.
+    """
+
+    errors: list[ReciterError]
+    covered_alignments: frozenset[PhonemesGroupsAligment]
+
+
 class ReciterErrPatParsingError(Exception): ...
 
 
@@ -255,6 +269,7 @@ class ReciterErrPatern:
         *,
         error_type: Literal["tajweed", "normal", "tashkeel"] | None = None,
         speech_error_type: Literal["insert", "delete", "replace"] | None = None,
+        err_tag: str = "",
         inserted_tajweed_rules: Sequence[TajweedRuleType] = (),
         replaced_tajweed_rules: Sequence[TajweedRuleType] = (),
         missing_tajweed_rules: Sequence[TajweedRuleType] = (),
@@ -323,6 +338,14 @@ class ReciterErrPatern:
         fields are left at sentinel values: ``(-1, -1)`` for pivots, empty
         dependency lists, an empty tag and ``golden_len = -1``.
 
+        ``err_tag`` selects the tag whose matched alignments define the
+        reported error. An empty string (the default) keeps the whole pattern
+        match as the error span. A non-empty value must be a named tag in
+        ``pat``; the tag's span then determines ``ph_pos``, ``uthmani_pos``,
+        ``expected_ph``, ``preditected_ph``, reference rules and lengths, while
+        the rest of the pattern acts as context. Pattern-level static rule
+        lists are unchanged.
+
         Limitation:
 
         * Because the encoding emits one op letter per maximal run, a match can
@@ -355,11 +378,18 @@ class ReciterErrPatern:
         self.rules = rules
         self.error_type = error_type
         self.speech_error_type = speech_error_type
+        self.err_tag = err_tag
         self.inserted_tajweed_rules = tuple(inserted_tajweed_rules)
         self.replaced_tajweed_rules = tuple(replaced_tajweed_rules)
         self.missing_tajweed_rules = tuple(missing_tajweed_rules)
 
         self.mapped_tags = parse_reciter_error_tags(pat, rules)
+        if err_tag:
+            named_tags = {m_tag.tag for m_tag in self.mapped_tags if m_tag.tag}
+            if err_tag not in named_tags:
+                raise ReciterErrPatParsingError(
+                    f"`err_tag` must name a tag in `pat`; got `{err_tag}`"
+                )
         self.re_pat = re.compile("".join(m_tag.pat for m_tag in self.mapped_tags))
 
     def find_all(
@@ -371,6 +401,9 @@ class ReciterErrPatern:
         ref_ph_to_uthmani: list[int],
     ) -> list[ReciterError]:
         """Find all non-overlapping error patterns in the alignments.
+
+        This is a convenience wrapper around :meth:`find_all_matches` for
+        callers that only need the errors.
 
         Args:
             ref_ph_groups: Reference phoneme groups.
@@ -384,6 +417,38 @@ class ReciterErrPatern:
         Returns:
             One :class:`ReciterError` per accepted pattern match.
         """
+        return self.find_all_matches(
+            ref_ph_groups,
+            pred_ph_groups,
+            ph_groups_align,
+            ref_group_rules,
+            ref_ph_to_uthmani,
+        ).errors
+
+    def find_all_matches(
+        self,
+        ref_ph_groups: list[str],
+        pred_ph_groups: list[str],
+        ph_groups_align: list[PhonemesGroupsAligment],
+        ref_group_rules: list[list[TajweedRuleMetadata]],
+        ref_ph_to_uthmani: list[int],
+    ) -> ReciterErrPatMatches:
+        """Find all non-overlapping error patterns and their coverage.
+
+        Args:
+            ref_ph_groups: Reference phoneme groups.
+            pred_ph_groups: Predicted phoneme groups.
+            ph_groups_align: Reference/predicted phoneme group alignments.
+            ref_group_rules: Tajweed rule metadata attached to every reference
+                phoneme group.
+            ref_ph_to_uthmani: Mapping from reference phonetic character index
+                to Uthmani character index (with a final extra entry).
+
+        Returns:
+            The errors produced by accepted matches and the union of the
+            alignments those matches consumed. An alignment is covered only
+            when an accepted match consumes it and produces an error.
+        """
         encoded, enc_to_align = _encode_alignments(
             ref_ph_groups,
             pred_ph_groups,
@@ -391,11 +456,13 @@ class ReciterErrPatern:
         )
 
         errors: list[ReciterError] = []
+        covered: set[PhonemesGroupsAligment] = set()
 
         for match in self.re_pat.finditer(encoded):
             pos = match.start()
             strict_ok = True
             matched_ops: list[ReciterErrOp] = []
+            tag_spans: dict[str, tuple[int, int]] = {}
 
             for m_tag in self.mapped_tags:
                 tag_mat = m_tag.compiled_pat.match(encoded, pos=pos)
@@ -416,6 +483,12 @@ class ReciterErrPatern:
                     strict_ok = False
                     break
 
+                if m_tag.tag:
+                    tag_spans[m_tag.tag] = (
+                        enc_to_align[tag_mat.start()],
+                        enc_to_align[tag_mat.end()],
+                    )
+
                 matched_ops.append(m_tag.op)
                 pos = tag_mat.end()
 
@@ -427,9 +500,13 @@ class ReciterErrPatern:
             a_start = enc_to_align[match.start()]
             a_end = enc_to_align[match.end()]
 
+            err_a_start, err_a_end = a_start, a_end
+            if self.err_tag:
+                err_a_start, err_a_end = tag_spans[self.err_tag]
+
             error = self._build_error(
-                a_start,
-                a_end,
+                err_a_start,
+                err_a_end,
                 matched_ops,
                 ref_ph_groups,
                 pred_ph_groups,
@@ -439,8 +516,12 @@ class ReciterErrPatern:
             )
             if error is not None:
                 errors.append(error)
+                covered.update(ph_groups_align[a_start:a_end])
 
-        return errors
+        return ReciterErrPatMatches(
+            errors=errors,
+            covered_alignments=frozenset(covered),
+        )
 
     def _tag_span_ok(
         self,
@@ -555,15 +636,9 @@ class ReciterErrPatern:
             ExplainedTajweedRule.from_(rule, meta) for rule, meta in full_rules
         ]
 
-        inserted_tajweed_rules = _static_tajweed_rules(
-            self.inserted_tajweed_rules
-        )
-        replaced_tajweed_rules = _static_tajweed_rules(
-            self.replaced_tajweed_rules
-        )
-        missing_tajweed_rules = _static_tajweed_rules(
-            self.missing_tajweed_rules
-        )
+        inserted_tajweed_rules = _static_tajweed_rules(self.inserted_tajweed_rules)
+        replaced_tajweed_rules = _static_tajweed_rules(self.replaced_tajweed_rules)
+        missing_tajweed_rules = _static_tajweed_rules(self.missing_tajweed_rules)
 
         expected_len = -1
         predicted_len = -1
