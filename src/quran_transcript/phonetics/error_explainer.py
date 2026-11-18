@@ -203,6 +203,15 @@ ERR_PATERNS = [
         speech_error_type="replace",
         replaced_tajweed_rules=(TajweedRuleType.IZHAR,),
     ),
+    # -----------------------------------------------------------------
+    # الألفات السبعة
+    ReciterErrPatern(
+        f"R:<i:{ph.alif}><e,t0:.>",
+        {"t0": TajweedRuleType.SKOON_MOSTATEEL_MID_DELETE},
+        error_type="tajweed",
+        speech_error_type="replace",
+        replaced_tajweed_rules=(TajweedRuleType.SKOON_MOSTATEEL_END_ADD,),
+    ),
 ]
 
 

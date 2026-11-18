@@ -52,6 +52,7 @@ def meta(
         (r"R:<d,t2:E>", {"t2": TajweedRuleType.QALQALAH}),
         (r"R:<r,t3:X>", {"t3": TajweedRuleType.QALQALAH}),
         (r"R:<e,t0:A><e,t1:B>", {"t0": TajweedRuleType.NORMAL_MADD}),
+        (r"R:<e,t0:A><i,t1:B>", {"t0": TajweedRuleType.NORMAL_MADD}),
     ],
 )
 def test_parser_valid_patterns(pat, rules):
@@ -67,9 +68,119 @@ def test_parser_rejects_repeated_tag_name():
         )
 
 
-def test_parser_rejects_named_insert():
+def test_parser_accepts_named_insert_without_rule():
+    err_pat = ReciterErrPatern(r"R:<i,t0:A>", {})
+    assert err_pat.re_pat.pattern == "i(?:A)"
+
+
+def test_parser_rejects_rule_on_insert_tag():
     with pytest.raises(ReciterErrPatParsingError):
-        ReciterErrPatern(r"R:<i,t0:A>", {"t0": TajweedRuleType.NORMAL_MADD})
+        ReciterErrPatern(
+            r"R:<i,t0:A>",
+            {"t0": TajweedRuleType.NORMAL_MADD},
+        )
+
+
+def test_parser_rejects_unknown_check_group_key():
+    with pytest.raises(ReciterErrPatParsingError):
+        ReciterErrPatern(
+            r"R:<e,t0:A>",
+            {"t0": TajweedRuleType.NORMAL_MADD},
+            check_group={"t1": lambda ref, pred: True},
+        )
+
+
+def test_find_all_matches_check_group_accepts():
+    ref_ph_groups = ["A", "B", "C"]
+    pred_ph_groups = ["A", "B", "X"]
+    alignments = [
+        align("equal", 0, 0),
+        align("equal", 1, 1),
+        align("replace", 2, 2),
+    ]
+    err_pat = ReciterErrPatern(
+        r"R:<e,t0:AB><r,t1:X>",
+        {},
+        check_group={"t0": lambda ref, pred: ref == "AB"},
+    )
+
+    matches = err_pat.find_all_matches(
+        ref_ph_groups,
+        pred_ph_groups,
+        alignments,
+        ref_group_rules=[[], [], []],
+        ref_ph_to_uthmani=[0, 1, 2, 3],
+    )
+    assert len(matches.errors) == 1
+
+
+def test_find_all_matches_check_group_rejects():
+    ref_ph_groups = ["A", "B", "C"]
+    pred_ph_groups = ["A", "B", "X"]
+    alignments = [
+        align("equal", 0, 0),
+        align("equal", 1, 1),
+        align("replace", 2, 2),
+    ]
+    err_pat = ReciterErrPatern(
+        r"R:<e,t0:AB><r,t1:X>",
+        {},
+        check_group={"t0": lambda ref, pred: ref == "CD"},
+    )
+
+    matches = err_pat.find_all_matches(
+        ref_ph_groups,
+        pred_ph_groups,
+        alignments,
+        ref_group_rules=[[], [], []],
+        ref_ph_to_uthmani=[0, 1, 2, 3],
+    )
+    assert matches.errors == []
+    assert matches.covered_alignments == frozenset()
+
+
+def test_find_all_matches_check_group_on_insert_tag_sees_empty_ref():
+    seen: list[tuple[str, str]] = []
+    err_pat = ReciterErrPatern(
+        r"R:<i,t0:B><e,t1:A>",
+        {},
+        check_group={"t0": lambda ref, pred: seen.append((ref, pred)) or True},
+    )
+
+    matches = err_pat.find_all_matches(
+        ref_ph_groups=["A"],
+        pred_ph_groups=["B", "A"],
+        ph_groups_align=[align("insert", 0, 0), align("equal", 0, 1)],
+        ref_group_rules=[[]],
+        ref_ph_to_uthmani=[0, 1],
+    )
+    assert len(matches.errors) == 1
+    assert seen == [("", "B")]
+
+
+def test_find_all_matches_err_tag_anchors_insert_tag():
+    err_pat = ReciterErrPatern(
+        r"R:<i,t0:B><e,t1:A>",
+        {},
+        err_tag="t0",
+    )
+
+    matches = err_pat.find_all_matches(
+        ref_ph_groups=["A"],
+        pred_ph_groups=["B", "A"],
+        ph_groups_align=[align("insert", 0, 0), align("equal", 0, 1)],
+        ref_group_rules=[[]],
+        ref_ph_to_uthmani=[0, 1],
+    )
+    assert len(matches.errors) == 1
+    err = matches.errors[0]
+    assert err.expected_ph == ""
+    assert err.preditected_ph == "B"
+    assert err.ph_pos == (0, 0)
+    assert err.uthmani_pos == (0, 0)
+    assert matches.covered_alignments == frozenset(
+        [align("insert", 0, 0), align("equal", 0, 1)]
+    )
 
 
 @pytest.mark.parametrize(

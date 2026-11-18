@@ -1,5 +1,5 @@
 import re
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field
 from typing import Literal, TypeAlias
 
@@ -121,12 +121,6 @@ def parse_reciter_error_tags(
         tag = match.group(2) or ""
         tag_pat = match.group(3)
 
-        if op == "i" and tag:
-            raise ReciterErrPatParsingError(
-                f"Insert tag `i` can not be named but got `{tag}` at "
-                f"position `{match.start(2)}`"
-            )
-
         if tag:
             if tag in pat_tags:
                 raise ReciterErrPatParsingError(
@@ -183,7 +177,15 @@ def parse_reciter_error_tags(
             "`pat` has to contain at least one tag like `<e,t0:abc>`"
         )
 
-    # Every tag in `rules` must exist in `pat`.
+    # Every tag in `rules` must exist in `pat` and must not be an insert tag:
+    # insert tags have no reference groups, so a strict Tajweed lookup would
+    # always fail.
+    for m_tag in mapped_tags:
+        if m_tag.tag in rules and m_tag.op == "i":
+            raise ReciterErrPatParsingError(
+                f"tag: `{m_tag.tag}` is an insert tag and can not require a "
+                f"Tajweed rule in `rules`"
+            )
     for rule_tag in rules:
         if rule_tag not in pat_tags:
             raise ReciterErrPatParsingError(
@@ -270,6 +272,7 @@ class ReciterErrPatern:
         error_type: Literal["tajweed", "normal", "tashkeel"] | None = None,
         speech_error_type: Literal["insert", "delete", "replace"] | None = None,
         err_tag: str = "",
+        check_group: dict[str, Callable[[str, str], bool]] | None = None,
         inserted_tajweed_rules: Sequence[TajweedRuleType] = (),
         replaced_tajweed_rules: Sequence[TajweedRuleType] = (),
         missing_tajweed_rules: Sequence[TajweedRuleType] = (),
@@ -316,7 +319,12 @@ class ReciterErrPatern:
           ``<d,t0:ABC>N<r:m>``; text outside tags raises
           :class:`ReciterErrPatParsingError`.
         * Tag names are ``[a-z][0-9]?`` and have to be unique in ``pat``.
-        * Insert tags (``i``) can not be named.
+        * A tag name in ``rules`` has to exist as a named tag in ``pat`` and
+          can not be an insert tag: insert tags have no reference groups, so a
+          strict Tajweed lookup would always fail. For every remaining named
+          tag in ``rules`` the matched reference span has to contain that
+          :class:`TajweedRuleType`; otherwise the match is skipped. A named tag
+          that is not in ``rules`` is only contextual.
         * Tag patterns are regex sources. They must not be empty and must not
           match the empty string.
         * Tag patterns must not contain a literal ``>`` outside a character
@@ -326,10 +334,6 @@ class ReciterErrPatern:
           ``eAB``.
         * Tag names do not add capture groups. Tag patterns are wrapped in
           non-capturing groups, so user-defined groups keep their numbering.
-        * A tag name in ``rules`` has to exist as a named tag in ``pat``. For
-          every named tag in ``rules`` the matched reference span has to
-          contain that :class:`TajweedRuleType`; otherwise the match is
-          skipped. A named tag that is not in ``rules`` is only contextual.
 
         The static rule lists (``inserted_tajweed_rules``,
         ``replaced_tajweed_rules`` and ``missing_tajweed_rules``) are reported
@@ -345,6 +349,13 @@ class ReciterErrPatern:
         ``expected_ph``, ``preditected_ph``, reference rules and lengths, while
         the rest of the pattern acts as context. Pattern-level static rule
         lists are unchanged.
+
+        ``check_group`` maps a named tag to an extra condition evaluated on
+        that tag's matched span. The callable receives the joined reference
+        phoneme groups (empty for a pure insert span) and the joined predicted
+        phoneme groups (empty for a pure delete span) and returns ``False`` to
+        reject the match, exactly like a strict rule failure. Keys must name a
+        tag in ``pat``; they do not need to appear in ``rules``.
 
         Limitation:
 
@@ -379,16 +390,22 @@ class ReciterErrPatern:
         self.error_type = error_type
         self.speech_error_type = speech_error_type
         self.err_tag = err_tag
+        self.check_group = check_group or {}
         self.inserted_tajweed_rules = tuple(inserted_tajweed_rules)
         self.replaced_tajweed_rules = tuple(replaced_tajweed_rules)
         self.missing_tajweed_rules = tuple(missing_tajweed_rules)
 
         self.mapped_tags = parse_reciter_error_tags(pat, rules)
-        if err_tag:
-            named_tags = {m_tag.tag for m_tag in self.mapped_tags if m_tag.tag}
-            if err_tag not in named_tags:
+        named_tags = {m_tag.tag for m_tag in self.mapped_tags if m_tag.tag}
+        if err_tag and err_tag not in named_tags:
+            raise ReciterErrPatParsingError(
+                f"`err_tag` must name a tag in `pat`; got `{err_tag}`"
+            )
+        for check_tag in self.check_group:
+            if check_tag not in named_tags:
                 raise ReciterErrPatParsingError(
-                    f"`err_tag` must name a tag in `pat`; got `{err_tag}`"
+                    f"`check_group` keys must name tags in `pat`; got "
+                    f"`{check_tag}`"
                 )
         self.re_pat = re.compile("".join(m_tag.pat for m_tag in self.mapped_tags))
 
@@ -483,6 +500,17 @@ class ReciterErrPatern:
                     strict_ok = False
                     break
 
+                if m_tag.tag in self.check_group and not self._tag_check_ok(
+                    m_tag,
+                    tag_mat,
+                    enc_to_align,
+                    ph_groups_align,
+                    ref_ph_groups,
+                    pred_ph_groups,
+                ):
+                    strict_ok = False
+                    break
+
                 if m_tag.tag:
                     tag_spans[m_tag.tag] = (
                         enc_to_align[tag_mat.start()],
@@ -557,6 +585,32 @@ class ReciterErrPatern:
             for idx in ref_idxs
             for meta in ref_group_rules[idx]
         )
+
+    def _tag_check_ok(
+        self,
+        m_tag: ReciterErrPatTag,
+        tag_mat: re.Match,
+        enc_to_align: list[int],
+        ph_groups_align: list[PhonemesGroupsAligment],
+        ref_ph_groups: list[str],
+        pred_ph_groups: list[str],
+    ) -> bool:
+        """Run the tag's ``check_group`` condition on its matched span."""
+        a_start = enc_to_align[tag_mat.start()]
+        a_end = enc_to_align[tag_mat.end()]
+
+        ref_group = "".join(
+            ref_ph_groups[ph_groups_align[i].ref_idx]
+            for i in range(a_start, a_end)
+            if ph_groups_align[i].op_type != "insert"
+        )
+        pred_group = "".join(
+            pred_ph_groups[ph_groups_align[i].pred_idx]
+            for i in range(a_start, a_end)
+            if ph_groups_align[i].op_type != "delete"
+        )
+
+        return self.check_group[m_tag.tag](ref_group, pred_group)
 
     def _build_error(
         self,
