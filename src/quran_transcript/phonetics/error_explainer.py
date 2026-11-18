@@ -122,6 +122,10 @@ def get_tasshkeel_error(
 
 
 ERR_PATERNS = [
+    # -----------------------------------------------------------------
+    # --- أحكام النون الساكنة والتننوين ----------
+    # 1. القلب نونا مظهرة
+    # نطق النون المدغمة نونا مظهرة
     ReciterErrPatern(
         f"R:<i:{ph.noon}><e,t0:[{ph.yaa}{ph.meem}{ph.waw}]>",
         {"t0": TajweedRuleType.IDGHAM_GONNAH_NOON},
@@ -129,6 +133,39 @@ ERR_PATERNS = [
         speech_error_type="replace",
         replaced_tajweed_rules=(TajweedRuleType.IZHAR_NOON,),
     ),
+    # نطق النون المقلبة نونا مظهرة
+    ReciterErrPatern(
+        f"R:<r,t0:{ph.noon}><e:{ph.baa}>",
+        {"t0": TajweedRuleType.IQLAB_NOON},
+        error_type="tajweed",
+        speech_error_type="replace",
+        replaced_tajweed_rules=(TajweedRuleType.IZHAR_NOON,),
+    ),
+    # نطق النون المخفاة نونا مظهرة
+    ReciterErrPatern(
+        f"R:<r,t0:{ph.noon}>",
+        {"t0": TajweedRuleType.IKHFAA_NOON},
+        error_type="tajweed",
+        speech_error_type="replace",
+        replaced_tajweed_rules=(TajweedRuleType.IZHAR_NOON,),
+    ),
+    # ************************
+    # نطق النون المظهرة نونا مخفاة
+    ReciterErrPatern(
+        f"R:<i:{ph.noon_mokhfah}><e,t0:{ph.noon}>",
+        {"t0": TajweedRuleType.IZHAR_NOON},
+        error_type="tajweed",
+        speech_error_type="replace",
+        replaced_tajweed_rules=(TajweedRuleType.IKHFAA_NOON,),
+    ),
+    ReciterErrPatern(
+        f"R:<r,t0:{ph.noon_mokhfah}>",
+        {"t0": TajweedRuleType.IZHAR_NOON},
+        error_type="tajweed",
+        speech_error_type="replace",
+        replaced_tajweed_rules=(TajweedRuleType.IKHFAA_NOON,),
+    ),
+    # -----------------------------------------------------------------
 ]
 
 
