@@ -212,6 +212,24 @@ ERR_PATERNS = [
         speech_error_type="replace",
         replaced_tajweed_rules=(TajweedRuleType.SKOON_MOSTATEEL_END_ADD,),
     ),
+    # -----------------------------------------------------------------
+    # حذف الحرف الأول من الملقتثيان الساكنان
+    ReciterErrPatern(
+        f"R:<i:{ph.alif}><i:{ph.hamza}?><e,t0:.>",
+        {"t0": TajweedRuleType.DELETE_FIRST_ILTIQAA_SAKENAYN},
+        error_type="tajweed",
+        speech_error_type="replace",
+        replaced_tajweed_rules=(TajweedRuleType.NORMAL_MADD,),
+    ),
+    # -----------------------------------------------------------------
+    #  إضافة همزة الوصل وسطا
+    ReciterErrPatern(
+        f"R:<i:{ph.alif}?><i:{ph.hamza}><e,t0:..>",
+        {"t0": TajweedRuleType.HAMZAT_WASL_DELETE},
+        error_type="tajweed",
+        speech_error_type="replace",
+        replaced_tajweed_rules=(),
+    ),
 ]
 
 

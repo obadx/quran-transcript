@@ -8,7 +8,7 @@ build-backend = "setuptools.build_meta"
 [project]
 license = "MIT"
 name = "quran-transcript"
-version = "0.6.4"
+version = "0.7.0"
 authors = [
   { name="Quran Muaalem Team", email="quran.muaalem@gmail.com" },
 ]
@@ -56,7 +56,7 @@ testpaths = [
     "tests/aya_pytest.py",
     # "tests/test_sub_with_mapping_pytest.py",
     "tests/test_phonemes_search_pytest.py",
-    # "tests/test_explain_error_pytest.py",
+    "tests/test_explain_error_pytest.py",
     "tests/test_sub_with_tagged_mapping_pytest.py",
     "tests/test_error_pat_pytest.py",
 ]

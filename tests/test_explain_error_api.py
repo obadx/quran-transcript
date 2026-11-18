@@ -150,76 +150,80 @@ if __name__ == "__main__":
     # predicted_text = "ءَلحقق"
     # predicted_text = "ءَلحُقق"
 
-    # uthmani_text = "الٓمٓ"
-    # predicted_text = "ءَلِف لَااااااممممِۦۦۦۦۦۦم"
-    # predicted_text = "ءَلِف لَاااااممممِۦۦۦۦۦۦم"
+    uthmani_text = "الٓمٓ"
+    predicted_text = "ءَلِف لَااااااممممِۦۦۦۦۦۦم"
+    predicted_text = "ءَلِف لَاااااممممِۦۦۦۦۦۦم"
 
-    # uthmani_text = "لَكَ"
-    # predicted_text = "لَكَا"
-
-    # إطهار بدل من الإدغام في أحكام النون الساكنة
-    # uthmani_text = "مَن يَعْمَلْ"
-    # predicted_text = "مَنيَعمَل"
-
-    # نطق النون المقلبة نونا مظهرة
-    uthmani_text = "مِنۢ بَعْدِ"
-    predicted_text = "مِنبَعدڇ"
-
-    # إنقاص مقدار غنة الإقلاب
-    uthmani_text = "مِنۢ بَعْدِ"
-    predicted_text = "مِ۾بَعدڇ"
-
-    # نطق النون المخفاة نونا مظهرة
-    uthmani_text = "مِن قَبْلِكَ"
-    predicted_text = "مِنقَبڇلِك"
-
-    # غنقاص مقدار الإخفاء
-    uthmani_text = "مِن قَبْلِكَ"
-    predicted_text = "مِںںقَبڇلِك"
-
-    # نطق  إظهار النون إخفاء
-    uthmani_text = "أَنْعَمْتَ"
-    predicted_text = "ءَںںنعَمت"
-    predicted_text = "ءَںںعَمت"
-
-    # مط النون المظهرة
-    uthmani_text = "أَنْعَمْتَ"
-    predicted_text = "ءَننعَمت"
-
-    # نطقة الميم المخفاة ميما مدغمة
-    uthmani_text = "تَرْمِيهِم بِحِجَارَةٍ"
-    predicted_text = "تَرمِۦۦهِمممبِحِجَاارَه"
-
-    uthmani_text = "مِنۢ بَعْدِ"
-    predicted_text = "مِمممبَعدڇ"
-
-    # نطق الميم الخفاة عند من يجعها ميما ميما مخفاة
-    # set meem_mokhfah="meem" in Moshaf attributes
-    uthmani_text = "تَرْمِيهِم بِحِجَارَةٍ"
-    predicted_text = "تَرمِۦۦهِ۾۾۾بِحِجَاارَه"
-
-    uthmani_text = "مِنۢ بَعْدِ"
-    predicted_text = "مِ۾۾۾بَعدڇ"
-
-    # تكرار الحرف أكثر من اللازم
-    uthmani_text = "ٱلرَّحِيمِ"
-    predicted_text = "ءَررررَحِۦۦۦۦم"
-
-    # إظهار الحرف المدغم
-    uthmani_text = "ٱلرَّحِيمِ"
-    predicted_text = "ءَلرَحِۦۦۦۦم"
-
-    # التكرار المباغ فيه في الحرم المشدد
-    uthmani_text = "وَعَدَّدَهُۥ"
-    predicted_text = "وَعَددددَدَه"
+    # # uthmani_text = "لَكَ"
+    # # predicted_text = "لَكَا"
+    #
+    # # إطهار بدل من الإدغام في أحكام النون الساكنة
+    # # uthmani_text = "مَن يَعْمَلْ"
+    # # predicted_text = "مَنيَعمَل"
+    #
+    # # نطق النون المقلبة نونا مظهرة
+    # uthmani_text = "مِنۢ بَعْدِ"
+    # predicted_text = "مِنبَعدڇ"
+    #
+    # # إنقاص مقدار غنة الإقلاب
+    # uthmani_text = "مِنۢ بَعْدِ"
+    # predicted_text = "مِ۾بَعدڇ"
+    #
+    # # نطق النون المخفاة نونا مظهرة
+    # uthmani_text = "مِن قَبْلِكَ"
+    # predicted_text = "مِنقَبڇلِك"
+    #
+    # # غنقاص مقدار الإخفاء
+    # uthmani_text = "مِن قَبْلِكَ"
+    # predicted_text = "مِںںقَبڇلِك"
+    #
+    # # نطق  إظهار النون إخفاء
+    # uthmani_text = "أَنْعَمْتَ"
+    # predicted_text = "ءَںںنعَمت"
+    # predicted_text = "ءَںںعَمت"
+    #
+    # # مط النون المظهرة
+    # uthmani_text = "أَنْعَمْتَ"
+    # predicted_text = "ءَننعَمت"
+    #
+    # # نطقة الميم المخفاة ميما مدغمة
+    # uthmani_text = "تَرْمِيهِم بِحِجَارَةٍ"
+    # predicted_text = "تَرمِۦۦهِمممبِحِجَاارَه"
+    #
+    # uthmani_text = "مِنۢ بَعْدِ"
+    # predicted_text = "مِمممبَعدڇ"
+    #
+    # # نطق الميم الخفاة عند من يجعها ميما ميما مخفاة
+    # # set meem_mokhfah="meem" in Moshaf attributes
+    # uthmani_text = "تَرْمِيهِم بِحِجَارَةٍ"
+    # predicted_text = "تَرمِۦۦهِ۾۾۾بِحِجَاارَه"
+    #
+    # uthmani_text = "مِنۢ بَعْدِ"
+    # predicted_text = "مِ۾۾۾بَعدڇ"
+    #
+    # # تكرار الحرف أكثر من اللازم
+    # uthmani_text = "ٱلرَّحِيمِ"
+    # predicted_text = "ءَررررَحِۦۦۦۦم"
+    #
+    # # إظهار الحرف المدغم
+    # uthmani_text = "ٱلرَّحِيمِ"
+    # predicted_text = "ءَلرَحِۦۦۦۦم"
+    #
+    # # التكرار المباغ فيه في الحرم المشدد
+    # uthmani_text = "وَعَدَّدَهُۥ"
+    # predicted_text = "وَعَددددَدَه"
 
     # الألفات السبعة
     uthmani_text = "لَّٰكِنَّا۠ هُوَ"
     predicted_text = "لَااكِننننَااهُۥۥ"
-
-    # كسر التنوين
-    uthmani_text = "أَحَدٌ ٱللَّهُ"
-    predicted_text = "ءَحَدُنُللَااااه"
+    #
+    # # كسر التنوين
+    # uthmani_text = "أَحَدٌ ٱللَّهُ"
+    # predicted_text = "ءَحَدُنُللَااااه"
+    #
+    # # حذف الحرف لاأو من الملتقيان الساكنان
+    # uthmani_text = "وَقَالَا ٱلْحَمْدُ"
+    # predicted_text = "وَقَاالَااءَلحَمدڇ"
 
     ref_ph_out = quran_phonetizer(uthmani_text, moshaf)
     errors = explain_error(

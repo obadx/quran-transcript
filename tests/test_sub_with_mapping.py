@@ -62,6 +62,9 @@ if __name__ == "__main__":
     # uth_text = "أَنْعَمْتَ"
     # uth_text = "ٱللَّهُ"
 
+    uth_text = "لَّٰكِنَّا۠ هُوَ"
+    uth_text = "أَحَدٌ ٱللَّهُ"
+
     # uth_text = "ٱلرَّحْمَـٰنِ ٱلرَّحِيمِ طسٓمٓ"
 
     # profiler = Profiler()

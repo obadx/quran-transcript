@@ -141,10 +141,12 @@ def parse_reciter_error_tags(
                 f"Invalid regex in tag `{tag}` at position `{match.start(3)}`: {exc}"
             ) from exc
 
-        if compiled_tag_pat.fullmatch("") is not None:
+        if compiled_tag_pat.fullmatch("") is not None and tag in rules:
             raise ReciterErrPatParsingError(
                 f"Tag pattern `{tag_pat}` at position `{match.start(3)}` "
-                f"can match an empty string"
+                f"can match an empty string but tag `{tag}` requires a "
+                f"Tajweed rule. An empty match has no reference groups to "
+                f"anchor the rule"
             )
 
         # One operation letter per run of same-op tags. The tag pattern is
@@ -325,8 +327,10 @@ class ReciterErrPatern:
           tag in ``rules`` the matched reference span has to contain that
           :class:`TajweedRuleType`; otherwise the match is skipped. A named tag
           that is not in ``rules`` is only contextual.
-        * Tag patterns are regex sources. They must not be empty and must not
-          match the empty string.
+        * Tag patterns are regex sources. They must not be empty. They may
+          match the empty string (an optional tag), unless the tag is in
+          ``rules`` — an empty match has no reference groups to anchor a
+          Tajweed rule.
         * Tag patterns must not contain a literal ``>`` outside a character
           class because ``>`` closes the tag.
         * Adjacent tags with the same operation share one operation prefix:
@@ -511,13 +515,16 @@ class ReciterErrPatern:
                     strict_ok = False
                     break
 
-                if m_tag.tag:
-                    tag_spans[m_tag.tag] = (
-                        enc_to_align[tag_mat.start()],
-                        enc_to_align[tag_mat.end()],
-                    )
+                a_start = enc_to_align[tag_mat.start()]
+                a_end = enc_to_align[tag_mat.end()]
 
-                matched_ops.append(m_tag.op)
+                if m_tag.tag:
+                    tag_spans[m_tag.tag] = (a_start, a_end)
+
+                # An optional tag that matched the empty string consumed no
+                # alignments and contributes no op.
+                if a_end > a_start:
+                    matched_ops.append(m_tag.op)
                 pos = tag_mat.end()
 
             if not strict_ok:

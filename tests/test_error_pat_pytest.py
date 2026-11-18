@@ -208,9 +208,53 @@ def test_parser_rejects_empty_tag_pattern():
         ReciterErrPatern(r"R:<e:>", {})
 
 
-def test_parser_rejects_empty_matching_tag_pattern():
+def test_parser_allows_empty_matching_tag():
+    err_pat = ReciterErrPatern(rf"R:<e:{ALIF}*>", {})
+    assert err_pat.re_pat.pattern
+
+
+def test_parser_rejects_empty_matching_tag_with_rule():
     with pytest.raises(ReciterErrPatParsingError):
-        ReciterErrPatern(rf"R:<e:{ALIF}*>", {})
+        ReciterErrPatern(
+            rf"R:<e,t0:{ALIF}*>",
+            {"t0": TajweedRuleType.NORMAL_MADD},
+        )
+
+
+def test_find_all_optional_tag_present_infers_insert():
+    err_pat = ReciterErrPatern(
+        r"R:<e,t0:A><i:B?>",
+        {"t0": TajweedRuleType.NORMAL_MADD},
+    )
+
+    errors = err_pat.find_all(
+        ref_ph_groups=["A"],
+        pred_ph_groups=["A", "B"],
+        ph_groups_align=[align("equal", 0, 0), align("insert", 1, 1)],
+        ref_group_rules=[[meta(TajweedRuleType.NORMAL_MADD)]],
+        ref_ph_to_uthmani=[0, 1, 2],
+    )
+    assert len(errors) == 1
+    assert errors[0].speech_error_type == "insert"
+    assert errors[0].preditected_ph == "AB"
+
+
+def test_find_all_optional_tag_absent_infers_replace():
+    err_pat = ReciterErrPatern(
+        r"R:<e,t0:A><i:B?>",
+        {"t0": TajweedRuleType.NORMAL_MADD},
+    )
+
+    errors = err_pat.find_all(
+        ref_ph_groups=["A"],
+        pred_ph_groups=["A", "C"],
+        ph_groups_align=[align("equal", 0, 0), align("insert", 1, 1)],
+        ref_group_rules=[[meta(TajweedRuleType.NORMAL_MADD)]],
+        ref_ph_to_uthmani=[0, 1, 2],
+    )
+    assert len(errors) == 1
+    assert errors[0].speech_error_type == "replace"
+    assert errors[0].preditected_ph == "A"
 
 
 def test_parser_rejects_invalid_tag_regex():
