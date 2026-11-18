@@ -213,6 +213,14 @@ if __name__ == "__main__":
     uthmani_text = "وَعَدَّدَهُۥ"
     predicted_text = "وَعَددددَدَه"
 
+    # الألفات السبعة
+    uthmani_text = "لَّٰكِنَّا۠ هُوَ"
+    predicted_text = "لَااكِننننَااهُۥۥ"
+
+    # كسر التنوين
+    uthmani_text = "أَحَدٌ ٱللَّهُ"
+    predicted_text = "ءَحَدُنُللَااااه"
+
     ref_ph_out = quran_phonetizer(uthmani_text, moshaf)
     errors = explain_error(
         uthmani_text=uthmani_text,
