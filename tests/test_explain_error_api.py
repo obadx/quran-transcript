@@ -132,6 +132,7 @@ if __name__ == "__main__":
         madd_mottasel_len=4,
         madd_mottasel_waqf=4,
         madd_aared_len=4,
+        # meem_mokhfah="meem",
     )
 
     uthmani_text = "قَالُوٓا۟"
@@ -164,26 +165,41 @@ if __name__ == "__main__":
     uthmani_text = "مِنۢ بَعْدِ"
     predicted_text = "مِنبَعدڇ"
 
-    # إنقاص مقدار غنة الإقلاب
+    # # إنقاص مقدار غنة الإقلاب
+    # uthmani_text = "مِنۢ بَعْدِ"
+    # predicted_text = "مِ۾بَعدڇ"
+
+    # # نطق النون المخفاة نونا مظهرة
+    # uthmani_text = "مِن قَبْلِكَ"
+    # predicted_text = "مِنقَبڇلِك"
+    #
+    # # غنقاص مقدار الإخفاء
+    # uthmani_text = "مِن قَبْلِكَ"
+    # predicted_text = "مِںںقَبڇلِك"
+    #
+    # # نطق  إظهار النون إخفاء
+    # uthmani_text = "أَنْعَمْتَ"
+    # predicted_text = "ءَںںنعَمت"
+    # predicted_text = "ءَںںعَمت"
+    #
+    # # مط النون المظهرة
+    # uthmani_text = "أَنْعَمْتَ"
+    # predicted_text = "ءَننعَمت"
+
+    # نطقة الميم المخفاة ميما مدغمة
+    uthmani_text = "تَرْمِيهِم بِحِجَارَةٍ"
+    predicted_text = "تَرمِۦۦهِمممبِحِجَاارَه"
+
     uthmani_text = "مِنۢ بَعْدِ"
-    predicted_text = "مِ۾بَعدڇ"
+    predicted_text = "مِمممبَعدڇ"
 
-    # نطق النون المخفاة نونا مظهرة
-    uthmani_text = "مِن قَبْلِكَ"
-    predicted_text = "مِنقَبڇلِك"
+    # نطق الميم الخفاة عند من يجعها ميما ميما مخفاة
+    # set meem_mokhfah="meem" in Moshaf attributes
+    uthmani_text = "تَرْمِيهِم بِحِجَارَةٍ"
+    predicted_text = "تَرمِۦۦهِ۾۾۾بِحِجَاارَه"
 
-    # غنقاص مقدار الإخفاء
-    uthmani_text = "مِن قَبْلِكَ"
-    predicted_text = "مِںںقَبڇلِك"
-
-    # نطق  إظهار النون إخفاء
-    uthmani_text = "أَنْعَمْتَ"
-    predicted_text = "ءَںںنعَمت"
-    predicted_text = "ءَںںعَمت"
-
-    # مط النون المظهرة
-    uthmani_text = "أَنْعَمْتَ"
-    predicted_text = "ءَننعَمت"
+    uthmani_text = "مِنۢ بَعْدِ"
+    predicted_text = "مِ۾۾۾بَعدڇ"
 
     ref_ph_out = quran_phonetizer(uthmani_text, moshaf)
     errors = explain_error(

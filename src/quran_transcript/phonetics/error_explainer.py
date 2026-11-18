@@ -135,7 +135,7 @@ ERR_PATERNS = [
     ),
     # نطق النون المقلبة نونا مظهرة
     ReciterErrPatern(
-        f"R:<r,t0:{ph.noon}><e:{ph.baa}>",
+        f"R:<r,t0:{ph.noon}>",
         {"t0": TajweedRuleType.IQLAB_NOON},
         error_type="tajweed",
         speech_error_type="replace",
@@ -166,6 +166,34 @@ ERR_PATERNS = [
         replaced_tajweed_rules=(TajweedRuleType.IKHFAA_NOON,),
     ),
     # -----------------------------------------------------------------
+    # الخلط بين الميم المخفاة والميم المدغمة
+    ReciterErrPatern(
+        f"R:<r,t0:{ph.meem}>",
+        {"t0": TajweedRuleType.IKHFAA_MEEM},
+        error_type="tajweed",
+        speech_error_type="replace",
+        replaced_tajweed_rules=(TajweedRuleType.IDGHAM_MEEM,),
+    ),
+    ReciterErrPatern(
+        f"R:<r,t0:{ph.meem}>",
+        {"t0": TajweedRuleType.IQLAB_NOON},
+        error_type="tajweed",
+        speech_error_type="replace",
+        replaced_tajweed_rules=(TajweedRuleType.IDGHAM_GONNAH_NOON,),
+    ),
+    # العكس
+    ReciterErrPatern(
+        f"R:<r,t0:{ph.meem_mokhfah}>",
+        {"t0": TajweedRuleType.IKHFAA_MEEM},
+        error_type="tajweed",
+        speech_error_type="replace",
+    ),
+    ReciterErrPatern(
+        f"R:<r,t0:{ph.meem_mokhfah}>",
+        {"t0": TajweedRuleType.IQLAB_NOON},
+        error_type="tajweed",
+        speech_error_type="replace",
+    ),
 ]
 
 
