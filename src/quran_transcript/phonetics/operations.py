@@ -589,7 +589,7 @@ class PrepareGhonnaIdghamIqlab(ConversionOperation):
             QuranREWithMapping(
                 f"M:<T:{uth.meem}>{uth.space}?<D0:{uth.baa}>",
                 None,
-                TajweedRuleType.IDGHAM_MEEM,
+                TajweedRuleType.IKHFAA_MEEM,
             ),
             # ----------------------------------------------------
             # النون المقلبة ميمام
