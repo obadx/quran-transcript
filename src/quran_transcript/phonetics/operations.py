@@ -686,18 +686,18 @@ class PrepareGhonnaIdghamIqlab(ConversionOperation):
             # ----------------------------------------------------
             # حذف الحرف الأول من الحفران المدغمان
             QuranREWithMapping(
-                f"M:<T:[{uth.pure_letters_without_yaa_and_waw_group}]>{uth.space}?<D0:([{uth.pure_letters_group}]{uth.shadda})>",
-                r"<D0:\1>",
+                f"M:<D0:[{uth.pure_letters_without_yaa_and_waw_group}]>{uth.space}?<T:([{uth.pure_letters_group}]{uth.shadda})>",
+                r"<T:\1>",
                 TajweedRuleType.IDGHAM_KAMEL,
             ),
             QuranREWithMapping(
-                f"M:<r:([{uth.fatha}{uth.dama}])><T:{uth.yaa}>{uth.space}?<D0:([{uth.pure_letters_group}]{uth.shadda})>",
-                r"<r:\1><D0:\2>",
+                f"M:<r:([{uth.fatha}{uth.dama}])><D0:{uth.yaa}>{uth.space}?<T:([{uth.pure_letters_group}]{uth.shadda})>",
+                r"<r:\1><T:\2>",
                 TajweedRuleType.IDGHAM_KAMEL,
             ),
             QuranREWithMapping(
-                f"M:<r:([{uth.fatha}{uth.kasra}])><T:{uth.waw}>{uth.space}?<D0:([{uth.pure_letters_group}]{uth.shadda})>",
-                r"<r:\1><D0:\2>",
+                f"M:<r:([{uth.fatha}{uth.kasra}])><D0:{uth.waw}>{uth.space}?<T:([{uth.pure_letters_group}]{uth.shadda})>",
+                r"<r:\1><T:\2>",
                 TajweedRuleType.IDGHAM_KAMEL,
             ),
             # QuranREWithMapping(

@@ -194,6 +194,15 @@ ERR_PATERNS = [
         error_type="tajweed",
         speech_error_type="replace",
     ),
+    # -----------------------------------------------------------------
+    # TODO: be specif about the inserted phonemes before
+    ReciterErrPatern(
+        f"R:<i:.><e,t0:[^{ph.meem}{ph.noon}]>",
+        {"t0": TajweedRuleType.IDGHAM_KAMEL},
+        error_type="tajweed",
+        speech_error_type="replace",
+        replaced_tajweed_rules=(TajweedRuleType.IZHAR,),
+    ),
 ]
 
 

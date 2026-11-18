@@ -4,6 +4,7 @@ from enum import IntEnum, auto
 from typing import Literal, TypeAlias
 
 from ..alphabet import MultiLangText
+from ..alphabet import phonetic_groups as phg
 from ..alphabet import phonetics as ph
 
 
@@ -39,6 +40,7 @@ class TajweedRuleType(IntEnum):
     MOSHADAD_MEEM = auto()
 
     IDGHAM_KAMEL = auto()
+    IZHAR = auto()
 
     # التقاء الساكنين
     KASR_TANWEEN_ILTIQAA_SAKENAYN = auto()
@@ -521,7 +523,28 @@ class IdghamKamelRule(TajweedRule):
         en="",
     )
     rule_type: TajweedRuleType = TajweedRuleType.IDGHAM_KAMEL
-    correctness: CorrectnessType = "match"
+    correctness: CorrectnessType = "count"
+
+    def count(self, ref_text: str, pred_text: str) -> float:
+        assert ref_text[0] == pred_text[0]
+        pred_len = 1
+        for c in pred_text[1:]:
+            if c not in phg.residuals:
+                pred_len += 1
+        return pred_len
+
+
+@dataclass
+class IzharRule(DescriptiveTajweedRule):
+    name: MultiLangText = MultiLangText(
+        ar="إظهار",
+        en="Izhar",
+    )
+    description: MultiLangText = MultiLangText(
+        ar="",
+        en="",
+    )
+    rule_type: TajweedRuleType = TajweedRuleType.IZHAR
 
 
 @dataclass
@@ -697,6 +720,7 @@ TAJ_TYPE_TO_RULE = {
     TajweedRuleType.MOSHADAD_NOON: MoshadadNoonRule(),
     TajweedRuleType.MOSHADAD_MEEM: MoshadadMeemRule(),
     TajweedRuleType.IDGHAM_KAMEL: IdghamKamelRule(),
+    TajweedRuleType.IZHAR: IzharRule(),
     TajweedRuleType.KASR_TANWEEN_ILTIQAA_SAKENAYN: KasrTanweenIltiqaaSakenaynRule(),
     TajweedRuleType.DELETE_FIRST_ILTIQAA_SAKENAYN: DeleteFirstIltiqaaSakenaynRule(),
     TajweedRuleType.TASHEEL: TasheelRule(),
@@ -726,7 +750,6 @@ def get_full_taj_rule_type(
     The metadata is copied before ``fill_uth`` so callers can reuse the raw
     metadata safely.
     """
-    taj_rule_meta = replace(taj_rule_meta)
     taj_rule_meta.fill_uth(ph_to_uth)
     taj_rule = TAJ_TYPE_TO_RULE[taj_rule_meta.rule_type]
 
@@ -738,6 +761,8 @@ def get_full_taj_rule_type(
             # counts the preceding yaa/waw in addition to the inserted ones.
             if taj_rule_meta.rule_type == TajweedRuleType.LEEN_MADD:
                 golden_len += 1
+            taj_rule_meta.set_golden_len(golden_len)
+        elif taj_rule_meta.rule_type == TajweedRuleType.IDGHAM_KAMEL:
             taj_rule_meta.set_golden_len(golden_len)
         else:
             # Gonnah related rules

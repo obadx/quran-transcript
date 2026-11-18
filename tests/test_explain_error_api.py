@@ -201,6 +201,14 @@ if __name__ == "__main__":
     uthmani_text = "مِنۢ بَعْدِ"
     predicted_text = "مِ۾۾۾بَعدڇ"
 
+    # تكرار الحرف أكثر من اللازم
+    uthmani_text = "ٱلرَّحِيمِ"
+    predicted_text = "ءَررررَحِۦۦۦۦم"
+
+    # # إظهار الحرف المدغم
+    # uthmani_text = "ٱلرَّحِيمِ"
+    # predicted_text = "ءَلرَحِۦۦۦۦم"
+
     ref_ph_out = quran_phonetizer(uthmani_text, moshaf)
     errors = explain_error(
         uthmani_text=uthmani_text,
