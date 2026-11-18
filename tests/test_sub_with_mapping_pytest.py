@@ -6,6 +6,7 @@ from quran_transcript import Aya, MoshafAttributes, quran_phonetizer
 from quran_transcript.phonetics.conv_base_operation import (
     MappingListType,
     MappingPos,
+    PhonetizerMappings,
     get_mappings,
     merge_mappings,
     sub_with_mapping,
@@ -21,6 +22,7 @@ from quran_transcript.phonetics.tajweed_rulses import (
     NormalMaddRule,
     Qalqalah,
 )
+from tests.conftest import _check_mapping_continuty
 
 # Import the sub_with_mapping function from the existing test file
 
@@ -179,6 +181,7 @@ def test_sub_with_mapping_operations(
     """Test sub_with_mapping function with various regex operations."""
 
     result_text, result_mappings = sub_with_mapping(pattern, repl, input_text)
+    _check_mapping_continuty(result_mappings)
 
     # Assert output text matches expected
     assert result_text == expected_output, (
@@ -342,6 +345,7 @@ def test_get_mappings(
     """Test Get Mappings"""
 
     out_mappings = get_mappings(input_text, out_text, in_mappings)
+    _check_mapping_continuty(out_mappings)
 
     # Assert each mapping matches expected
     print(f"OUT: {out_mappings}")
@@ -809,137 +813,121 @@ class TestMergeMappings:
             "إِنَّ ٱلَّذِينَ كَفَرُوا۟ سَوَآءٌ عَلَيْهِمْ ءَأَنذَرْتَهُمْ أَمْ لَمْ تُنذِرْهُمْ لَا يُؤْمِنُونَ",
             "ءِننننَ للَذِۦۦنَ كَفَرُۥۥ سَوَااااءُن عَلَيهِم ءَءَںںںذَرتَهُم ءَم لَم تُںںںذِرهُم لَاا يُءمِنُۥۥۥۥن",
             [
-                MappingPos(pos=(0, 1), tajweed_rules=None),
-                MappingPos(pos=(1, 2), tajweed_rules=None),
-                MappingPos(pos=(2, 6), tajweed_rules=None),
-                MappingPos(pos=(6, 6), deleted=True),
-                MappingPos(pos=(6, 7), tajweed_rules=None),
-                MappingPos(pos=(7, 8), tajweed_rules=None),
-                MappingPos(pos=(8, 8), deleted=True),
-                MappingPos(pos=(8, 9), tajweed_rules=None),
-                MappingPos(pos=(9, 10), tajweed_rules=None),
-                MappingPos(pos=(10, 11), tajweed_rules=None),
-                MappingPos(pos=(11, 12), tajweed_rules=None),
-                MappingPos(pos=(12, 13), tajweed_rules=None),
+                MappingPos(pos=(0, 1), tajweed_rules=None, deleted=False),
+                MappingPos(pos=(1, 2), tajweed_rules=None, deleted=False),
+                MappingPos(pos=(2, 6), tajweed_rules=None, deleted=False),
+                MappingPos(pos=(6, 6), tajweed_rules=None, deleted=True),
+                MappingPos(pos=(6, 7), tajweed_rules=None, deleted=False),
+                MappingPos(pos=(7, 8), tajweed_rules=None, deleted=False),
+                MappingPos(pos=(8, 8), tajweed_rules=None, deleted=True),
+                MappingPos(pos=(8, 9), tajweed_rules=None, deleted=False),
+                MappingPos(pos=(9, 10), tajweed_rules=None, deleted=False),
+                MappingPos(pos=(10, 11), tajweed_rules=None, deleted=False),
+                MappingPos(pos=(11, 12), tajweed_rules=None, deleted=False),
+                MappingPos(pos=(12, 13), tajweed_rules=None, deleted=False),
                 MappingPos(
                     pos=(13, 15),
-                    tajweed_rules=[
-                        NormalMaddRule(
-                            tag="yaa",
-                        )
-                    ],
+                    tajweed_rules=[NormalMaddRule(tag="yaa")],
+                    deleted=False,
                 ),
-                MappingPos(pos=(15, 16), tajweed_rules=None),
-                MappingPos(pos=(16, 17), tajweed_rules=None),
-                MappingPos(pos=(17, 18), tajweed_rules=None),
-                MappingPos(pos=(18, 19), tajweed_rules=None),
-                MappingPos(pos=(19, 20), tajweed_rules=None),
-                MappingPos(pos=(20, 21), tajweed_rules=None),
-                MappingPos(pos=(21, 22), tajweed_rules=None),
-                MappingPos(pos=(22, 23), tajweed_rules=None),
-                MappingPos(pos=(23, 24), tajweed_rules=None),
+                MappingPos(pos=(15, 16), tajweed_rules=None, deleted=False),
+                MappingPos(pos=(16, 17), tajweed_rules=None, deleted=False),
+                MappingPos(pos=(17, 18), tajweed_rules=None, deleted=False),
+                MappingPos(pos=(18, 19), tajweed_rules=None, deleted=False),
+                MappingPos(pos=(19, 20), tajweed_rules=None, deleted=False),
+                MappingPos(pos=(20, 21), tajweed_rules=None, deleted=False),
+                MappingPos(pos=(21, 22), tajweed_rules=None, deleted=False),
+                MappingPos(pos=(22, 23), tajweed_rules=None, deleted=False),
+                MappingPos(pos=(23, 24), tajweed_rules=None, deleted=False),
                 MappingPos(
                     pos=(24, 26),
-                    tajweed_rules=[
-                        NormalMaddRule(
-                            tag="waw",
-                        )
-                    ],
+                    tajweed_rules=[NormalMaddRule(tag="waw")],
+                    deleted=False,
                 ),
-                MappingPos(pos=(26, 26), deleted=True),
-                MappingPos(pos=(26, 26), deleted=True),
-                MappingPos(pos=(26, 27), tajweed_rules=None),
-                MappingPos(pos=(27, 28), tajweed_rules=None),
-                MappingPos(pos=(28, 29), tajweed_rules=None),
-                MappingPos(pos=(29, 30), tajweed_rules=None),
-                MappingPos(pos=(30, 31), tajweed_rules=None),
-                MappingPos(
-                    pos=(31, 35),
-                    tajweed_rules=[MottaselMaddRule(golden_len=4, tag="alif")],
-                ),
-                MappingPos(pos=(35, 35), deleted=True),
-                MappingPos(pos=(35, 36), tajweed_rules=None),
-                MappingPos(pos=(36, 38), tajweed_rules=None),
-                MappingPos(pos=(38, 39), tajweed_rules=None),
-                MappingPos(pos=(39, 40), tajweed_rules=None),
-                MappingPos(pos=(40, 41), tajweed_rules=None),
-                MappingPos(pos=(41, 42), tajweed_rules=None),
-                MappingPos(pos=(42, 43), tajweed_rules=None),
-                MappingPos(pos=(43, 44), tajweed_rules=None),
-                MappingPos(pos=(44, 44), deleted=True),
-                MappingPos(pos=(44, 45), tajweed_rules=None),
-                MappingPos(pos=(45, 46), tajweed_rules=None),
-                MappingPos(pos=(46, 47), tajweed_rules=None),
-                MappingPos(pos=(47, 47), deleted=True),
-                MappingPos(pos=(47, 48), tajweed_rules=None),
-                MappingPos(pos=(48, 49), tajweed_rules=None),
-                MappingPos(pos=(49, 50), tajweed_rules=None),
-                MappingPos(pos=(50, 51), tajweed_rules=None),
-                MappingPos(pos=(51, 52), tajweed_rules=None),
-                MappingPos(pos=(52, 55), tajweed_rules=None),
-                MappingPos(pos=(55, 56), tajweed_rules=None),
-                MappingPos(pos=(56, 57), tajweed_rules=None),
-                MappingPos(pos=(57, 58), tajweed_rules=None),
-                MappingPos(pos=(58, 58), deleted=True),
-                MappingPos(pos=(58, 59), tajweed_rules=None),
-                MappingPos(pos=(59, 60), tajweed_rules=None),
-                MappingPos(pos=(60, 61), tajweed_rules=None),
-                MappingPos(pos=(61, 62), tajweed_rules=None),
-                MappingPos(pos=(62, 63), tajweed_rules=None),
-                MappingPos(pos=(63, 63), deleted=True),
-                MappingPos(pos=(63, 64), tajweed_rules=None),
-                MappingPos(pos=(64, 65), tajweed_rules=None),
-                MappingPos(pos=(65, 66), tajweed_rules=None),
-                MappingPos(pos=(66, 67), tajweed_rules=None),
-                MappingPos(pos=(67, 67), deleted=True),
-                MappingPos(pos=(67, 68), tajweed_rules=None),
-                MappingPos(pos=(68, 69), tajweed_rules=None),
-                MappingPos(pos=(69, 70), tajweed_rules=None),
-                MappingPos(pos=(70, 71), tajweed_rules=None),
-                MappingPos(pos=(71, 71), deleted=True),
-                MappingPos(pos=(71, 72), tajweed_rules=None),
-                MappingPos(pos=(72, 73), tajweed_rules=None),
-                MappingPos(pos=(73, 74), tajweed_rules=None),
-                MappingPos(pos=(74, 77), tajweed_rules=None),
-                MappingPos(pos=(77, 78), tajweed_rules=None),
-                MappingPos(pos=(78, 79), tajweed_rules=None),
-                MappingPos(pos=(79, 80), tajweed_rules=None),
-                MappingPos(pos=(80, 80), deleted=True),
-                MappingPos(pos=(80, 81), tajweed_rules=None),
-                MappingPos(pos=(81, 82), tajweed_rules=None),
-                MappingPos(pos=(82, 83), tajweed_rules=None),
-                MappingPos(pos=(83, 83), deleted=True),
-                MappingPos(pos=(83, 84), tajweed_rules=None),
-                MappingPos(pos=(84, 85), tajweed_rules=None),
-                MappingPos(pos=(85, 86), tajweed_rules=None),
+                MappingPos(pos=(26, 26), tajweed_rules=None, deleted=True),
+                MappingPos(pos=(26, 26), tajweed_rules=None, deleted=True),
+                MappingPos(pos=(26, 27), tajweed_rules=None, deleted=False),
+                MappingPos(pos=(27, 28), tajweed_rules=None, deleted=False),
+                MappingPos(pos=(28, 29), tajweed_rules=None, deleted=False),
+                MappingPos(pos=(29, 30), tajweed_rules=None, deleted=False),
+                MappingPos(pos=(30, 31), tajweed_rules=None, deleted=False),
+                MappingPos(pos=(31, 35), tajweed_rules=None, deleted=False),
+                MappingPos(pos=(35, 35), tajweed_rules=None, deleted=True),
+                MappingPos(pos=(35, 36), tajweed_rules=None, deleted=False),
+                MappingPos(pos=(36, 38), tajweed_rules=None, deleted=False),
+                MappingPos(pos=(38, 39), tajweed_rules=None, deleted=False),
+                MappingPos(pos=(39, 40), tajweed_rules=None, deleted=False),
+                MappingPos(pos=(40, 41), tajweed_rules=None, deleted=False),
+                MappingPos(pos=(41, 42), tajweed_rules=None, deleted=False),
+                MappingPos(pos=(42, 43), tajweed_rules=None, deleted=False),
+                MappingPos(pos=(43, 44), tajweed_rules=None, deleted=False),
+                MappingPos(pos=(44, 44), tajweed_rules=None, deleted=True),
+                MappingPos(pos=(44, 45), tajweed_rules=None, deleted=False),
+                MappingPos(pos=(45, 46), tajweed_rules=None, deleted=False),
+                MappingPos(pos=(46, 47), tajweed_rules=None, deleted=False),
+                MappingPos(pos=(47, 47), tajweed_rules=None, deleted=True),
+                MappingPos(pos=(47, 48), tajweed_rules=None, deleted=False),
+                MappingPos(pos=(48, 49), tajweed_rules=None, deleted=False),
+                MappingPos(pos=(49, 50), tajweed_rules=None, deleted=False),
+                MappingPos(pos=(50, 51), tajweed_rules=None, deleted=False),
+                MappingPos(pos=(51, 52), tajweed_rules=None, deleted=False),
+                MappingPos(pos=(52, 55), tajweed_rules=None, deleted=False),
+                MappingPos(pos=(55, 56), tajweed_rules=None, deleted=False),
+                MappingPos(pos=(56, 57), tajweed_rules=None, deleted=False),
+                MappingPos(pos=(57, 58), tajweed_rules=None, deleted=False),
+                MappingPos(pos=(58, 58), tajweed_rules=None, deleted=True),
+                MappingPos(pos=(58, 59), tajweed_rules=None, deleted=False),
+                MappingPos(pos=(59, 60), tajweed_rules=None, deleted=False),
+                MappingPos(pos=(60, 61), tajweed_rules=None, deleted=False),
+                MappingPos(pos=(61, 62), tajweed_rules=None, deleted=False),
+                MappingPos(pos=(62, 63), tajweed_rules=None, deleted=False),
+                MappingPos(pos=(63, 63), tajweed_rules=None, deleted=True),
+                MappingPos(pos=(63, 64), tajweed_rules=None, deleted=False),
+                MappingPos(pos=(64, 65), tajweed_rules=None, deleted=False),
+                MappingPos(pos=(65, 66), tajweed_rules=None, deleted=False),
+                MappingPos(pos=(66, 67), tajweed_rules=None, deleted=False),
+                MappingPos(pos=(67, 67), tajweed_rules=None, deleted=True),
+                MappingPos(pos=(67, 68), tajweed_rules=None, deleted=False),
+                MappingPos(pos=(68, 69), tajweed_rules=None, deleted=False),
+                MappingPos(pos=(69, 70), tajweed_rules=None, deleted=False),
+                MappingPos(pos=(70, 71), tajweed_rules=None, deleted=False),
+                MappingPos(pos=(71, 71), tajweed_rules=None, deleted=True),
+                MappingPos(pos=(71, 72), tajweed_rules=None, deleted=False),
+                MappingPos(pos=(72, 73), tajweed_rules=None, deleted=False),
+                MappingPos(pos=(73, 74), tajweed_rules=None, deleted=False),
+                MappingPos(pos=(74, 77), tajweed_rules=None, deleted=False),
+                MappingPos(pos=(77, 78), tajweed_rules=None, deleted=False),
+                MappingPos(pos=(78, 79), tajweed_rules=None, deleted=False),
+                MappingPos(pos=(79, 80), tajweed_rules=None, deleted=False),
+                MappingPos(pos=(80, 80), tajweed_rules=None, deleted=True),
+                MappingPos(pos=(80, 81), tajweed_rules=None, deleted=False),
+                MappingPos(pos=(81, 82), tajweed_rules=None, deleted=False),
+                MappingPos(pos=(82, 83), tajweed_rules=None, deleted=False),
+                MappingPos(pos=(83, 83), tajweed_rules=None, deleted=True),
+                MappingPos(pos=(83, 84), tajweed_rules=None, deleted=False),
+                MappingPos(pos=(84, 85), tajweed_rules=None, deleted=False),
+                MappingPos(pos=(85, 86), tajweed_rules=None, deleted=False),
                 MappingPos(
                     pos=(86, 88),
-                    tajweed_rules=[
-                        NormalMaddRule(
-                            tag="alif",
-                        )
-                    ],
+                    tajweed_rules=[NormalMaddRule(tag="alif")],
+                    deleted=False,
                 ),
-                MappingPos(pos=(88, 89), tajweed_rules=None),
-                MappingPos(pos=(89, 90), tajweed_rules=None),
-                MappingPos(pos=(90, 91), tajweed_rules=None),
-                MappingPos(pos=(91, 92), tajweed_rules=None),
-                MappingPos(pos=(92, 92), deleted=True),
-                MappingPos(pos=(92, 93), tajweed_rules=None),
-                MappingPos(pos=(93, 94), tajweed_rules=None),
-                MappingPos(pos=(94, 95), tajweed_rules=None),
-                MappingPos(pos=(95, 96), tajweed_rules=None),
+                MappingPos(pos=(88, 89), tajweed_rules=None, deleted=False),
+                MappingPos(pos=(89, 90), tajweed_rules=None, deleted=False),
+                MappingPos(pos=(90, 91), tajweed_rules=None, deleted=False),
+                MappingPos(pos=(91, 92), tajweed_rules=None, deleted=False),
+                MappingPos(pos=(92, 92), tajweed_rules=None, deleted=True),
+                MappingPos(pos=(92, 93), tajweed_rules=None, deleted=False),
+                MappingPos(pos=(93, 94), tajweed_rules=None, deleted=False),
+                MappingPos(pos=(94, 95), tajweed_rules=None, deleted=False),
+                MappingPos(pos=(95, 96), tajweed_rules=None, deleted=False),
                 MappingPos(
                     pos=(96, 100),
-                    tajweed_rules=[
-                        AaredMaddRule(
-                            golden_len=4,
-                            tag="waw",
-                        )
-                    ],
+                    tajweed_rules=[AaredMaddRule(golden_len=4, tag="waw")],
+                    deleted=False,
                 ),
-                MappingPos(pos=(100, 101), tajweed_rules=None),
-                MappingPos(pos=(101, 101), deleted=True),
+                MappingPos(pos=(100, 101), tajweed_rules=None, deleted=False),
+                MappingPos(pos=(101, 101), tajweed_rules=None, deleted=True),
             ],
         ),
         (
@@ -1031,16 +1019,15 @@ class TestMergeMappings:
                 MappingPos(
                     pos=(4, 6),
                     tajweed_rules=[NormalMaddRule(tag="alif")],
+                    deleted=False,
                 ),
                 MappingPos(pos=(6, 7), tajweed_rules=None, deleted=False),
                 MappingPos(pos=(7, 8), tajweed_rules=None, deleted=False),
                 MappingPos(pos=(8, 9), tajweed_rules=None, deleted=False),
-                MappingPos(pos=(9, 12), tajweed_rules=None, deleted=False),
-                MappingPos(
-                    pos=(12, 12), tajweed_rules=None, deleted=True
-                ),  # determiner
-                MappingPos(pos=(12, 12), tajweed_rules=None, deleted=True),  # space
-                MappingPos(pos=(12, 13), tajweed_rules=None, deleted=False),
+                MappingPos(pos=(9, 13), tajweed_rules=None, deleted=False),
+                MappingPos(pos=(13, 13), tajweed_rules=None, deleted=True),
+                MappingPos(pos=(13, 13), tajweed_rules=None, deleted=True),
+                MappingPos(pos=(13, 13), tajweed_rules=None, deleted=True),
                 MappingPos(pos=(13, 14), tajweed_rules=None, deleted=False),
                 MappingPos(pos=(14, 15), tajweed_rules=None, deleted=False),
                 MappingPos(pos=(15, 16), tajweed_rules=None, deleted=False),
@@ -1218,26 +1205,22 @@ class TestMergeMappings:
                 ),
                 MappingPos(
                     pos=(5, 14),
-                    tajweed_rules=[LazemMaddRule(tag="yaa")],
+                    tajweed_rules=[LazemMaddRule(golden_len=6, tag="yaa")],
                     deleted=False,
                 ),
                 MappingPos(pos=(14, 14), tajweed_rules=None, deleted=True),
                 MappingPos(pos=(14, 15), tajweed_rules=None, deleted=False),
-                MappingPos(
-                    pos=(15, 25),
-                    tajweed_rules=[LeenMaddRule(golden_len=6, tag="yaa")],
-                    deleted=False,
-                ),
+                MappingPos(pos=(15, 25), tajweed_rules=None, deleted=False),
                 MappingPos(pos=(25, 25), tajweed_rules=None, deleted=True),
                 MappingPos(
                     pos=(25, 36),
-                    tajweed_rules=[LazemMaddRule(tag="yaa")],
+                    tajweed_rules=[LazemMaddRule(golden_len=6, tag="yaa")],
                     deleted=False,
                 ),
                 MappingPos(pos=(36, 36), tajweed_rules=None, deleted=True),
                 MappingPos(
                     pos=(36, 45),
-                    tajweed_rules=[LazemMaddRule(tag="alif")],
+                    tajweed_rules=[LazemMaddRule(golden_len=6, tag="alif")],
                     deleted=False,
                 ),
                 MappingPos(pos=(45, 45), tajweed_rules=None, deleted=True),
@@ -1312,26 +1295,22 @@ class TestMergeMappings:
                 ),
                 MappingPos(
                     pos=(40, 49),
-                    tajweed_rules=[LazemMaddRule(tag="yaa")],
+                    tajweed_rules=[LazemMaddRule(golden_len=6, tag="yaa")],
                     deleted=False,
                 ),
                 MappingPos(pos=(49, 49), tajweed_rules=None, deleted=True),
                 MappingPos(pos=(49, 50), tajweed_rules=None, deleted=False),
-                MappingPos(
-                    pos=(50, 60),
-                    tajweed_rules=[LeenMaddRule(tag="yaa", golden_len=6)],
-                    deleted=False,
-                ),
+                MappingPos(pos=(50, 60), tajweed_rules=None, deleted=False),
                 MappingPos(pos=(60, 60), tajweed_rules=None, deleted=True),
                 MappingPos(
                     pos=(60, 71),
-                    tajweed_rules=[LazemMaddRule(tag="yaa")],
+                    tajweed_rules=[LazemMaddRule(golden_len=6, tag="yaa")],
                     deleted=False,
                 ),
                 MappingPos(pos=(71, 71), tajweed_rules=None, deleted=True),
                 MappingPos(
                     pos=(71, 80),
-                    tajweed_rules=[LazemMaddRule(tag="alif")],
+                    tajweed_rules=[LazemMaddRule(golden_len=6, tag="alif")],
                     deleted=False,
                 ),
                 MappingPos(pos=(80, 80), tajweed_rules=None, deleted=True),
@@ -1473,9 +1452,15 @@ def test_phonetizer_with_mappings(
     print(uth_text)
     print(ph_out.phonemes)
     print(ph_out.mappings)
+    _check_mapping_continuty(ph_out.mappings)
 
+    out_mappings = (
+        ph_out.mappings.uth_to_ph
+        if isinstance(ph_out.mappings, PhonetizerMappings)
+        else ph_out.mappings
+    )
     assert ph_out.phonemes == ph_text
-    assert exp_mappings == ph_out.mappings
+    assert exp_mappings == out_mappings
     for idx, uth_c in enumerate(uth_text):
         print(f"UTH_IDX: `{idx}`, SPAN: `{ph_out.mappings[idx]}`")
         ph_c = ""
@@ -1490,6 +1475,8 @@ def test_phonetizer_with_mappings(
 @pytest.mark.stress
 def test_sub_with_mapping_stress_test(quran_segs_phonetized_with_constat_moshaf):
     quran_segments, ph_outs = quran_segs_phonetized_with_constat_moshaf
+    for ph_out in ph_outs:
+        _check_mapping_continuty(ph_out.mappings)
 
 
 if __name__ == "__main__":

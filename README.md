@@ -17,6 +17,25 @@
 [colab-url]: https://colab.research.google.com/drive/1d9-mVu2eiPOPS9z5sS2V4TQ579xIUBi-?usp=sharing
 
 # `quran-transcript` package
+## 🆕 ما الجديد في الإصدار 0.7.0 (What's New in Version 0.7.0)
+
+### ⚡ أداء التحويل الصوتي (Phonetization Performance)
+- إعادة كتابة تتبع خرائط المواقع: إزاحات كسولة لكل كتلة (lazy per-block offsets) بدلاً من تحديث كل موضع عند كل عملية، مع بحث خطي للمدى القصير ودمج أسرع لأجزاء قواعد التجويد (Rewrote position-mapping tracking: lazy per-block offsets instead of updating every position on each operation, a linear search for short ranges, and faster tajweed-part merging).
+- العملية الصوتية الكاملة لأطول آية `Aya(2, 282)` انخفضت من ~150ms إلى ~11ms على جهاز ضعيف — نحو 13× أسرع (The full phonetization of the longest aya `Aya(2, 282)` dropped from ~150ms to ~11ms on a poor laptop — about 13× faster).
+- التفاصيل الكاملة في [PERFORMANCE_CHANGELOG.md](PERFORMANCE_CHANGELOG.md) (Full details in PERFORMANCE_CHANGELOG.md).
+
+### 🔄 API جديد للعمليات (New Operations API)
+- `QuranREWithMapping` مع أنماط `M:` الوسمية ووسوم التجويد `T`/`D` تحل محل دالة `sub_with_mapping` القديمة (`QuranREWithMapping` with tagged `M:` patterns and `T`/`D` tajweed tags replaces the old `sub_with_mapping` function).
+- تتبع تدريجي واحد للخرائط وقواعد التجويد عبر جميع عمليات التحويل (One progressive tracking of mappings and tajweed rules across all conversion operations).
+
+### 🧠 محرك أنماط أخطاء التلاوة (Recitation Error Pattern Engine)
+- إضافة `ReciterErrPatern` مع أنماط `R:` لكشف أخطاء التلاوة المعروفة كأنماط وسمية (Added `ReciterErrPatern` with `R:` patterns to detect known recitation mistakes as tagged patterns).
+- وسوم مسماة على جميع العمليات `e`/`i`/`r`/`d`، مع وسوم اختيارية يمكن أن تطابق فراغاً (Named tags on all ops `e`/`i`/`r`/`d`, plus optional tags that may match empty).
+- نمط الخطأ المطابق يهيمن على الأخطاء العامة في مداه فيمنع تكرار الأخطاء لنفس الموضع (A matched pattern dominates the generic errors in its span, preventing duplicate errors for the same region).
+- خيار `err_tag` لتحديد موضع الخطأ من وسم معين، وشروط `check_group` الإضافية على مجموعة الحروف (The `err_tag` option anchors the reported error to a chosen tag, and `check_group` adds custom conditions on the phoneme groups).
+- قوائم قواعد التجويد المدرجة/المستبدلة/المفقودة داخل `ReciterError` كـ `ExplainedTajweedRule` (Inserted/replaced/missing tajweed rule lists inside `ReciterError` as `ExplainedTajweedRule`).
+
+
 ## 🆕 ما الجديد في الإصدار 0.6.2 (What's New in Version 0.6.2)
 
 - التعارض يقع تحديداً في كلمة `ضَعْفًا` حيث توجد في سورتي الروم والأنفال (The conflict is specifically about `ضَعْفًا`, which occurs in both Surah Ar-Rum and Al-Anfal). في الروم يجوز الضم أو الفتح، أما في الأنفال فبالفتح فقط (In Ar-Rum both damma and fatha; in Al-Anfal only fatha).
@@ -211,30 +230,33 @@ for idx, (uth_char, mapping) in enumerate(zip(uthmani_script, phonetic_script.ma
 Position mappings provide precise tracking of character positions from original Uthmani text to converted phonetic text.
 
 ```python
-# i الوصول إلى بيانات الخرائط
-mappings = phonetic_script.mappings  # List[MappingPos | None]
+# الوصول إلى بيانات الخرائط
+mappings = phonetic_script.mappings  # List[MappingPos]
 phonemes = phonetic_script.phonemes  # str
 
 # المرور على خرائط الأحرف
 for idx, mapping in enumerate(mappings):
-    if mapping is not None:
-        # الحصول على امتداد الموقع
-        start, end = mapping.pos  # Python-style slice notation
+    # الحصول على امتداد الموقع
+    start, end = mapping.pos  # Python-style slice notation
+    if not mapping.deleted:
         # استخراج الصوت المقابل
         char_phoneme = phonemes[start:end]
         print(f"الحرف {idx} ينتقل إلى الصوت في الموقع ({start}, {end})")
     else:
-        print(f"الحرف {idx} تم حذفه أثناء التحويل")
+        # الحرف المحذوف يبقى في الخرائط ببداية ونهاية متساويتين
+        print(f"الحرف {idx} تم حذفه أثناء التحويل (pos = ({start}, {end}))")
 ```
 
 #### **فهم MappingPos (Understanding MappingPos)**
 ```python
-@dataclass
 class MappingPos:
     """خرائط المواقع لتحويلات الأحرف (Position mapping for character transformations)"""
-    pos: tuple[int, int]  # (بداية، نهاية) - بالطريقة البايثونية
-    tajweed_rules: list[TajweedRule] | None = None  # قواعد التجويد المرتبطة
-    deleted: bool = False  # حالة الحذف - True إذا تم حذف الحرف مع حفظ الموقع وتتساوي البداية والنهاية في ال `pos`
+    # `pos` خاصية تعيد (بداية، نهاية) بالطريقة البايثونية
+    # (`pos` is a property returning (start, end) in Python-style slice notation)
+    pos: tuple[int, int]
+    tajweed_rules: list[TajweedRuleType] | None = None  # قواعد التجويد المرتبطة
+    deleted: bool = False  # الحرف المحذوف يمثل بـ `MappingPos(pos=(x, x), deleted=True)` وليس `None`
+                           # (a deleted character is `MappingPos(pos=(x, x), deleted=True)`, not `None`)
 ```
 
 ### 📖 مثال على استخدام البحث الصوتي (Example of Phonetic Search)
@@ -356,7 +378,6 @@ for err in errors:
 نوع الخطأ: tajweed - replace
 المتوقع: 'اا' - المُتنبأ به: 'ۥۥ'
   قاعدة تجويد مرجعية: المد الطبيعي (Normal Madd)
-  قاعدة تجويد مستبدلة: المد الطبيعي (Normal Madd)
 
 ==================================================
 الموقع في العثماني: `لُ`, (3, 5)
@@ -377,10 +398,10 @@ for err in errors:
 - `speech_error_type`: Literal["insert", "delete", "replace"] – نوع الخطأ الكلامي.
 - `expected_ph`: str – المقطع الصوتي المتوقع.
 - `preditected_ph`: str – المقطع الصوتي المُتنبأ به.
-- `expected_len`: Optional[int] – الطول المتوقع (لأخطاء المد مثلاً).
-- `predicted_len`: Optional[int] – الطول الفعلي.
-- `ref_tajweed_rules`: Optional[list[TajweedRule]] – قواعد التجويد المرتبطة بالمقطع المتوقع.
-- `inserted_tajweed_rules`, `replaced_tajweed_rules`, `missing_tajweed_rules`: Optional[list[TajweedRule]] – قواعد التجويد التي تم إدراجها أو استبدالها أو فقدانها.
+- `expected_len`: int – الطول المتوقع (لأخطاء المد مثلاً)، و `-1` عند عدم الانطباق (Expected length, e.g. for madd errors; `-1` when not applicable).
+- `predicted_len`: int – الطول الفعلي، و `-1` عند عدم الانطباق (Predicted length; `-1` when not applicable).
+- `ref_tajweed_rules`: list[ExplainedTajweedRule] – قواعد التجويد المرتبطة بالمقطع المتوقع. كل عنصر يحتوي على حقول جاهزة للعرض/التسلسل مثل `name`, `rule_type`, `correctness`, `ph_pivot`, `ph_deps`, `uth_pivot`, `uth_deps`, و `golden_len`.
+- `inserted_tajweed_rules`, `replaced_tajweed_rules`, `missing_tajweed_rules`: list[ExplainedTajweedRule] – قواعد التجويد التي تم إدراجها أو استبدالها أو فقدانها.
 
 
 ### الحروف: (43)
@@ -548,8 +569,9 @@ Run individual test files:
 ```bash
 uv run pytest tests/phonetics_pytest.py -v
 uv run pytest tests/aya_pytest.py -vv
-uv run pytest tests/test_sub_with_mapping_pytest.py -vv
 uv run pytest tests/test_phonemes_search_pytest.py -vv
+uv run pytest tests/test_sub_with_tagged_mapping_pytest.py -vv
+uv run pytest tests/test_error_pat_pytest.py -vv
 uv run pytest tests/test_explain_error_pytest.py -vv
 ```
 

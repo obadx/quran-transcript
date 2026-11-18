@@ -1,22 +1,53 @@
 from dataclasses import dataclass
 
-from .. import alphabet as alph
-from .conv_base_operation import MappingListType, MappingPos, sub_with_mapping
+from .conv_base_operation import PhonetizerMappings
 from .moshaf_attributes import MoshafAttributes
-from .operations import OPERATION_ORDER
-from .sifa import SifaOutput, process_sifat
+from .operations import QuranPhonemesPhonetizer
+from .sifa import QuranSifatProcessor, SifaOutput
 
 
 @dataclass
 class QuranPhoneticScriptOutput:
     phonemes: str
     sifat: list[SifaOutput]
-    mappings: MappingListType  # `None` for deletion
+    mappings: PhonetizerMappings
     # TODO: Add mappings with sifat
 
 
+class QuranPhonetizer:
+    def __init__(self):
+        self.phonemes_phonetizer = QuranPhonemesPhonetizer()
+        self.sifat_processor = QuranSifatProcessor()
+
+    def process(
+        self,
+        uthmani_text: str,
+        moshaf: MoshafAttributes,
+        remove_spaces=False,
+        sura_idx: int = 0,
+    ) -> QuranPhoneticScriptOutput:
+        """Run the full phonetization pipeline. See `quran_phonetizer` for details."""
+        text, mappings = self.phonemes_phonetizer.process(
+            uthmani_text, moshaf, sura_idx=sura_idx
+        )
+
+        sifat = self.sifat_processor.process_sifat(
+            uthmani_script=uthmani_text,
+            phonetic_script=text,
+            moshaf=moshaf,
+        )
+
+        if remove_spaces:
+            text, mappings = self.phonemes_phonetizer.remove_spaces(text, mappings)
+
+        return QuranPhoneticScriptOutput(phonemes=text, sifat=sifat, mappings=mappings)
+
+
+_QURAN_PHONETIZER = QuranPhonetizer()
+
+
 def quran_phonetizer(
-    uhtmani_text: str,
+    uthmani_text: str,
     moshaf: MoshafAttributes,
     remove_spaces=False,
     sura_idx: int = 0,
@@ -30,24 +61,9 @@ def quran_phonetizer(
             pronounce it with fatha.
 
     """
-    text = uhtmani_text
-
-    # cleaning extra scpace
-    text, mappings = sub_with_mapping(r"\s+", rf"{alph.uthmani.space}", text)
-    text, mappings = sub_with_mapping(r"(\s$|^\s)", r"", text, mappings=mappings)
-
-    for op in OPERATION_ORDER:
-        text, mappings = op.apply(text, moshaf, mappings, sura_idx=sura_idx)
-
-    sifat = process_sifat(
-        uthmani_script=uhtmani_text,
-        phonetic_script=text,
-        moshaf=moshaf,
+    return _QURAN_PHONETIZER.process(
+        uthmani_text,
+        moshaf,
+        remove_spaces=remove_spaces,
+        sura_idx=sura_idx,
     )
-
-    if remove_spaces:
-        text, mappings = sub_with_mapping(
-            alph.uthmani.space, r"", text, mappings=mappings
-        )
-
-    return QuranPhoneticScriptOutput(phonemes=text, sifat=sifat, mappings=mappings)

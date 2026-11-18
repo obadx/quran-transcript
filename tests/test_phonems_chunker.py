@@ -1,8 +1,9 @@
-from quran_transcript.phonetics.sifa import chunck_phonemes, process_sifat
-from quran_transcript import quran_phonetizer, MoshafAttributes, Aya
+from typing import Any
 
 from pydantic import BaseModel
-from typing import Any
+
+from quran_transcript import Aya, MoshafAttributes, quran_phonetizer
+from quran_transcript.phonetics.sifa import QuranSifatProcessor, chunck_phonemes
 
 
 def format_pydantic(instance: BaseModel) -> str:
@@ -51,7 +52,9 @@ if __name__ == "__main__":
     uthmani_script = aya.get().uthmani
     phonetic_script = quran_phonetizer(uthmani_script, moshaf).phonemes
     chunks = chunck_phonemes(phonetic_script)
-    sifa_outs = process_sifat(uthmani_script, phonetic_script, moshaf)
+    sifa_outs = QuranSifatProcessor().process_sifat(
+        uthmani_script, phonetic_script, moshaf
+    )
 
     for o in sifa_outs:
         print(f"{format_pydantic(o)},")

@@ -1,11 +1,16 @@
 import json
 import re
 from dataclasses import asdict
-from pathlib import Path
 
 from quran_transcript import Aya
 from quran_transcript import alphabet as alph
 from quran_transcript.alphabet import BeginHamzatWasl, SpecialPattern, UthmaniAlphabet
+from quran_transcript.alphabet import phonetics as ph
+from quran_transcript.alphabet import uthmani as uth
+from quran_transcript.phonetics.conv_base_operation import (
+    QuranREWithMapping,
+    init_mappings,
+)
 
 
 def get_uthmani_alpabet() -> list[str]:
@@ -14,6 +19,52 @@ def get_uthmani_alpabet() -> list[str]:
     for aya in aya.get_ayat_after(114):
         alphabet |= set(aya.get().uthmani)
     return sorted(alphabet)
+
+
+def process_hrofp_moqtta_tagged_mapping(
+    key_to_expand: dict[str, str],
+) -> dict[str, str]:
+    new_key_to_expand = {}
+    for key, expand in key_to_expand.items():
+        key_words = key.split(alph.uthmani.space)
+        expand_words = expand.split(alph.uthmani.space)
+        if len(key_words) == 2:
+            word = key_words[0]
+            residual = alph.uthmani.space + key_words[1]
+            expand_words = expand_words[:-1]
+        else:
+            word = key
+            residual = ""
+
+        chars = re.findall(f".{alph.uthmani.madd}?", word)
+
+        # Starting condition
+        new_key = f"M:<s:(^|{alph.uthmani.space})>"
+        new_expand = r"<s:\1>"
+        for idx, (char, w_expand) in enumerate(zip(chars, expand_words)):
+            new_expand += f"<p{idx}:{w_expand}"
+            if len(char) == 1:
+                new_key += f"<p{idx}:{char}>"
+            elif len(char) == 2:
+                new_key += f"<p{idx}:{char[0]}>{char[1]}"
+            else:
+                raise ValueError()
+
+            if idx != (len(chars) - 1):
+                # add space (for non last iteration)
+                new_expand += alph.uthmani.space
+            new_expand += ">"  # closing the exapnd
+
+        if residual:
+            new_key += f"<r:{residual}>"
+            new_expand += f"<r:{residual}>"
+
+        # end
+        new_key += f"<e:({alph.uthmani.space}|$)>"
+        new_expand += r"<e:\2>"
+
+        new_key_to_expand[new_key] = new_expand
+    return new_key_to_expand
 
 
 if __name__ == "__main__":
@@ -38,160 +89,326 @@ if __name__ == "__main__":
         "قٓ": "قَا~فْ",
         "نٓ": "نُو~نْ",
     }
+    hrof_moqtta_disassemble = process_hrofp_moqtta_tagged_mapping(
+        hrof_moqtta_disassemble
+    )
+    for key, val in hrof_moqtta_disassemble.items():
+        print(key)
+        print(val)
+        _, _ = QuranREWithMapping(key, val, None).sub("", init_mappings(key))
+        print("-" * 40)
+
+    # الأيكمة
+    lykah = "لْـَٔيْكَةِ"
+    alykah = "ٱلْأَيْكَةِ"
+    kasheeda_idx = lykah.find(uth.kasheeda)
+
+    # عوجا قيما
+    iwaja = "عِوَجَا"
+    qymaa = "قَيِّمًۭا"
+
+    # مرقدنا هذا
+    marqdna = "مَّرْقَدِنَا"
+    hatha = "هَـٰذَا"
+
+    # من راق
+    man = "مَنْ"
+    raq = "رَاقٍۢ"
+
+    # بل ران
+    bal = "بَلْ"
+    ran = "رَانَ"
+
+    # ماليه هلك
+    maliyah = "مَالِيَهْ"
+    halaka = "هَلَكَ"
+
+    # عليم براءة
+    aliem = "عَلِيمٌۢ"
+    braah = "بَرَآءَةٌۭ"
+
+    # يس والقرآن
+    yassen = "يَا سِيٓنْ"
+    walqraan = "وَٱلْقُرْءَانِ"
+
+    # ن والقلم
+    noon = "نُوٓنْ"
+    walqlam = "وَٱلْقَلَمِ"
+
+    # آتاني
+    atanee = "ءَاتَىٰنِۦَ"
+
+    # السم
+    sim = "سْمُ"
+
+    # يبصط
+    yabsoot = "وَيَبْصُۜطُ"
+    yabsoot_saad = "وَيَبْصُطُ"
+    yabsoot_seen = "وَيَبْسُطُ"
+    yab_small_seen_idx = yabsoot.find(uth.small_seen_above)
+    yabsoot_prefix = yabsoot[:yab_small_seen_idx]
+    yabsoot_suffix = yabsoot[yab_small_seen_idx + 1 :]
+
+    # بسطة
+    bastah = "بَصْۜطَةًۭ"
+    bastah_seen = "بَسْطَةًۭ"
+    bastah_saad = "بَصْطَةًۭ"
+    bas_small_seen_idx = bastah.find(uth.small_seen_above)
+    bastah_prefix = bastah[:bas_small_seen_idx]
+    bastah_suffix = bastah[bas_small_seen_idx + 1 :]
+
+    # المصيطرون
+    almusaytirun = "ٱلْمُصَۣيْطِرُونَ"
+    almusaytirun_seen = "ٱلْمُسَيْطِرُونَ"
+    almusaytirun_saad = "ٱلْمُصَيْطِرُونَ"
+    almusaytirun_small_seen_idx = almusaytirun.find(uth.small_seen_below)
+    almusaytirun_prefix = almusaytirun[:almusaytirun_small_seen_idx]
+    almusaytirun_suffix = almusaytirun[almusaytirun_small_seen_idx + 1 :]
+
+    # بمصيطر
+    bimusaytir = "بِمُصَيْطِرٍ"
+    bimusaytir_seen = "بِمُسَيْطِرٍ"
+    bimusaytir_saad = "بِمُصَيْطِرٍ"
+    bimusaytir_saad_idx = bimusaytir.find(uth.saad)
+    bimusaytir_prefix = bimusaytir[: bimusaytir_saad_idx + 1]
+    bimusaytir_suffix = bimusaytir[bimusaytir_saad_idx + 1 :]
+
+    # يلهث ذلك
+    yalhath = "يَلْهَث ذَّٰلِكَ"
+    yalhath_izhar = "يَلْهَثْ ذَٰلِكَ"
+    yalhath_first, yalhath_second = yalhath.split(uth.space)
+    yalhath_izhar_first, yalhath_izhar_second = yalhath_izhar.split(uth.space)
+    yalhath_shadda_idx = yalhath_second.find(uth.shadda)
+    yalhath_second_head = yalhath_second[: yalhath_shadda_idx + 1]
+    yalhath_second_tail = yalhath_second[yalhath_shadda_idx + 1 :]
+    yalhath_izhar_second_head = yalhath_izhar_second[:yalhath_shadda_idx]
+
+    # اركب معنا
+    irkab = "ٱرْكَب مَّعَنَا"
+    irkab_izhar = "ٱرْكَبْ مَعَنَا"
+    irkab_first, irkab_second = irkab.split(uth.space)
+    irkab_izhar_first, irkab_izhar_second = irkab_izhar.split(uth.space)
+    irkab_shadda_idx = irkab_second.find(uth.shadda)
+    irkab_second_head = irkab_second[: irkab_shadda_idx + 1]
+    irkab_second_tail = irkab_second[irkab_shadda_idx + 1 :]
+    irkab_izhar_second_head = irkab_izhar_second[:irkab_shadda_idx]
+
+    # تأمننا
+    tamnna = "تَأْمَ۫نَّا"
+    tamnna_marker = "۫"
+    tamnna_marker_idx = tamnna.find(tamnna_marker)
+    tamnna_prefix = tamnna[:tamnna_marker_idx]
+    tamnna_after_marker = tamnna[tamnna_marker_idx + 1 :]
+    tamnna_shadda_idx = tamnna_after_marker.find(uth.shadda)
+    tamnna_noon = tamnna_after_marker[:tamnna_shadda_idx]
+    tamnna_tail = tamnna_after_marker[tamnna_shadda_idx + 1 :]
+
+    # ضعف
+    daaf_dam = "ضُعْف"
+    daaf_context_pattern = (
+        f"(?:([^{uth.ras_haaa}].){daaf})|(?:{daaf}({uth.tanween_kasr}{uth.meem_iqlab}))"
+    )
+
+    # سلاسلا
+    salasila = "سَلَـٰسِلَا۟"
+    salasila_body = salasila[:-2]
+    salasila_alif = salasila[-2]
+    salasila_marker = salasila[-1]
+
+    # نخلقكم
+    nakhluqkum = "نَخْلُقكُّم"
+    nakhluqkum_shadda_idx = nakhluqkum.find(uth.shadda)
+    nakhluqkum_prefix = nakhluqkum[:nakhluqkum_shadda_idx]
+    nakhluqkum_suffix = nakhluqkum[nakhluqkum_shadda_idx + 1 :]
+
+    # فادرأتم
+    faddaaraatum = "فَٱدَّٰرَْٰٔتُمْ"
+    faddaaraatum_marker_idx = faddaaraatum.rfind(uth.alif_khnjaria)
+    faddaaraatum_prefix = faddaaraatum[:faddaaraatum_marker_idx]
+    faddaaraatum_suffix = faddaaraatum[faddaaraatum_marker_idx + 1 :]
+
     special_patterns = [
         # SpecialPattern(
         #     pattern=f"{alph.uthmani.lam}({alph.uthmani.kasra})?{alph.uthmani.lam}{alph.uthmani.shadda}{alph.uthmani.fatha}{alph.uthmani.haa}",
         #     target_pattern=f"{alph.uthmani.lam}\\1{alph.uthmani.lam}{alph.uthmani.shadda}{alph.uthmani.fatha}{alph.uthmani.alif}{alph.uthmani.haa}",
         # ),
-        SpecialPattern(pattern="لْـَٔيْكَةِ", target_pattern="ٱلْأَيْكَةِ", pos="start"),
+        # الأيكمة
         SpecialPattern(
-            pattern="عِوَجَا قَيِّمًۭا",
+            pattern=f"M:<r0:{uth.lam}><r1:({uth.ras_haaa})><k:({uth.kasheeda})><r2:({lykah[kasheeda_idx + 1 :]})>",
+            target_pattern=f"<r0:{uth.hamzat_wasl}{uth.lam}><r1:\\1><r2:{alykah[3:]}>",
+            pos="start",
+        ),
+        # عوجا قيما
+        SpecialPattern(
+            pattern=f"M:<r0:({iwaja[:-2]})><r1:({iwaja[-2]})><r2:({iwaja[-1]})><r3:({uth.space}{qymaa})>",
             attr_name="sakt_iwaja",
             opts={
-                "sakt": "عِوَجَا" + alph.phonetics.sakt + alph.uthmani.space + "قَيِّمًۭا",
-                "idraj": f"عِوَج{alph.uthmani.tanween_fath_modgham}ا"
-                + alph.uthmani.space
-                + "قَيِّمًۭا",
+                "waqf": r"<r0:\1><r1:\2><r2:\3><r3:\4>",
+                "sakt": f"<r0:\\1><r1:\\2><r2:\\3{ph.sakt}><r3:\\4>",
+                "idraj": f"<r0:\\1><r1:{uth.tanween_fath_modgham}><r2:\\3><r3:\\4>",
             },
         ),
+        # مرقدنا هذا
         SpecialPattern(
-            pattern="مَّرْقَدِنَا هَـٰذَا",
+            pattern=f"M:<r0:({marqdna})><r1:({uth.space})><r2:({hatha})>",
             attr_name="sakt_marqdena",
             opts={
-                "sakt": "مَّرْقَدِنَا" + alph.phonetics.sakt + alph.uthmani.space + "هَـٰذَا",
-                "idraj": "مَّرْقَدِنَا هَـٰذَا",
+                "sakt": f"<r0:\\1{ph.sakt}><r1:\\2><r2:\\3>",
+                "idraj": r"<r0:\1><r1:\2><r2:\3>",
+                "waqf": r"<r0:\1><r1:\2><r2:\3>",
             },
         ),
+        # من راق
         SpecialPattern(
-            pattern="مَنْ رَاقٍۢ",
+            pattern=f"M:<r0:({man})><r1:({uth.space})><r2:({raq[0]})><r3:({raq[1]})><r4:({raq[2:]})>",
             attr_name="sakt_man_raq",
             opts={
-                "sakt": "مَنْ" + alph.phonetics.sakt + alph.uthmani.space + "رَاقٍۢ",
-                "idraj": "مَن" + alph.uthmani.space + "رَّاقٍۢ",
+                "sakt": f"<r0:\\1{ph.sakt}><r1:\\2><r2:\\3><r3:\\4><r4:\\5>",
+                "idraj": f"<r0:{man[:-1]}><r1:\\2><r2:\\3><r3:{uth.shadda}\\4><r4:\\5>",
+                "waqf": r"<r0:\1><r1:\2><r2:\3><r3:\4><r4:\5>",
             },
         ),
+        # بل ران
         SpecialPattern(
-            pattern="بَلْ رَانَ",
+            pattern=f"M:<r0:({bal})><r1:({uth.space})><r2:({ran[0]})><r3:({ran[1]})><r4:({ran[2:]})>",
             attr_name="sakt_bal_ran",
             opts={
-                "sakt": "بَلْ" + alph.phonetics.sakt + alph.uthmani.space + "رَانَ",
-                "idraj": "بَل" + alph.uthmani.space + "رَّانَ",
+                "sakt": f"<r0:\\1{ph.sakt}><r1:\\2><r2:\\3><r3:\\4><r4:\\5>",
+                "idraj": f"<r0:{bal[:-1]}><r1:\\2><r2:\\3><r3:{uth.shadda}\\4><r4:\\5>",
+                "waqf": r"<r0:\1><r1:\2><r2:\3><r3:\4><r4:\5>",
             },
         ),
+        # ماليه هلك
         SpecialPattern(
-            pattern="مَالِيَهْ هَلَكَ",
+            pattern=f"M:<r0:({maliyah})><r1:({uth.space})><r2:({halaka[0]})><r3:({halaka[1]})><r4:({halaka[2:]})>",
             attr_name="sakt_maleeyah",
             opts={
-                "sakt": "مَالِيَهْ" + alph.phonetics.sakt + alph.uthmani.space + "هَلَكَ",
-                "idgham": "مَالِيَه" + alph.uthmani.space + "هَّلَكَ",
+                "sakt": f"<r0:\\1{ph.sakt}><r1:\\2><r2:\\3><r3:\\4><r4:\\5>",
+                "idgham": f"<r0:{maliyah[:-1]}><r1:\\2><r2:\\3><r3:{uth.shadda}\\4><r4:\\5>",
+                "waqf": r"<r0:\1><r1:\2><r2:\3><r3:\4><r4:\5>",
             },
         ),
+        # عليم براءة
         SpecialPattern(
-            pattern="عَلِيمٌۢ بَرَآءَةٌۭ",
+            pattern=f"M:<r0:({aliem[:-3]})><r1:({aliem[-3]})><r2:({aliem[-2:]})><r3:({uth.space})><r4:({braah})>",
             attr_name="between_anfal_and_tawba",
             opts={
-                "sakt": "عَلِيم" + alph.phonetics.sakt + alph.uthmani.space + "بَرَآءَةٌۭ",
-                "wasl": "عَلِيمٌۢ بَرَآءَةٌۭ",
+                "sakt": f"<r0:\\1><r1:\\2{ph.sakt}><r3:\\4><r4:\\5>",
+                "wasl": r"<r0:\1><r1:\2><r2:\3><r3:\4><r4:\5>",
+                "waqf": r"<r0:\1><r1:\2><r2:\3><r3:\4><r4:\5>",
             },
         ),
+        # يس والقرآن
         SpecialPattern(
-            pattern="يَا سِيٓنْ وَٱلْقُرْءَانِ",
+            pattern=f"M:<r0:({yassen})><s:({uth.space})><r1:({walqraan})>",
             attr_name="noon_and_yaseen",
             opts={
-                "idgham": "يَا سِيٓن وَٱلْقُرْءَانِ",
-                "izhar": "يَا سِيٓنْ وَٱلْقُرْءَانِ",
+                "idgham": f"<r0:{yassen[:-1]}><s:\\2><r1:\\3>",
+                "izhar": r"<r0:\1><s:\2><r1:\3>",
             },
         ),
+        # ن والقلم
         SpecialPattern(
-            pattern="نُوٓنْ وَٱلْقَلَمِ",
+            pattern=f"M:<r0:({noon})><s:({uth.space})><r1:({walqlam})>",
             attr_name="noon_and_yaseen",
             opts={
-                "idgham": "نُوٓن وَٱلْقَلَمِ",
-                "izhar": "نُوٓنْ وَٱلْقَلَمِ",
+                "idgham": f"<r0:{noon[:-1]}><s:\\2><r1:\\3>",
+                "izhar": r"<r0:\1><s:\2><r1:\3>",
             },
         ),
+        # آتاني
         SpecialPattern(
-            pattern="ءَاتَىٰنِۦَ",
+            pattern=f"M:<r:({atanee[:-2]})><y:({atanee[-2]})><f:({atanee[-1]})>",
             attr_name="yaa_ataan",
             pos="end",
             opts={
-                "hadhf": "ءَاتَىٰنِ",
-                "ithbat": "ءَاتَىٰنِي",
+                "hadhf": r"<r:\1>",
+                "ithbat": f"<r:\\1><y:{uth.yaa}>",
+                "wasl": r"<r:\1><y:\2><f:\3>",
             },
         ),
+        # الاسم
         SpecialPattern(
-            pattern="ٱلِٱسْمُ",
+            pattern=f"M:<w0:{uth.hamzat_wasl}><l:({uth.lam}{uth.kasra})><w1:{uth.hamzat_wasl}><s:({sim})>",
             attr_name="start_with_ism",
             pos="start",
             opts={
-                "lism": "لِسْمُ",
-                "alism": "أَلِسْمُ",
+                "lism": r"<l:\1><s:\2>",
+                "alism": f"<w0:{uth.hamza_above_alif}{uth.fatha}><l:\\1><s:\\2>",
+                "wasl": f"<w0:{uth.hamzat_wasl}><l:\\1><w1:{uth.hamzat_wasl}><s:\\2>",
             },
         ),
+        # يبصط
         SpecialPattern(
-            pattern="وَيَبْصُۜطُ",
+            pattern=f"M:<a:({yabsoot_prefix})><b:({uth.small_seen_above})><r:({yabsoot_suffix})>",
             attr_name="yabsut",
             opts={
-                "seen": "وَيَبْسُطُ",
-                "saad": "وَيَبْصُطُ",
+                "seen": f"<a:{yabsoot_seen[:yab_small_seen_idx]}><r:\\3>",
+                "saad": f"<a:{yabsoot_saad[:yab_small_seen_idx]}><r:\\3>",
             },
         ),
+        # بسطة
         SpecialPattern(
-            pattern="بَصْۜطَةًۭ",
+            pattern=f"M:<a:({bastah_prefix})><b:({uth.small_seen_above})><r:({bastah_suffix})>",
             attr_name="bastah",
             opts={
-                "seen": "بَسْطَةًۭ",
-                "saad": "بَصْطَةًۭ",
+                "seen": f"<a:{bastah_seen[:bas_small_seen_idx]}><r:\\3>",
+                "saad": f"<a:{bastah_saad[:bas_small_seen_idx]}><r:\\3>",
             },
         ),
+        # المصيطرون
         SpecialPattern(
-            pattern="ٱلْمُصَۣيْطِرُونَ",
+            pattern=f"M:<a:({almusaytirun_prefix})><b:({uth.small_seen_below})><r:({almusaytirun_suffix})>",
             attr_name="almusaytirun",
             opts={
-                "seen": "ٱلْمُسَيْطِرُونَ",
-                "saad": "ٱلْمُصَيْطِرُونَ",
+                "seen": f"<a:{almusaytirun_seen[:almusaytirun_small_seen_idx]}><r:\\3>",
+                "saad": f"<a:{almusaytirun_saad[:almusaytirun_small_seen_idx]}><r:\\3>",
             },
         ),
+        # بمصيطر
         SpecialPattern(
-            pattern="بِمُصَيْطِرٍ",
+            pattern=f"M:<a:({bimusaytir_prefix})><r:({bimusaytir_suffix})>",
             attr_name="bimusaytir",
             opts={
-                "seen": "بِمُسَيْطِرٍ",
-                "saad": "بِمُصَيْطِرٍ",
+                "seen": f"<a:{bimusaytir_seen[: bimusaytir_saad_idx + 1]}><r:\\2>",
+                "saad": f"<a:{bimusaytir_saad[: bimusaytir_saad_idx + 1]}><r:\\2>",
             },
         ),
         SpecialPattern(
-            pattern=f"{alph.uthmani.hamza}{alph.uthmani.fatha}{alph.uthmani.alif}{alph.uthmani.madd}{alph.uthmani.lam}",
+            pattern=f"M:<T:({alph.uthmani.hamza}{alph.uthmani.fatha}{alph.uthmani.alif}{alph.uthmani.madd})><r:({alph.uthmani.lam})>",
             attr_name="tasheel_or_madd",
             opts={
-                "madd": f"{alph.uthmani.hamza}{alph.uthmani.fatha}{alph.uthmani.alif}{alph.uthmani.madd}{alph.uthmani.lam}",
-                "tasheel": f"{alph.uthmani.hamza}{alph.uthmani.fatha}{alph.uthmani.alif}{alph.uthmani.tasheel_sign}{alph.uthmani.lam}",
+                "madd": r"<T:\1><r:\2>",
+                "tasheel": f"<T:{alph.uthmani.hamza}{alph.uthmani.fatha}{alph.uthmani.alif}{alph.uthmani.tasheel_sign}><r:\\2>",
             },
         ),
+        # يلهث ذلك
         SpecialPattern(
-            pattern="يَلْهَث ذَّٰلِكَ",
+            pattern=f"M:<a:({yalhath_first})><s:({uth.space})><b:({yalhath_second_head})><r:({yalhath_second_tail})>",
             attr_name="yalhath_dhalik",
             opts={
-                "izhar": "يَلْهَثْ ذَٰلِكَ",
-                "idgham": "يَلْهَث ذَّٰلِكَ",
+                "izhar": f"<a:{yalhath_izhar_first}><s:\\2><b:{yalhath_izhar_second_head}><r:\\4>",
+                "idgham": r"<a:\1><s:\2><b:\3><r:\4>",
+                "waqf": r"<a:\1><s:\2><b:\3><r:\4>",
             },
         ),
+        # اركب معنا
         SpecialPattern(
-            pattern="ٱرْكَب مَّعَنَا",
+            pattern=f"M:<a:({irkab_first})><s:({uth.space})><b:({irkab_second_head})><r:({irkab_second_tail})>",
             attr_name="irkab_maana",
             opts={
-                "izhar": "ٱرْكَبْ مَعَنَا",
-                "idgham": "ٱرْكَب مَّعَنَا",
+                "izhar": f"<a:{irkab_izhar_first}><s:\\2><b:{irkab_izhar_second_head}><r:\\4>",
+                "idgham": r"<a:\1><s:\2><b:\3><r:\4>",
+                "waqf": r"<a:\1><s:\2><b:\3><r:\4>",
             },
         ),
+        # تأمننا
         SpecialPattern(
-            pattern="تَأْمَ۫نَّا",
+            pattern=f"M:<a:({tamnna_prefix})><m:({tamnna_marker})><b:({tamnna_noon})><c:({uth.shadda})><r:({tamnna_tail})>",
             attr_name="noon_tamnna",
             opts={
-                "ishmam": "تَأْمَنَّا",
-                "rawm": re.sub(
-                    alph.uthmani.dama, alph.phonetics.dama_mokhtalasa, "تَأْمَنُنَا"
-                ),
+                "ishmam": r"<a:\1><b:\3><c:\4><r:\5>",
+                "rawm": f"<a:\\1><m:{uth.noon}{ph.dama_mokhtalasa}><b:\\3><r:\\5>",
             },
         ),
         # وردت  ضَعْف في القرآن ف 4 مواضع: في الإنفل وثلاث في الروم فهنا نستثني موضع الأنفال
@@ -199,46 +416,51 @@ if __name__ == "__main__":
         # NOTE: Tanzil mixed up alph.uthmani.tanween_idhaam_dterminer with alph.uthmani.meem_iqlab so for surah Alroom
         # Tanweed with Idgham with written witn tanween_kasr + meem_iqlab
         SpecialPattern(
-            pattern=f"(?:([^{alph.uthmani.ras_haaa}].){daaf})|(?:{daaf}({alph.uthmani.tanween_kasr}{alph.uthmani.meem_iqlab}))",
+            pattern=f"M:<a:(?:{daaf_context_pattern})>",
             attr_name="harakat_daaf",
             opts={
-                "fath": r"\1" + "ضَعْف" + r"\2",
-                "dam": r"\1" + "ضُعْف" + r"\2",
+                "fath": r"<a:\1" + daaf + r"\2>",
+                "dam": r"<a:\1" + daaf_dam + r"\2>",
             },
         ),
         SpecialPattern(
-            pattern="ضَعْف",
+            pattern=f"M:<a:({daaf})>",
             attr_name="harakat_daaf",
             opts={
-                "fath": "ضَعْف",
-                "dam": "ضُعْف",
+                "fath": r"<a:\1>",
+                "dam": f"<a:{daaf_dam}>",
             },
             pos="start",
             sura_idx=30,
         ),
+        # سلاسلا
         SpecialPattern(
-            pattern="سَلَـٰسِلَا۟",
+            pattern=f"M:<a:({salasila_body})><b:({salasila_alif})><c:({salasila_marker})>",
             attr_name="alif_salasila",
             pos="end",
             opts={
-                "hadhf": "سَلَـٰسِلَ",
-                "ithbat": "سَلَـٰسِلَا",
+                "hadhf": r"<a:\1>",
+                "ithbat": r"<a:\1><b:\2>",
+                "wasl": r"<a:\1><b:\2><c:\3>",
             },
         ),
+        # نخلقكم
         SpecialPattern(
-            pattern="نَخْلُقكُّم",
+            pattern=f"M:<a:({nakhluqkum_prefix})><b:({uth.shadda})><r:({nakhluqkum_suffix})>",
             attr_name="idgham_nakhluqkum",
             opts={
-                "idgham_kamil": "نَخْلُقكُّم",
-                "idgham_naqis": "نَخْلُقكُم",
+                "idgham_kamil": r"<a:\1><b:\2><r:\3>",
+                "idgham_naqis": r"<a:\1><r:\3>",
             },
         ),
         # special case where khinjaria alif is for rasm not phonetic
         SpecialPattern(
-            pattern="فَٱدَّٰرَْٰٔتُمْ",
-            target_pattern="فَٱدَّٰرَْٔتُمْ",
+            pattern=f"M:<a:({faddaaraatum_prefix})><b:({uth.alif_khnjaria})><r:({faddaaraatum_suffix})>",
+            target_pattern=r"<a:\1><r:\3>",
         ),
     ]
+    assert all(p.pattern.startswith("M:") for p in special_patterns)
+
     madd = Aya(68, 1).get().uthmani[1]
     for k in hrof_moqtta_disassemble:
         hrof_moqtta_disassemble[k] = re.sub("~", madd, hrof_moqtta_disassemble[k])
