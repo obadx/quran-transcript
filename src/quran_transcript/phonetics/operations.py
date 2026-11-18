@@ -1129,7 +1129,10 @@ class RemoveRasHaaAndShadda(ConversionOperation):
             QuranREWithMapping(
                 f"M:<T:(.)><D0:{uth.shadda}>",
                 r"<T:\1\1>",
-                None,
+                TajweedRuleType.TASHDEED,
+                insert_taj_cond=lambda rules, _: (
+                    TajweedRuleType.IDGHAM_KAMEL not in rules
+                ),
             ),
             # skoon
             QuranREWithMapping(

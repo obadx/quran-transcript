@@ -471,7 +471,6 @@ def explain_error(
                         ref_ph[-1] in alph.phonetic_groups.harakat
                         and pred_ph[-1] != ref_ph[-1]
                     ):
-                        print("Tashkeel Equal")
                         errors.append(
                             get_tasshkeel_error(
                                 ref_ph=ref_ph,
@@ -481,11 +480,10 @@ def explain_error(
                             )
                         )
 
-                # Tashkeel (Harakat)
             elif (
                 ref_ph[-1] in alph.phonetic_groups.harakat and ref_ph[-1] != pred_ph[-1]
             ):
-                print("Tashkeel Other")
+                # Tashkeel (Harakat)
                 errors.append(
                     get_tasshkeel_error(
                         ref_ph=ref_ph,

@@ -165,26 +165,26 @@ if __name__ == "__main__":
     uthmani_text = "مِنۢ بَعْدِ"
     predicted_text = "مِنبَعدڇ"
 
-    # # إنقاص مقدار غنة الإقلاب
-    # uthmani_text = "مِنۢ بَعْدِ"
-    # predicted_text = "مِ۾بَعدڇ"
+    # إنقاص مقدار غنة الإقلاب
+    uthmani_text = "مِنۢ بَعْدِ"
+    predicted_text = "مِ۾بَعدڇ"
 
-    # # نطق النون المخفاة نونا مظهرة
-    # uthmani_text = "مِن قَبْلِكَ"
-    # predicted_text = "مِنقَبڇلِك"
-    #
-    # # غنقاص مقدار الإخفاء
-    # uthmani_text = "مِن قَبْلِكَ"
-    # predicted_text = "مِںںقَبڇلِك"
-    #
-    # # نطق  إظهار النون إخفاء
-    # uthmani_text = "أَنْعَمْتَ"
-    # predicted_text = "ءَںںنعَمت"
-    # predicted_text = "ءَںںعَمت"
-    #
-    # # مط النون المظهرة
-    # uthmani_text = "أَنْعَمْتَ"
-    # predicted_text = "ءَننعَمت"
+    # نطق النون المخفاة نونا مظهرة
+    uthmani_text = "مِن قَبْلِكَ"
+    predicted_text = "مِنقَبڇلِك"
+
+    # غنقاص مقدار الإخفاء
+    uthmani_text = "مِن قَبْلِكَ"
+    predicted_text = "مِںںقَبڇلِك"
+
+    # نطق  إظهار النون إخفاء
+    uthmani_text = "أَنْعَمْتَ"
+    predicted_text = "ءَںںنعَمت"
+    predicted_text = "ءَںںعَمت"
+
+    # مط النون المظهرة
+    uthmani_text = "أَنْعَمْتَ"
+    predicted_text = "ءَننعَمت"
 
     # نطقة الميم المخفاة ميما مدغمة
     uthmani_text = "تَرْمِيهِم بِحِجَارَةٍ"
@@ -205,9 +205,13 @@ if __name__ == "__main__":
     uthmani_text = "ٱلرَّحِيمِ"
     predicted_text = "ءَررررَحِۦۦۦۦم"
 
-    # # إظهار الحرف المدغم
-    # uthmani_text = "ٱلرَّحِيمِ"
-    # predicted_text = "ءَلرَحِۦۦۦۦم"
+    # إظهار الحرف المدغم
+    uthmani_text = "ٱلرَّحِيمِ"
+    predicted_text = "ءَلرَحِۦۦۦۦم"
+
+    # التكرار المباغ فيه في الحرم المشدد
+    uthmani_text = "وَعَدَّدَهُۥ"
+    predicted_text = "وَعَددددَدَه"
 
     ref_ph_out = quran_phonetizer(uthmani_text, moshaf)
     errors = explain_error(

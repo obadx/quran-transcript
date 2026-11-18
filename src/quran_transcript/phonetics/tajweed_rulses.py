@@ -41,6 +41,7 @@ class TajweedRuleType(IntEnum):
 
     IDGHAM_KAMEL = auto()
     IZHAR = auto()
+    TASHDEED = auto()
 
     # التقاء الساكنين
     KASR_TANWEEN_ILTIQAA_SAKENAYN = auto()
@@ -535,6 +536,28 @@ class IdghamKamelRule(TajweedRule):
 
 
 @dataclass
+class TashdeedlRule(TajweedRule):
+    name: MultiLangText = MultiLangText(
+        ar="تشديد",
+        en="Tashdeed",
+    )
+    description: MultiLangText = MultiLangText(
+        ar="",
+        en="",
+    )
+    rule_type: TajweedRuleType = TajweedRuleType.TASHDEED
+    correctness: CorrectnessType = "count"
+
+    def count(self, ref_text: str, pred_text: str) -> float:
+        assert ref_text[0] == pred_text[0]
+        pred_len = 1
+        for c in pred_text[1:]:
+            if c not in phg.residuals:
+                pred_len += 1
+        return pred_len
+
+
+@dataclass
 class IzharRule(DescriptiveTajweedRule):
     name: MultiLangText = MultiLangText(
         ar="إظهار",
@@ -720,6 +743,7 @@ TAJ_TYPE_TO_RULE = {
     TajweedRuleType.MOSHADAD_NOON: MoshadadNoonRule(),
     TajweedRuleType.MOSHADAD_MEEM: MoshadadMeemRule(),
     TajweedRuleType.IDGHAM_KAMEL: IdghamKamelRule(),
+    TajweedRuleType.TASHDEED: TashdeedlRule(),
     TajweedRuleType.IZHAR: IzharRule(),
     TajweedRuleType.KASR_TANWEEN_ILTIQAA_SAKENAYN: KasrTanweenIltiqaaSakenaynRule(),
     TajweedRuleType.DELETE_FIRST_ILTIQAA_SAKENAYN: DeleteFirstIltiqaaSakenaynRule(),
@@ -762,7 +786,10 @@ def get_full_taj_rule_type(
             if taj_rule_meta.rule_type == TajweedRuleType.LEEN_MADD:
                 golden_len += 1
             taj_rule_meta.set_golden_len(golden_len)
-        elif taj_rule_meta.rule_type == TajweedRuleType.IDGHAM_KAMEL:
+        elif taj_rule_meta.rule_type in {
+            TajweedRuleType.IDGHAM_KAMEL,
+            TajweedRuleType.TASHDEED,
+        }:
             taj_rule_meta.set_golden_len(golden_len)
         else:
             # Gonnah related rules
