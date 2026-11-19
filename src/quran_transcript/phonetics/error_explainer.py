@@ -463,9 +463,12 @@ def explain_error(
                     exp_len = -1
                     pred_len = -1
                     missing_taj_rules = []
+                    replaced_taj_rules = []
                     if taj_rule.correctness == "count":
                         pred_len = taj_rule.count(ref_ph, pred_ph)
                         exp_len = taj_meta.golden_len
+                        if pred_len != exp_len:
+                            replaced_taj_rules.append((taj_rule, taj_meta))
                     elif taj_rule.correctness == "match":
                         if not taj_rule.match(ref_ph, pred_ph):
                             missing_taj_rules.append((taj_rule, taj_meta))
@@ -475,24 +478,25 @@ def explain_error(
                         raise ValueError(
                             f"Invalid mathing type: `{taj_rule.correctness}`. Available: `match`, `count`, `descriptive`"
                         )
-                    errors.append(
-                        ReciterError(
-                            uthmani_pos=uthmani_pos,
-                            ph_pos=ph_pos,
-                            error_type="tajweed",
-                            speech_error_type="replace",  # TODO: make it compliant with speech typedelete
-                            expected_ph=ref_ph,
-                            preditected_ph=pred_ph,
-                            expected_len=exp_len,
-                            predicted_len=pred_len,
-                            ref_tajweed_rules=to_explained_tajweed_rules(
-                                [(taj_rule, taj_meta)] + descriptive_rules
-                            ),
-                            missing_tajweed_rules=to_explained_tajweed_rules(
-                                missing_taj_rules
-                            ),
+                    if replaced_taj_rules or missing_taj_rules:
+                        errors.append(
+                            ReciterError(
+                                uthmani_pos=uthmani_pos,
+                                ph_pos=ph_pos,
+                                error_type="tajweed",
+                                speech_error_type="replace",  # TODO: make it compliant with speech typedelete
+                                expected_ph=ref_ph,
+                                preditected_ph=pred_ph,
+                                expected_len=exp_len,
+                                predicted_len=pred_len,
+                                ref_tajweed_rules=to_explained_tajweed_rules(
+                                    [(taj_rule, taj_meta)] + descriptive_rules
+                                ),
+                                missing_tajweed_rules=to_explained_tajweed_rules(
+                                    missing_taj_rules
+                                ),
+                            )
                         )
-                    )
                     # أخطاء التشكيل
                     if (
                         ref_ph[-1] in alph.phonetic_groups.harakat
